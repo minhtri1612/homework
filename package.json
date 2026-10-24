@@ -1,0 +1,14 @@
+{
+  "name": "homework",
+  "version": "0.1.0",
+  "description": "Website bài tập trắc nghiệm một đáp án cho giáo viên và học sinh",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test",
+    "parse": "node scripts/parse.js"
+  }
+}
