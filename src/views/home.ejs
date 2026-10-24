@@ -1,0 +1,12 @@
+<%- include('partials/head') %>
+<h1>Bài tập trắc nghiệm</h1>
+<p>Giáo viên tạo bài tập trắc nghiệm một đáp án, gửi link cho học sinh và xem điểm ngay khi các em nộp bài.</p>
+<% if (locals.teacher) { %>
+  <p><a class="button" href="/teacher">Vào trang bài tập của tôi</a></p>
+<% } else { %>
+  <p>
+    <a class="button" href="/register">Đăng ký tài khoản giáo viên</a>
+    <a class="button secondary" href="/login">Đăng nhập</a>
+  </p>
+<% } %>
+<%- include('partials/foot') %>

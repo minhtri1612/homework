@@ -155,3 +155,27 @@ export async function getHomework(db, id) {
 function clean(text) {
   return String(text ?? '').normalize('NFC').trim();
 }
+
+/** A teacher's homework sets, newest first, with question and submission counts. */
+export async function listHomeworks(db, teacherId) {
+  const result = await db.execute({
+    sql: `SELECT h.id, h.title, h.share_code, h.created_at,
+                 (SELECT count(*) FROM questions q
+                  WHERE q.version_id = (SELECT v.id FROM homework_versions v
+                                        WHERE v.homework_id = h.id
+                                        ORDER BY v.number DESC LIMIT 1)) AS question_count,
+                 (SELECT count(*) FROM submissions s WHERE s.homework_id = h.id) AS submission_count
+          FROM homeworks h
+          WHERE h.teacher_id = ?
+          ORDER BY h.created_at DESC, h.id DESC`,
+    args: [teacherId],
+  });
+  return result.rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    shareCode: row.share_code,
+    createdAt: row.created_at,
+    questionCount: row.question_count,
+    submissionCount: row.submission_count,
+  }));
+}

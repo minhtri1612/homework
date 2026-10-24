@@ -12,9 +12,13 @@
     "parse": "node scripts/parse.js",
     "db:init": "node scripts/db-init.js",
     "db:reset": "node scripts/db-init.js --reset",
-    "db:seed": "node scripts/db-seed.js"
+    "db:seed": "node scripts/db-seed.js",
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js"
   },
   "dependencies": {
-    "@libsql/client": "0.18.0"
+    "@libsql/client": "0.18.0",
+    "ejs": "7.0.1",
+    "express": "5.3.0"
   }
 }

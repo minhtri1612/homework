@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · Bài tập trắc nghiệm</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="<%= locals.teacher ? '/teacher' : '/' %>">Bài tập trắc nghiệm</a>
+    <nav>
+      <% if (locals.teacher) { %>
+        <span class="who"><%= locals.teacher.name %></span>
+        <form method="post" action="/logout" class="inline">
+          <button type="submit" class="link">Đăng xuất</button>
+        </form>
+      <% } else { %>
+        <a href="/login">Đăng nhập</a>
+      <% } %>
+    </nav>
+  </header>
+  <main>

@@ -11,8 +11,8 @@ Website giao bài tập trắc nghiệm **một đáp án đúng** cho giáo vi�
 
 | Thành phần | Lựa chọn |
 |---|---|
-| Máy chủ | Node.js 24 + Express _(sắp có)_ |
-| Giao diện | Trang HTML dựng sẵn trên máy chủ (EJS) + một ít JavaScript thuần _(sắp có)_ |
+| Máy chủ | Node.js 24 + Express 5 |
+| Giao diện | Trang HTML dựng sẵn trên máy chủ (EJS) + một ít JavaScript thuần |
 | Cơ sở dữ liệu | SQLite qua `@libsql/client` — chạy máy cá nhân là một file (`data/local.db`), khi triển khai dùng Turso |
 | Kiểm thử | `node:test` có sẵn trong Node, không cần cài thêm |
 
@@ -53,7 +53,8 @@ npm run parse -- examples/mau.txt   # thử bộ đọc cú pháp với một fi
 npm run db:init  # tạo các bảng trong cơ sở dữ liệu (chạy lại bao nhiêu lần cũng được)
 npm run db:seed  # thêm dữ liệu mẫu: 1 giáo viên và 2 bộ bài tập
 npm run db:reset # XOÁ HẾT dữ liệu rồi tạo lại bảng trống (chỉ với file trên máy)
-npm run dev      # chạy website ở http://localhost:3000 (sắp có)
+npm run dev      # chạy website ở http://localhost:3000, tự khởi động lại khi sửa file (Ctrl+C để dừng)
+npm start        # chạy website (không tự khởi động lại) — dùng khi triển khai
 ```
 
 ### 4. Cơ sở dữ liệu
@@ -67,6 +68,12 @@ npm run db:seed    # tự tạo bảng nếu chưa có
 ```
 
 Tài khoản mẫu: `giaovien@example.com`, mật khẩu `matkhau123`.
+
+Sau đó chạy `npm run dev`, mở http://localhost:3000 trên trình duyệt (Windows mở được thẳng địa chỉ này)
+và đăng nhập bằng tài khoản mẫu, hoặc bấm **Đăng ký** để tạo tài khoản mới.
+
+Muốn thử trên điện thoại cùng mạng Wi-Fi thì phải đợi đến bước triển khai: WSL không tự mở cổng
+ra mạng ngoài.
 
 Muốn dùng cơ sở dữ liệu khác (ví dụ Turso khi triển khai), chép `.env.example` thành `.env` rồi điền
 `DATABASE_URL` và `DATABASE_AUTH_TOKEN`. Để trống thì dùng file trên máy.
@@ -88,6 +95,14 @@ Các bảng (chi tiết trong `src/db/schema.sql`):
 
 Vì sao có **phiên bản**: nếu giáo viên sửa câu hỏi sau khi đã có học sinh nộp bài, câu hỏi mới được lưu
 thành phiên bản mới, còn bài đã nộp vẫn giữ đúng những câu học sinh đã làm.
+
+## Tài khoản giáo viên
+
+- Ai cũng đăng ký được tài khoản giáo viên bằng email và mật khẩu (ít nhất 8 ký tự).
+  Mỗi giáo viên chỉ thấy bài tập của mình.
+- Mật khẩu được mã hoá (scrypt) trước khi lưu; không ai đọc lại được mật khẩu gốc, kể cả người quản trị.
+- Đăng nhập được giữ 30 ngày bằng cookie. Đăng xuất là phiên bị xoá luôn trên máy chủ.
+- Học sinh không cần tài khoản (sắp có).
 
 ## Cú pháp nhập câu hỏi
 
@@ -181,8 +196,17 @@ src/
     client.js     mở kết nối (file trên máy hoặc Turso)
     teachers.js   lưu giáo viên
     homeworks.js  lưu và đọc bộ bài tập (kiểm tra lại câu hỏi trước khi lưu)
+    sessions.js   phiên đăng nhập
   auth/
     password.js   mã hoá và kiểm tra mật khẩu
+    middleware.js đọc cookie đăng nhập, chặn trang cần đăng nhập, chặn form từ trang web khác
+  routes/
+    auth.js       đăng ký, đăng nhập, đăng xuất
+    teacher.js    trang của giáo viên
+  views/          giao diện (EJS); partials/ là phần đầu và cuối dùng chung
+  public/         CSS, ảnh, JavaScript cho trình duyệt
+  app.js          ghép các phần thành website
+  server.js       khởi động website (npm run dev)
   load-env.js     đọc file .env nếu có
 test/             kiểm thử (npm test)
 scripts/          công cụ dòng lệnh (npm run parse, db:init, db:seed, db:reset)

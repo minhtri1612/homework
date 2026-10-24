@@ -1,0 +1,27 @@
+<%- include('partials/head') %>
+<h1>Đăng ký tài khoản giáo viên</h1>
+<form method="post" action="/register" class="card form" novalidate>
+  <label>Họ tên
+    <input name="name" value="<%= values.name ?? '' %>" autocomplete="name" required maxlength="100" autofocus>
+  </label>
+  <% if (errors.name) { %><p class="error"><%= errors.name %></p><% } %>
+
+  <label>Email
+    <input name="email" type="email" value="<%= values.email ?? '' %>" autocomplete="email" required>
+  </label>
+  <% if (errors.email) { %><p class="error"><%= errors.email %></p><% } %>
+
+  <label>Mật khẩu (ít nhất 8 ký tự)
+    <input name="password" type="password" autocomplete="new-password" required minlength="8">
+  </label>
+  <% if (errors.password) { %><p class="error"><%= errors.password %></p><% } %>
+
+  <label>Nhập lại mật khẩu
+    <input name="confirm" type="password" autocomplete="new-password" required>
+  </label>
+  <% if (errors.confirm) { %><p class="error"><%= errors.confirm %></p><% } %>
+
+  <button type="submit">Đăng ký</button>
+  <p class="muted">Đã có tài khoản? <a href="/login">Đăng nhập</a></p>
+</form>
+<%- include('partials/foot') %>

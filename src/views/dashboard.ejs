@@ -1,0 +1,18 @@
+<%- include('partials/head') %>
+<h1>Bài tập của tôi</h1>
+<% if (homeworks.length === 0) { %>
+  <p class="card muted">Chưa có bài tập nào. Chức năng tạo bài tập sẽ có ở bước tiếp theo.</p>
+<% } else { %>
+  <ul class="list">
+    <% for (const homework of homeworks) { %>
+      <li class="card">
+        <strong><%= homework.title %></strong>
+        <span class="muted">
+          <%= homework.questionCount %> câu · <%= homework.submissionCount %> bài nộp ·
+          mã <code><%= homework.shareCode %></code> · tạo ngày <%= formatDate(homework.createdAt) %>
+        </span>
+      </li>
+    <% } %>
+  </ul>
+<% } %>
+<%- include('partials/foot') %>
