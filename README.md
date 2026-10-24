@@ -91,6 +91,20 @@ C. xáng sủa
 
 Cũng có thể để hai đáp án trên một dòng (`A. mèo     B. chó`, xuống dòng `==C. gà     D. vịt`).
 
+### Tiêu đề bài tập
+
+Nếu **dòng đầu tiên** được theo sau bởi **một dòng trống**, dòng đó là **tiêu đề** của bộ bài tập, không phải câu hỏi:
+
+```
+BÀI TẬP TIẾNG VIỆT – LỚP 3
+
+Câu 1: Con cua có mấy càng?
+==2
+3
+```
+
+(Dòng đáp án như `==2` hay `A. mèo` thì không bao giờ được coi là tiêu đề.)
+
 ### Tách các câu hỏi
 
 Một câu hỏi mới bắt đầu khi gặp:

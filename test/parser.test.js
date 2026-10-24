@@ -193,11 +193,11 @@ describe('errors (never drop input silently)', () => {
     assert.deepEqual(codes(parse('Bài kiểm tra 15 phút')), ['NO_ANSWERS']);
   });
 
-  test('a stray title line becomes its own (invalid) question, the rest still parses', () => {
-    const result = parse('BÀI KIỂM TRA 15 PHÚT\n\nQ?\n==2\n3');
-    assert.equal(result.questions.length, 2);
-    assert.deepEqual(result.questions[0].errors.map((e) => e.code), ['NO_ANSWERS']);
-    assert.deepEqual(result.questions[1].errors, []);
+  test('a stray line in the middle becomes its own (invalid) question, the rest still parses', () => {
+    const result = parse('Q1?\n==a\nb\n\nBÀI KIỂM TRA 15 PHÚT\n\nQ2?\n==2\n3');
+    assert.equal(result.questions.length, 3);
+    assert.deepEqual(result.questions[1].errors.map((e) => e.code), ['NO_ANSWERS']);
+    assert.deepEqual(result.questions[2].errors, []);
   });
 
   test('more than 6 answers', () => {
@@ -229,6 +229,45 @@ describe('errors (never drop input silently)', () => {
     assert.deepEqual(result.errors, [
       { code: 'NO_CORRECT', message: result.errors[0].message, line: 5, question: 2 },
     ]);
+  });
+});
+
+describe('homework title', () => {
+  test('first line followed by a blank line is the title, not a question', () => {
+    const result = parse('\n  BÀI KIỂM TRA   15 PHÚT \n\nQ?\n==2\n3');
+    assert.equal(result.title, 'BÀI KIỂM TRA 15 PHÚT');
+    assert.deepEqual(simple(result), [{ text: 'Q?', answers: ['==2', '3'] }]);
+    assert.deepEqual(result.errors, []);
+    assert.equal(result.questions[0].line, 4);
+  });
+
+  test('numbered first line can be a title ("Bài 1: …")', () => {
+    const result = parse('Bài 1: Ôn tập chương 2\n\nQ?\n==2\n3');
+    assert.equal(result.title, 'Bài 1: Ôn tập chương 2');
+    assert.equal(result.questions.length, 1);
+  });
+
+  test('no title when the first line is directly followed by more text', () => {
+    const result = parse('Con cua có mấy càng?\n==2\n3');
+    assert.equal(result.title, null);
+    assert.equal(result.questions.length, 1);
+  });
+
+  test('no title when the text is a single line', () => {
+    const result = parse('Bài kiểm tra 15 phút');
+    assert.equal(result.title, null);
+    assert.deepEqual(codes(result), ['NO_ANSWERS']);
+  });
+
+  test('an answer line is never a title', () => {
+    assert.equal(parse('==A. x\n\nQ?\n==2\n3').title, null);
+    assert.equal(parse('1. A. cat   ==B. dog\n\nQ?\n==2\n3').title, null);
+  });
+
+  test('only a title: EMPTY_INPUT', () => {
+    const result = parse('BÀI KIỂM TRA\n\n');
+    assert.equal(result.title, 'BÀI KIỂM TRA');
+    assert.deepEqual(codes(result), ['EMPTY_INPUT']);
   });
 });
 
@@ -298,6 +337,14 @@ describe('serialize', () => {
       })),
       questions,
     );
+  });
+
+  test('with a title', () => {
+    const text = serialize(questions.slice(0, 1), 'Bài 1: Ôn tập');
+    assert.equal(text, 'Bài 1: Ôn tập\n\n1. Con cua có mấy càng?\n==A. 2\nB. 3');
+    const result = parse(text);
+    assert.equal(result.title, 'Bài 1: Ôn tập');
+    assert.equal(result.questions.length, 1);
   });
 
   test('serialize(parse(x)) is stable for messy input', () => {

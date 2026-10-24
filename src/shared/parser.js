@@ -176,15 +176,32 @@ export function validateQuestion(question) {
 }
 
 /**
+ * The first non-empty line is the homework title when a blank line follows it
+ * and it is not an answer line. Returns { text, index } or null.
+ */
+function findTitle(lines) {
+  const index = lines.findIndex((raw) => collapse(raw) !== '');
+  if (index === -1 || index + 1 >= lines.length || collapse(lines[index + 1]) !== '') return null;
+  const text = collapse(lines[index]);
+  const answer = parseAnswerLine(text);
+  if (answer.letter !== null || answer.correct || findInlineAnswers(text)) return null;
+  return { text, index };
+}
+
+/**
  * Parses syntax-mode text into questions.
  *
- * Returns { questions, errors, warnings }. Every non-empty line ends up in some
- * question: nothing is dropped silently. Each question carries its own
- * errors/warnings (for red cards); the top-level lists repeat them with the
- * question number added, plus EMPTY_INPUT when there is nothing at all.
+ * Returns { title, questions, errors, warnings }. title is the first line when
+ * a blank line follows it (see findTitle), otherwise null. Every other
+ * non-empty line ends up in some question: nothing is dropped silently. Each
+ * question carries its own errors/warnings (for red cards); the top-level
+ * lists repeat them with the question number added, plus EMPTY_INPUT when
+ * there are no questions at all.
  */
 export function parse(input) {
   const lines = normalizeText(input).split('\n');
+  const title = findTitle(lines);
+  if (title) lines[title.index] = '';
   const blocks = [];
   let block = null;
 
@@ -300,12 +317,16 @@ export function parse(input) {
     errors.push({ code: 'EMPTY_INPUT', message: 'Chưa có câu hỏi nào.' });
   }
 
-  return { questions, errors, warnings: flatten('warnings') };
+  return { title: title?.text ?? null, questions, errors, warnings: flatten('warnings') };
 }
 
-/** Turns questions (e.g. form cards) back into syntax text that parse() reads back. */
-export function serialize(questions) {
-  return questions
+/**
+ * Turns questions (e.g. form cards) back into syntax text that parse() reads
+ * back. An optional title goes on the first line, followed by a blank line.
+ */
+export function serialize(questions, title = '') {
+  const heading = collapse(String(title ?? ''));
+  const body = questions
     .map((question, i) => {
       const [first = '', ...rest] = String(question.text ?? '').split('\n');
       const lines = [collapse(`${i + 1}. ${first}`), ...rest.map(collapse).filter(Boolean)];
@@ -315,4 +336,5 @@ export function serialize(questions) {
       return lines.join('\n');
     })
     .join('\n\n');
+  return heading ? `${heading}\n\n${body}` : body;
 }

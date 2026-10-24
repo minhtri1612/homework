@@ -6,8 +6,10 @@ import { parse } from '../src/shared/parser.js';
 
 const file = process.argv[2];
 const input = readFileSync(file ?? 0, 'utf8');
-const { questions, errors, warnings } = parse(input);
+const { title, questions, errors, warnings } = parse(input);
 const LETTERS = 'ABCDEFGH';
+
+if (title) console.log(`Tiêu đề: ${title}`);
 
 questions.forEach((q, i) => {
   const status = q.errors.length ? '✖' : q.warnings.length ? '!' : '✔';
