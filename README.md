@@ -104,6 +104,23 @@ thành phiên bản mới, còn bài đã nộp vẫn giữ đúng những câu 
 - Đăng nhập được giữ 30 ngày bằng cookie. Đăng xuất là phiên bị xoá luôn trên máy chủ.
 - Học sinh không cần tài khoản (sắp có).
 
+## Soạn bài tập
+
+Sau khi đăng nhập, bấm **+ Tạo bài tập mới**. Bấm vào tên một bài tập để sửa.
+
+- **Thẻ “Cú pháp”**: dán văn bản câu hỏi (xem cú pháp ở mục dưới). Ngay bên dưới hiện số câu và các lỗi kèm số dòng.
+  Bấm **Chuyển sang dạng thẻ** để xem từng câu thành một thẻ.
+- **Thẻ “Dạng thẻ”**: mỗi câu một thẻ. Bấm vào chữ cái (A, B, C…) để chọn đáp án đúng; thêm/xoá đáp án
+  (2 đến 6), đổi thứ tự, xoá câu, bật “Xáo trộn đáp án”. Câu có lỗi hiện **màu đỏ**; còn câu đỏ thì chưa lưu được.
+- Chuyển qua lại giữa hai thẻ thoải mái: nội dung luôn được giữ, thẻ nào đang mở cũng lưu được.
+- Cài đặt: khi nào học sinh được xem đáp án đúng (ngay sau khi nộp — mặc định / sau hạn nộp / không cho xem),
+  hạn nộp theo **giờ Việt Nam**, và xáo trộn thứ tự câu hỏi.
+- Máy chủ kiểm tra lại mọi thứ khi lưu, nên dù trình duyệt có lỗi cũng không lưu được bài tập sai.
+- **Sửa bài tập đã có học sinh nộp**: nếu đổi câu hỏi, bài tập được lưu thành **phiên bản mới**; bài đã nộp vẫn
+  giữ câu hỏi và điểm cũ. Chỉ đổi tiêu đề, hạn nộp hay cài đặt thì không tạo phiên bản mới.
+
+Giới hạn: tối đa 200 câu, mỗi câu hỏi 2000 ký tự, mỗi đáp án 500 ký tự.
+
 ## Cú pháp nhập câu hỏi
 
 Mỗi câu hỏi gồm **nội dung câu hỏi** và **2 đến 6 đáp án**, trong đó **đúng một** đáp án có dấu `==` ở đầu.
@@ -202,12 +219,14 @@ src/
     middleware.js đọc cookie đăng nhập, chặn trang cần đăng nhập, chặn form từ trang web khác
   routes/
     auth.js       đăng ký, đăng nhập, đăng xuất
-    teacher.js    trang của giáo viên
+    teacher.js    trang của giáo viên: danh sách và soạn bài tập
   views/          giao diện (EJS); partials/ là phần đầu và cuối dùng chung
   public/         CSS, ảnh, JavaScript cho trình duyệt
+    js/editor.js  trang soạn bài tập (hai thẻ Cú pháp / Dạng thẻ)
   app.js          ghép các phần thành website
   server.js       khởi động website (npm run dev)
   load-env.js     đọc file .env nếu có
+  vietnam-time.js đổi giờ Việt Nam ↔ giờ UTC lưu trong cơ sở dữ liệu
 test/             kiểm thử (npm test)
 scripts/          công cụ dòng lệnh (npm run parse, db:init, db:seed, db:reset)
 examples/         văn bản mẫu

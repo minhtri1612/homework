@@ -1,53 +1,21 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { openDb, initSchema } from '../src/db/client.js';
-import { createApp } from '../src/app.js';
 import { createTeacher } from '../src/db/teachers.js';
 import { createHomework } from '../src/db/homeworks.js';
 import { parse } from '../src/shared/parser.js';
+import { startApp, sessionCookie } from './helpers.js';
 
-// Runs the real app on a random port with a fresh database file.
-let dir;
+let app;
 let db;
-let server;
-let base;
+let get;
+let post;
 
 before(async () => {
-  dir = mkdtempSync(join(tmpdir(), 'homework-test-'));
-  db = openDb({ url: `file:${join(dir, 'test.db')}` });
-  await initSchema(db);
-  server = createApp({ db }).listen(0);
-  await new Promise((resolve) => server.once('listening', resolve));
-  base = `http://localhost:${server.address().port}`;
+  app = await startApp();
+  ({ db, get, post } = app);
 });
 
-after(async () => {
-  await new Promise((resolve) => server.close(resolve));
-  db.close();
-  rmSync(dir, { recursive: true, force: true });
-});
-
-function get(path, cookie) {
-  return fetch(base + path, { redirect: 'manual', headers: cookie ? { cookie } : {} });
-}
-
-function post(path, fields, { cookie, origin = base } = {}) {
-  return fetch(base + path, {
-    method: 'POST',
-    redirect: 'manual',
-    headers: { 'content-type': 'application/x-www-form-urlencoded', origin, ...(cookie && { cookie }) },
-    body: new URLSearchParams(fields),
-  });
-}
-
-/** The "sid=…" part of the response's session cookie, or null. */
-function sessionCookie(response) {
-  const header = response.headers.getSetCookie().find((c) => c.startsWith('sid='));
-  return header ? header.split(';')[0] : null;
-}
+after(() => app.close());
 
 const NEW_TEACHER = { name: '  Nguyễn   Thị Hoa ', email: 'Hoa@Example.com', password: 'mật khẩu 123', confirm: 'mật khẩu 123' };
 

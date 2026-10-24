@@ -1,12 +1,13 @@
 <%- include('partials/head') %>
 <h1>Bài tập của tôi</h1>
+<p><a class="button" href="/teacher/homeworks/new">+ Tạo bài tập mới</a></p>
 <% if (homeworks.length === 0) { %>
-  <p class="card muted">Chưa có bài tập nào. Chức năng tạo bài tập sẽ có ở bước tiếp theo.</p>
+  <p class="card muted">Chưa có bài tập nào. Bấm “Tạo bài tập mới” để bắt đầu.</p>
 <% } else { %>
   <ul class="list">
     <% for (const homework of homeworks) { %>
       <li class="card">
-        <strong><%= homework.title %></strong>
+        <a class="title" href="/teacher/homeworks/<%= homework.id %>/edit"><%= homework.title %></a>
         <span class="muted">
           <%= homework.questionCount %> câu · <%= homework.submissionCount %> bài nộp ·
           mã <code><%= homework.shareCode %></code> · tạo ngày <%= formatDate(homework.createdAt) %>

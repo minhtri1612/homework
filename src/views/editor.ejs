@@ -1,0 +1,113 @@
+<%- include('partials/head') %>
+<h1><%= heading %></h1>
+
+<% if (saved) { %><p class="notice success" role="status"><%= saved %></p><% } %>
+<% if (homework.shareCode) { %>
+  <p class="muted">Mã bài tập: <code><%= homework.shareCode %></code> · phiên bản <%= homework.version.number %></p>
+<% } %>
+<% if (errors.length) { %>
+  <div class="notice danger" role="alert">
+    <p><strong>Chưa lưu được.</strong> Hãy sửa:</p>
+    <ul>
+      <% for (const error of errors) { %>
+        <li><%= error.question ? `Câu ${error.question}: ` : '' %><%= error.message %></li>
+      <% } %>
+    </ul>
+  </div>
+<% } %>
+<% if (homework.version?.submissionCount > 0) { %>
+  <p class="notice">
+    Đã có <%= homework.version.submissionCount %> bài nộp. Nếu bạn sửa câu hỏi, bài tập sẽ được lưu thành
+    <strong>phiên bản mới</strong>; bài đã nộp vẫn giữ nguyên câu hỏi cũ và điểm cũ.
+  </p>
+<% } %>
+
+<noscript><p class="notice danger">Trang soạn bài tập cần bật JavaScript trên trình duyệt.</p></noscript>
+
+<form method="post" action="<%= action %>" id="editor" class="editor"
+      data-start-tab="<%= homework.questions.length || errors.length ? 'form' : 'syntax' %>">
+  <section class="card form">
+    <label>Tiêu đề bài tập
+      <input name="title" id="title" value="<%= homework.title %>" required maxlength="200"
+             placeholder="Ví dụ: Bài tập Tiếng Việt – Tuần 8">
+    </label>
+
+    <fieldset>
+      <legend>Khi nào học sinh được xem đáp án đúng?</legend>
+      <% for (const [value, label] of [
+        ['after_submit', 'Ngay sau khi nộp bài'],
+        ['after_deadline', 'Sau hạn nộp'],
+        ['never', 'Không cho xem (chỉ xem điểm)'],
+      ]) { %>
+        <label class="check">
+          <input type="radio" name="revealMode" value="<%= value %>" <%= homework.revealMode === value ? 'checked' : '' %>>
+          <%= label %>
+        </label>
+      <% } %>
+    </fieldset>
+
+    <label>Hạn nộp <span class="muted">(giờ Việt Nam, để trống nếu không có)</span>
+      <input type="datetime-local" name="deadline" id="deadline" value="<%= homework.deadlineInput %>">
+    </label>
+
+    <label class="check">
+      <input type="checkbox" name="shuffleQuestions" value="1" <%= homework.shuffleQuestions ? 'checked' : '' %>>
+      Xáo trộn thứ tự câu hỏi cho mỗi học sinh
+    </label>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" class="tab" data-tab="syntax" id="tab-syntax-button" aria-controls="tab-syntax">Cú pháp</button>
+    <button type="button" role="tab" class="tab" data-tab="form" id="tab-form-button" aria-controls="tab-form">Dạng thẻ</button>
+  </div>
+
+  <section id="tab-syntax" class="tab-panel" role="tabpanel" aria-labelledby="tab-syntax-button" hidden>
+    <label for="syntax" class="muted">
+      Dán hoặc gõ câu hỏi. Đáp án đúng có <code>==</code> ở đầu. Xem <a href="#help">hướng dẫn cú pháp</a> bên dưới.
+    </label>
+    <textarea id="syntax" rows="16" spellcheck="false" placeholder="Con cua có mấy càng?
+==2
+3
+4
+
+Câu 2. Từ nào viết đúng chính tả?
+A. sáng xủa
+==B. sáng sủa"></textarea>
+    <p id="syntax-status" class="muted" aria-live="polite"></p>
+    <ul id="syntax-problems" class="problems"></ul>
+    <button type="button" id="convert">Chuyển sang dạng thẻ</button>
+  </section>
+
+  <section id="tab-form" class="tab-panel" role="tabpanel" aria-labelledby="tab-form-button" hidden>
+    <div id="title-note" class="notice" hidden></div>
+    <p id="cards-empty" class="muted" hidden>Chưa có câu hỏi. Bấm “Thêm câu hỏi”, hoặc dán văn bản ở thẻ “Cú pháp”.</p>
+    <label class="check" id="shuffle-all-label">
+      <input type="checkbox" id="shuffle-all"> Xáo trộn đáp án ở mọi câu
+    </label>
+    <ol id="cards" class="cards"></ol>
+    <button type="button" id="add-question" class="secondary">+ Thêm câu hỏi</button>
+  </section>
+
+  <input type="hidden" name="questions" id="questions-json">
+  <div class="savebar">
+    <span id="save-status" class="muted" aria-live="polite"></span>
+    <button type="submit">Lưu bài tập</button>
+    <a href="/teacher">Quay lại</a>
+  </div>
+</form>
+
+<details id="help" class="card help">
+  <summary>Hướng dẫn cú pháp</summary>
+  <ul>
+    <li>Mỗi câu hỏi có 2 đến 6 đáp án, đúng một đáp án có <code>==</code> ở đầu.</li>
+    <li>Để một <strong>dòng trống</strong> giữa các câu hỏi, hoặc đánh số <code>1.</code> <code>Câu 2:</code>.</li>
+    <li>Đáp án có thể có chữ cái <code>A.</code> <code>b)</code> <code>(C)</code>; chữ cái được bỏ đi khi lưu.</li>
+    <li>Câu hỏi nhiều dòng: dùng đáp án có chữ cái, mọi dòng trước <code>A.</code> thuộc câu hỏi.</li>
+    <li>Gọn trên một dòng: <code>1. A. cat   B. dog   ==C. pencil   D. parrot</code></li>
+    <li>Dòng đầu tiên có một dòng trống phía sau được dùng làm tiêu đề.</li>
+  </ul>
+</details>
+
+<script type="application/json" id="initial-questions"><%- initialJson %></script>
+<script type="module" src="/js/editor.js"></script>
+<%- include('partials/foot') %>

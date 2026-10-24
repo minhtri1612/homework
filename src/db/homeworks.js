@@ -6,6 +6,8 @@ const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
 const REVEAL_MODES = ['never', 'after_submit', 'after_deadline'];
 
+export const LIMITS = { title: 200, questions: 200, questionText: 2000, answerText: 500 };
+
 export function generateShareCode() {
   let code = '';
   for (let i = 0; i < CODE_LENGTH; i++) code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
@@ -19,9 +21,25 @@ export function generateShareCode() {
 export function validateHomework({ title, questions, revealMode = 'after_submit', deadline = null }) {
   const errors = [];
   if (!String(title ?? '').trim()) errors.push({ code: 'NO_TITLE', message: 'Bài tập chưa có tiêu đề.' });
+  else if (title.length > LIMITS.title) {
+    errors.push({ code: 'TITLE_TOO_LONG', message: `Tiêu đề dài quá (tối đa ${LIMITS.title} ký tự).` });
+  }
   if (!questions?.length) errors.push({ code: 'NO_QUESTIONS', message: 'Bài tập chưa có câu hỏi nào.' });
+  else if (questions.length > LIMITS.questions) {
+    errors.push({ code: 'TOO_MANY_QUESTIONS', message: `Tối đa ${LIMITS.questions} câu hỏi (hiện có ${questions.length}).` });
+  }
   questions?.forEach((question, i) => {
     for (const error of validateQuestion(question).errors) errors.push({ ...error, question: i + 1 });
+    const tooLong =
+      String(question.text ?? '').length > LIMITS.questionText ||
+      question.answers?.some((answer) => String(answer.text ?? '').length > LIMITS.answerText);
+    if (tooLong) {
+      errors.push({
+        code: 'TEXT_TOO_LONG',
+        message: `Câu hỏi tối đa ${LIMITS.questionText} ký tự, mỗi đáp án tối đa ${LIMITS.answerText} ký tự.`,
+        question: i + 1,
+      });
+    }
   });
   if (!REVEAL_MODES.includes(revealMode)) {
     errors.push({ code: 'BAD_REVEAL_MODE', message: 'Chế độ hiện đáp án không hợp lệ.' });
@@ -60,16 +78,9 @@ export async function createHomework(db, { teacherId, title, questions, revealMo
     } while ((await tx.execute({ sql: 'SELECT 1 FROM homeworks WHERE share_code = ?', args: [shareCode] })).rows.length);
 
     const homework = await tx.execute({
-      sql: `INSERT INTO homeworks (teacher_id, title, share_code, reveal_mode, deadline, shuffle_questions)
+      sql: `INSERT INTO homeworks (title, reveal_mode, deadline, shuffle_questions, teacher_id, share_code)
             VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
-      args: [
-        teacherId,
-        title.normalize('NFC').trim(),
-        shareCode,
-        revealMode,
-        deadline === null ? null : new Date(deadline).toISOString(),
-        shuffleQuestions ? 1 : 0,
-      ],
+      args: [...settingsArgs({ title, revealMode, deadline, shuffleQuestions }), teacherId, shareCode],
     });
     const id = homework.rows[0].id;
     const versionId = await insertVersion(tx, id, 1, questions);
@@ -80,13 +91,84 @@ export async function createHomework(db, { teacherId, title, questions, revealMo
   }
 }
 
+/**
+ * Saves changes to a homework the teacher owns. If students have already
+ * submitted the current version and the questions changed, the questions go
+ * into a new version; otherwise the current version is updated in place.
+ * Returns { version, newVersion } or null when the homework is not this
+ * teacher's (or does not exist).
+ */
+export async function updateHomework(db, { id, teacherId, title, questions, revealMode = 'after_submit', deadline = null, shuffleQuestions = false }) {
+  const errors = validateHomework({ title, questions, revealMode, deadline });
+  if (errors.length) throw new HomeworkValidationError(errors);
+
+  const tx = await db.transaction('write');
+  try {
+    const current = await tx.execute({
+      sql: `SELECT v.id, v.number,
+                   (SELECT count(*) FROM submissions s WHERE s.version_id = v.id) AS submission_count
+            FROM homeworks h JOIN homework_versions v ON v.homework_id = h.id
+            WHERE h.id = ? AND h.teacher_id = ?
+            ORDER BY v.number DESC LIMIT 1`,
+      args: [id, teacherId],
+    });
+    const version = current.rows[0];
+    if (!version) return null;
+
+    await tx.execute({
+      sql: `UPDATE homeworks
+            SET title = ?, reveal_mode = ?, deadline = ?, shuffle_questions = ?,
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            WHERE id = ?`,
+      args: [...settingsArgs({ title, revealMode, deadline, shuffleQuestions }), id],
+    });
+
+    let result = { version: version.number, newVersion: false };
+    if (!sameQuestions(await loadQuestions(tx, version.id), questions)) {
+      if (version.submission_count > 0) {
+        await insertVersion(tx, id, version.number + 1, questions);
+        result = { version: version.number + 1, newVersion: true };
+      } else {
+        await tx.execute({ sql: 'DELETE FROM questions WHERE version_id = ?', args: [version.id] });
+        await insertQuestions(tx, version.id, questions);
+      }
+    }
+    await tx.commit();
+    return result;
+  } finally {
+    tx.close();
+  }
+}
+
+function settingsArgs({ title, revealMode, deadline, shuffleQuestions }) {
+  return [
+    title.normalize('NFC').trim(),
+    revealMode,
+    deadline === null ? null : new Date(deadline).toISOString(),
+    shuffleQuestions ? 1 : 0,
+  ];
+}
+
+/** Compares what students would see, ignoring ids and Unicode/space differences. */
+function sameQuestions(saved, questions) {
+  const key = (list) =>
+    JSON.stringify(
+      list.map((q) => [clean(q.text), Boolean(q.shuffleAnswers), q.answers.map((a) => [clean(a.text), Boolean(a.correct)])]),
+    );
+  return key(saved) === key(questions);
+}
+
 async function insertVersion(tx, homeworkId, number, questions) {
   const version = await tx.execute({
     sql: 'INSERT INTO homework_versions (homework_id, number) VALUES (?, ?) RETURNING id',
     args: [homeworkId, number],
   });
   const versionId = version.rows[0].id;
+  await insertQuestions(tx, versionId, questions);
+  return versionId;
+}
 
+async function insertQuestions(tx, versionId, questions) {
   for (const [i, question] of questions.entries()) {
     const row = await tx.execute({
       sql: 'INSERT INTO questions (version_id, position, text, shuffle_answers) VALUES (?, ?, ?, ?) RETURNING id',
@@ -100,7 +182,6 @@ async function insertVersion(tx, homeworkId, number, questions) {
       })),
     );
   }
-  return versionId;
 }
 
 /**
@@ -120,22 +201,10 @@ export async function getHomework(db, id) {
   const row = result.rows[0];
   if (!row) return null;
 
-  const rows = await db.execute({
-    sql: `SELECT q.id AS question_id, q.text AS question_text, q.shuffle_answers,
-                 a.id AS answer_id, a.text AS answer_text, a.is_correct
-          FROM questions q
-          JOIN answers a ON a.question_id = q.id
-          WHERE q.version_id = ?
-          ORDER BY q.position, a.position`,
+  const submissions = await db.execute({
+    sql: 'SELECT count(*) AS n FROM submissions WHERE version_id = ?',
     args: [row.version_id],
   });
-  const questions = [];
-  for (const r of rows.rows) {
-    if (questions.at(-1)?.id !== r.question_id) {
-      questions.push({ id: r.question_id, text: r.question_text, shuffleAnswers: r.shuffle_answers === 1, answers: [] });
-    }
-    questions.at(-1).answers.push({ id: r.answer_id, text: r.answer_text, correct: r.is_correct === 1 });
-  }
 
   return {
     id: row.id,
@@ -147,9 +216,30 @@ export async function getHomework(db, id) {
     shuffleQuestions: row.shuffle_questions === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    version: { id: row.version_id, number: row.version_number },
-    questions,
+    version: { id: row.version_id, number: row.version_number, submissionCount: submissions.rows[0].n },
+    questions: await loadQuestions(db, row.version_id),
   };
+}
+
+/** Questions of one version with their answers, in order. db can be a transaction. */
+async function loadQuestions(db, versionId) {
+  const rows = await db.execute({
+    sql: `SELECT q.id AS question_id, q.text AS question_text, q.shuffle_answers,
+                 a.id AS answer_id, a.text AS answer_text, a.is_correct
+          FROM questions q
+          JOIN answers a ON a.question_id = q.id
+          WHERE q.version_id = ?
+          ORDER BY q.position, a.position`,
+    args: [versionId],
+  });
+  const questions = [];
+  for (const r of rows.rows) {
+    if (questions.at(-1)?.id !== r.question_id) {
+      questions.push({ id: r.question_id, text: r.question_text, shuffleAnswers: r.shuffle_answers === 1, answers: [] });
+    }
+    questions.at(-1).answers.push({ id: r.answer_id, text: r.answer_text, correct: r.is_correct === 1 });
+  }
+  return questions;
 }
 
 function clean(text) {

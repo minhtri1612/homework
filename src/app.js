@@ -5,8 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadTeacher, sameOriginPosts } from './auth/middleware.js';
 import { authRoutes } from './routes/auth.js';
 import { teacherRoutes } from './routes/teacher.js';
-
-const DATE_FORMAT = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short' });
+import { formatVietnamDate, formatVietnamDateTime } from './vietnam-time.js';
 
 export function createApp({ db }) {
   const app = express();
@@ -14,10 +13,14 @@ export function createApp({ db }) {
   app.set('trust proxy', 1); // behind Render's proxy, so req.secure sees HTTPS
   app.set('view engine', 'ejs');
   app.set('views', fileURLToPath(new URL('./views', import.meta.url)));
-  app.locals.formatDate = (iso) => DATE_FORMAT.format(new Date(iso));
+  app.locals.formatDate = formatVietnamDate;
+  app.locals.formatDateTime = formatVietnamDateTime;
 
   app.use(express.static(fileURLToPath(new URL('./public', import.meta.url))));
-  app.use(express.urlencoded({ extended: false }));
+  // The parser also runs in the browser, for the editor's live preview.
+  app.use('/shared', express.static(fileURLToPath(new URL('./shared', import.meta.url))));
+  // 1 MB fits 200 long questions; the default 100 KB does not.
+  app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   app.use(loadTeacher(db));
   app.use(sameOriginPosts);
 

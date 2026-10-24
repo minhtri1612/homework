@@ -8,7 +8,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node --test",
+    "test": "node --test \"test/**/*.test.js\"",
     "parse": "node scripts/parse.js",
     "db:init": "node scripts/db-init.js",
     "db:reset": "node scripts/db-init.js --reset",
