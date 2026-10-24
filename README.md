@@ -13,7 +13,7 @@ Website giao bài tập trắc nghiệm **một đáp án đúng** cho giáo vi�
 |---|---|
 | Máy chủ | Node.js 24 + Express _(sắp có)_ |
 | Giao diện | Trang HTML dựng sẵn trên máy chủ (EJS) + một ít JavaScript thuần _(sắp có)_ |
-| Cơ sở dữ liệu | SQLite qua `@libsql/client` — chạy máy cá nhân là một file, khi triển khai dùng Turso _(sắp có)_ |
+| Cơ sở dữ liệu | SQLite qua `@libsql/client` — chạy máy cá nhân là một file (`data/local.db`), khi triển khai dùng Turso |
 | Kiểm thử | `node:test` có sẵn trong Node, không cần cài thêm |
 
 ## Cài đặt trên WSL (Ubuntu)
@@ -47,11 +47,47 @@ Mở bằng VS Code trên Windows: cài tiện ích **WSL** cho VS Code, rồi t
 ### 3. Các lệnh thường dùng
 
 ```bash
-npm install      # cài thư viện (sắp có)
+npm install      # cài thư viện (chạy lại mỗi khi package.json thay đổi)
 npm test         # chạy kiểm thử
 npm run parse -- examples/mau.txt   # thử bộ đọc cú pháp với một file văn bản
+npm run db:init  # tạo các bảng trong cơ sở dữ liệu (chạy lại bao nhiêu lần cũng được)
+npm run db:seed  # thêm dữ liệu mẫu: 1 giáo viên và 2 bộ bài tập
+npm run db:reset # XOÁ HẾT dữ liệu rồi tạo lại bảng trống (chỉ với file trên máy)
 npm run dev      # chạy website ở http://localhost:3000 (sắp có)
 ```
+
+### 4. Cơ sở dữ liệu
+
+Trên máy cá nhân không cần cài gì thêm: dữ liệu nằm trong file `data/local.db` (không đưa lên git).
+Lần đầu chạy:
+
+```bash
+npm install
+npm run db:seed    # tự tạo bảng nếu chưa có
+```
+
+Tài khoản mẫu: `giaovien@example.com`, mật khẩu `matkhau123`.
+
+Muốn dùng cơ sở dữ liệu khác (ví dụ Turso khi triển khai), chép `.env.example` thành `.env` rồi điền
+`DATABASE_URL` và `DATABASE_AUTH_TOKEN`. Để trống thì dùng file trên máy.
+
+Muốn xem dữ liệu bằng mắt: cài tiện ích **SQLite Viewer** cho VS Code rồi mở file `data/local.db`.
+
+Các bảng (chi tiết trong `src/db/schema.sql`):
+
+| Bảng | Nội dung |
+|---|---|
+| `teachers` | giáo viên (email, tên, mật khẩu đã mã hoá) |
+| `sessions` | phiên đăng nhập của giáo viên |
+| `homeworks` | bộ bài tập: tiêu đề, mã chia sẻ, cài đặt hiện đáp án, hạn nộp, xáo câu hỏi |
+| `homework_versions` | các phiên bản câu hỏi của một bộ bài tập |
+| `questions` | câu hỏi (thuộc một phiên bản), có xáo đáp án hay không |
+| `answers` | đáp án, đúng một đáp án đúng mỗi câu |
+| `submissions` | bài nộp của học sinh: tên, điểm, số câu đúng |
+| `submission_answers` | đáp án học sinh chọn cho từng câu (trống nếu bỏ qua) |
+
+Vì sao có **phiên bản**: nếu giáo viên sửa câu hỏi sau khi đã có học sinh nộp bài, câu hỏi mới được lưu
+thành phiên bản mới, còn bài đã nộp vẫn giữ đúng những câu học sinh đã làm.
 
 ## Cú pháp nhập câu hỏi
 
@@ -139,9 +175,17 @@ nên chữ tiếng Việt gõ trên máy nào cũng so sánh đúng.
 ```
 src/
   shared/
-    parser.js  bộ đọc cú pháp — dùng chung cho trình duyệt và máy chủ
-test/          kiểm thử (npm test)
-scripts/       công cụ dòng lệnh (npm run parse)
-examples/      văn bản mẫu
-data/          file cơ sở dữ liệu khi chạy máy cá nhân (không đưa lên git)
+    parser.js     bộ đọc cú pháp — dùng chung cho trình duyệt và máy chủ
+  db/
+    schema.sql    các bảng của cơ sở dữ liệu
+    client.js     mở kết nối (file trên máy hoặc Turso)
+    teachers.js   lưu giáo viên
+    homeworks.js  lưu và đọc bộ bài tập (kiểm tra lại câu hỏi trước khi lưu)
+  auth/
+    password.js   mã hoá và kiểm tra mật khẩu
+  load-env.js     đọc file .env nếu có
+test/             kiểm thử (npm test)
+scripts/          công cụ dòng lệnh (npm run parse, db:init, db:seed, db:reset)
+examples/         văn bản mẫu
+data/             file cơ sở dữ liệu khi chạy máy cá nhân (không đưa lên git)
 ```
