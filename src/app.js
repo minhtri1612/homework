@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadTeacher, sameOriginPosts } from './auth/middleware.js';
 import { authRoutes } from './routes/auth.js';
 import { teacherRoutes } from './routes/teacher.js';
+import { studentRoutes } from './routes/student.js';
 import { formatVietnamDate, formatVietnamDateTime } from './vietnam-time.js';
 
 export function createApp({ db }) {
@@ -24,9 +25,10 @@ export function createApp({ db }) {
   app.use(loadTeacher(db));
   app.use(sameOriginPosts);
 
-  app.get('/', (req, res) => res.render('home', { title: 'Bài tập trắc nghiệm' }));
+  app.get('/', (req, res) => res.render('home', { title: 'Bài tập trắc nghiệm', codeInput: '', codeError: null }));
   app.use(authRoutes(db));
   app.use(teacherRoutes(db));
+  app.use(studentRoutes(db));
 
   app.use((req, res) => {
     res.status(404).render('error', { title: 'Không tìm thấy', message: 'Trang này không tồn tại.' });

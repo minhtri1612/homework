@@ -17,6 +17,7 @@ Run the whole file instead.
 | `test/parser.test.js` | all syntax styles, splitting, title, errors, normalisation, `validateQuestion`, `serialize` round-trip | pure functions |
 | `test/db.test.js` | schema idempotence, FKs, teachers, passwords, `createHomework`/`getHomework`, share codes, cascades, DB constraints | own temp DB file, calls data functions and raw SQL |
 | `test/auth.test.js` | pages, register, login/logout, sessions, Origin check, XSS escaping | real HTTP via `startApp()` |
+| `test/share.test.js` | `normalizeShareCode`, `/h/CODE` (no answers in HTML, redirects, 404, deadline, versions), `/join`, teacher share links, https behind proxy | real HTTP via `startApp()` |
 | `test/editor.test.js` | editor pages, create/edit, validation errors, versioning, ownership 404, `</script>` escaping, Vietnam time | real HTTP via `startApp()` |
 
 ## Test database

@@ -68,7 +68,11 @@ function renderEditor(res, { status = 200, homework, errors = [], saved = null }
 
 export function teacherRoutes(db) {
   const router = Router();
-  router.use('/teacher', requireTeacher);
+  router.use('/teacher', requireTeacher, (req, res, next) => {
+    // For the full student links. trust proxy makes req.protocol "https" on Render.
+    res.locals.siteUrl = `${req.protocol}://${req.get('host')}`;
+    next();
+  });
 
   router.get('/teacher', async (req, res) => {
     const homeworks = await listHomeworks(db, req.teacher.id);

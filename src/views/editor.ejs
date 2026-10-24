@@ -3,7 +3,11 @@
 
 <% if (saved) { %><p class="notice success" role="status"><%= saved %></p><% } %>
 <% if (homework.shareCode) { %>
-  <p class="muted">Mã bài tập: <code><%= homework.shareCode %></code> · phiên bản <%= homework.version.number %></p>
+  <section class="card share">
+    <p class="muted">Mã bài tập: <code><%= homework.shareCode %></code> · phiên bản <%= homework.version.number %></p>
+    <%- include('partials/share-link', { url: `${siteUrl}/h/${homework.shareCode}` }) %>
+  </section>
+  <script type="module" src="/js/copy.js"></script>
 <% } %>
 <% if (errors.length) { %>
   <div class="notice danger" role="alert">

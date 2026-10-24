@@ -11,9 +11,9 @@ src/
   shared/parser.js  syntax parser, used by browser AND server (see parser.md)
   db/               schema.sql + data access, one module per area (see database.md)
   auth/             password hashing, session cookie middleware, Origin check (see auth.md)
-  routes/           Express routers: auth.js, teacher.js
+  routes/           Express routers: auth.js, teacher.js, student.js
   views/            EJS templates; partials/head.ejs and partials/foot.ejs wrap every page
-  public/           static files: style.css, js/editor.js
+  public/           static files: style.css, js/editor.js, js/copy.js
 scripts/            CLI tools behind npm scripts: db-init.js, db-seed.js, parse.js
 test/               node:test files (see testing.md)
 examples/mau.txt    sample syntax text covering every format
@@ -30,7 +30,7 @@ There is no build step. Files under `src/public/` and `src/shared/` are served a
    1 MB because 200 long questions exceed the 100 KB default.
 4. `loadTeacher(db)`: reads cookie `sid`, sets `req.teacher` / `res.locals.teacher` (or null)
 5. `sameOriginPosts`: rejects POSTs whose `Origin` host differs from `Host` (403)
-6. `GET /`, then `authRoutes(db)`, then `teacherRoutes(db)`
+6. `GET /`, then `authRoutes(db)`, `teacherRoutes(db)`, `studentRoutes(db)`
 7. 404 handler renders `error.ejs`; error handler logs and renders a generic Vietnamese 500.
    Express 5 forwards rejected promises from async handlers here, so routes do not need try/catch
    for unexpected errors.
@@ -51,23 +51,36 @@ There is no build step. Files under `src/public/` and `src/shared/` are served a
 | POST | `/teacher/homeworks` | `routes/teacher.js` | create → 302 `/teacher/homeworks/:id/edit?saved=new` |
 | GET | `/teacher/homeworks/:id/edit` | `routes/teacher.js` | `?saved=1` / `?saved=new` / `?saved=vN` show a notice |
 | POST | `/teacher/homeworks/:id` | `routes/teacher.js` | update → 302 back to edit page |
+| GET | `/join?code=…` | `routes/student.js` | home-page code box (GET form) → 302 `/h/CODE`; bad/empty code → 400 home with error |
+| GET | `/h/:code` | `routes/student.js` | student page; non-canonical code (lower case…) → 302 to `/h/CODE`; unknown → 404 |
 
 Everything under `/teacher` goes through `requireTeacher` (302 to `/login`). Routes with `:id` use
 `ownHomework()`, which returns a 404 page when the id is not a safe integer, does not exist, or
 belongs to another teacher. Unknown and someone else's homework look the same on purpose.
 
-Not built yet: student routes (`/h/:code`, Step 5–6), results/CSV (Step 7), deleting a homework.
+The teacher router also sets `res.locals.siteUrl` (`req.protocol://host`) for the full student links;
+it comes from the request's `Host` header (no configured public URL yet).
+
+Student routes need no login. Share codes go through `normalizeShareCode()` (any case, spaces,
+dashes, or a pasted `.../h/CODE` link). `/h/:code` uses `findSharedHomework()`, which returns no
+questions or answers; for now the page shows title, teacher, question count, deadline / "Đã hết hạn
+nộp bài", and a "(sắp có)" notice where answering will go.
+
+Not built yet: answering and submitting (Step 6), results/CSV (Step 7), deleting a homework.
 
 ## Views (`src/views/`)
 
-`home`, `register`, `login`, `dashboard`, `editor`, `error`, plus `partials/head` (topbar, logout
-form) and `partials/foot`. Every page passes `title`. Use `<%= %>` (escaped) for all data; `<%- %>`
+`home` (code box + teacher links), `register`, `login`, `dashboard`, `editor`, `share` (student page),
+`error`, plus `partials/head` (topbar, logout form), `partials/foot` and `partials/share-link` (readonly
+link box + copy button + "Xem trang học sinh"; pages using it also load `/js/copy.js`). Every page passes `title`. Use `<%= %>` (escaped) for all data; `<%- %>`
 is only used for `include` and for `initialJson`, which is pre-escaped by `scriptJson()`.
 
 ## Server vs browser code
 
 - Server only: everything in `src/` except `src/public/` and `src/shared/`.
-- Browser only: `src/public/js/editor.js` (ES module, `<script type="module">`).
+- Browser only: `src/public/js/editor.js`, `src/public/js/copy.js` (ES modules, `<script type="module">`).
+  `copy.js` un-hides the copy buttons and falls back to selecting the text when `navigator.clipboard`
+  is unavailable (plain http other than localhost).
 - Both: `src/shared/parser.js`. It must not import Node modules or use DOM APIs.
 
 ## Editor data flow (`views/editor.ejs` + `public/js/editor.js` + `routes/teacher.js`)

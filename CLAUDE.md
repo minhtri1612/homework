@@ -7,9 +7,9 @@ file before touching that area.
 
 Website for Vietnamese teachers to set single-correct-answer multiple-choice homework. Teachers
 register, then write questions either as pasted text in a small syntax (`==` marks the correct answer)
-or as editable cards, and share the homework by link or 6-character code. Students (no account) will
-open it, type their name, answer and be graded on the server on a 10-point scale. That student part
-is not built yet: see `PLAN.md`.
+or as editable cards, and share the homework by link (`/h/CODE`) or 6-character code. Students (no
+account) open it; answering and server-side grading on a 10-point scale are Step 6, not built yet
+(see `PLAN.md`).
 
 ## Tech Stack
 

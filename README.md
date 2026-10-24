@@ -102,7 +102,7 @@ thành phiên bản mới, còn bài đã nộp vẫn giữ đúng những câu 
   Mỗi giáo viên chỉ thấy bài tập của mình.
 - Mật khẩu được mã hoá (scrypt) trước khi lưu; không ai đọc lại được mật khẩu gốc, kể cả người quản trị.
 - Đăng nhập được giữ 30 ngày bằng cookie. Đăng xuất là phiên bị xoá luôn trên máy chủ.
-- Học sinh không cần tài khoản (sắp có).
+- Học sinh không cần tài khoản: chỉ cần link hoặc mã bài tập (xem mục **Chia sẻ bài tập**).
 
 ## Soạn bài tập
 
@@ -120,6 +120,18 @@ Sau khi đăng nhập, bấm **+ Tạo bài tập mới**. Bấm vào tên một
   giữ câu hỏi và điểm cũ. Chỉ đổi tiêu đề, hạn nộp hay cài đặt thì không tạo phiên bản mới.
 
 Giới hạn: tối đa 200 câu, mỗi câu hỏi 2000 ký tự, mỗi đáp án 500 ký tự.
+
+## Chia sẻ bài tập
+
+Mỗi bài tập có một **mã 6 ký tự** (ví dụ `ABC234`), không dùng các ký tự dễ nhầm `0 O 1 I L`.
+
+- Ở trang **Bài tập của tôi** và trang sửa bài tập có ô chứa link đầy đủ (`.../h/ABC234`), nút
+  **Sao chép link** và liên kết **Xem trang học sinh**. Gửi link này qua Zalo, Messenger…
+- Hoặc đọc / viết mã lên bảng: học sinh mở trang chủ, gõ mã vào ô **nhập mã bài tập** rồi bấm **Mở bài tập**.
+  Gõ chữ thường, có dấu cách hay dấu gạch (`abc 234`, `ABC-234`) đều được; dán cả link vào ô cũng được.
+- Trang của học sinh hiện tiêu đề, tên giáo viên, số câu hỏi và hạn nộp (giờ Việt Nam), hoặc báo
+  **đã hết hạn nộp bài**. Trang này không chứa câu hỏi hay đáp án. Phần làm bài và nộp bài _(sắp có)_.
+- Sửa bài tập không làm đổi mã hay link.
 
 ## Cú pháp nhập câu hỏi
 
@@ -220,9 +232,11 @@ src/
   routes/
     auth.js       đăng ký, đăng nhập, đăng xuất
     teacher.js    trang của giáo viên: danh sách và soạn bài tập
+    student.js    trang của học sinh: mở bài tập bằng mã (/h/MÃ, ô nhập mã)
   views/          giao diện (EJS); partials/ là phần đầu và cuối dùng chung
   public/         CSS, ảnh, JavaScript cho trình duyệt
     js/editor.js  trang soạn bài tập (hai thẻ Cú pháp / Dạng thẻ)
+    js/copy.js    nút “Sao chép link”
   app.js          ghép các phần thành website
   server.js       khởi động website (npm run dev)
   load-env.js     đọc file .env nếu có

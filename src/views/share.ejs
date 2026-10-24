@@ -1,0 +1,18 @@
+<%- include('partials/head') %>
+<h1><%= homework.title %></h1>
+<section class="card">
+  <p>Giáo viên: <strong><%= homework.teacherName %></strong></p>
+  <p><%= homework.questionCount %> câu hỏi trắc nghiệm, mỗi câu chọn một đáp án.</p>
+  <% if (homework.deadline) { %>
+    <p>Hạn nộp: <strong><%= formatDateTime(homework.deadline) %></strong> (giờ Việt Nam)</p>
+  <% } else { %>
+    <p class="muted">Không có hạn nộp.</p>
+  <% } %>
+  <p class="muted">Mã bài tập: <code><%= homework.shareCode %></code></p>
+</section>
+<% if (closed) { %>
+  <p class="notice danger" role="status">Đã hết hạn nộp bài.</p>
+<% } else { %>
+  <p class="notice">Phần làm bài đang được xây dựng (sắp có).</p>
+<% } %>
+<%- include('partials/foot') %>

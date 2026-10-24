@@ -4,6 +4,7 @@ import { validateQuestion } from '../shared/parser.js';
 // No 0/O, 1/I/L, so a code read aloud or copied from the board is not mistyped.
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
+const CODE_PATTERN = new RegExp(`^[${CODE_ALPHABET}]{${CODE_LENGTH}}$`);
 const REVEAL_MODES = ['never', 'after_submit', 'after_deadline'];
 
 export const LIMITS = { title: 200, questions: 200, questionText: 2000, answerText: 500 };
@@ -12,6 +13,19 @@ export function generateShareCode() {
   let code = '';
   for (let i = 0; i < CODE_LENGTH; i++) code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
   return code;
+}
+
+/**
+ * What a student typed or pasted → a share code, or null if it cannot be one.
+ * Accepts any letter case, spaces and dashes ("abc 234", "ABC-234") and a
+ * whole link (".../h/abc234").
+ */
+export function normalizeShareCode(input) {
+  let text = String(input ?? '').normalize('NFC').trim();
+  const link = text.match(/\/h\/([^/?#\s]+)/u);
+  if (link) text = link[1];
+  text = text.replace(/[\s-]/gu, '').toUpperCase();
+  return CODE_PATTERN.test(text) ? text : null;
 }
 
 /**
@@ -218,6 +232,33 @@ export async function getHomework(db, id) {
     updatedAt: row.updated_at,
     version: { id: row.version_id, number: row.version_number, submissionCount: submissions.rows[0].n },
     questions: await loadQuestions(db, row.version_id),
+  };
+}
+
+/**
+ * What anyone with the share code may see about a homework, or null. Safe to
+ * show to students: no questions, no answers.
+ */
+export async function findSharedHomework(db, shareCode) {
+  const result = await db.execute({
+    sql: `SELECT h.id, h.title, h.share_code, h.deadline, t.name AS teacher_name,
+                 (SELECT count(*) FROM questions q
+                  WHERE q.version_id = (SELECT v.id FROM homework_versions v
+                                        WHERE v.homework_id = h.id
+                                        ORDER BY v.number DESC LIMIT 1)) AS question_count
+          FROM homeworks h JOIN teachers t ON t.id = h.teacher_id
+          WHERE h.share_code = ?`,
+    args: [shareCode],
+  });
+  const row = result.rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: row.title,
+    shareCode: row.share_code,
+    deadline: row.deadline,
+    teacherName: row.teacher_name,
+    questionCount: row.question_count,
   };
 }
 

@@ -12,8 +12,10 @@
           <%= homework.questionCount %> câu · <%= homework.submissionCount %> bài nộp ·
           mã <code><%= homework.shareCode %></code> · tạo ngày <%= formatDate(homework.createdAt) %>
         </span>
+        <%- include('partials/share-link', { url: `${siteUrl}/h/${homework.shareCode}` }) %>
       </li>
     <% } %>
   </ul>
+  <script type="module" src="/js/copy.js"></script>
 <% } %>
 <%- include('partials/foot') %>

@@ -102,6 +102,16 @@ button.link {
 
 .list .title { font-weight: 700; }
 
+/* ---- Share code and link ---- */
+h2 { font-size: 1.2rem; margin: 24px 0 8px; }
+.join { margin-bottom: 8px; }
+.code-input { text-transform: uppercase; letter-spacing: 0.1em; }
+.code-input::placeholder { text-transform: none; letter-spacing: normal; }
+.share { display: flex; flex-direction: column; gap: 8px; }
+.share p { margin: 0; }
+.share-link { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.share-link input { flex: 1 1 220px; min-width: 0; font-size: 0.95rem; }
+
 /* ---- Editor ---- */
 .editor { display: flex; flex-direction: column; gap: 16px; }
 fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }

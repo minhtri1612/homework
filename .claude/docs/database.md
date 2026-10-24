@@ -53,7 +53,12 @@ collapsed: one attempt per name"; no code computes it yet.
 ## Share codes
 
 `generateShareCode()`: 6 characters from `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no 0/O, 1/I/L) using
-`crypto.randomInt`. `createHomework` retries inside the write transaction until unused.
+`crypto.randomInt`. `createHomework` retries inside the write transaction until unused. Codes never
+change, also not when a new version is created.
+
+`normalizeShareCode(input)` turns what a student typed or pasted into a code or `null`: NFC, takes the
+part after `/h/` if it is a link, removes spaces and dashes, upper-cases, then must match the alphabet
+and length exactly (`0`, `O`, `1`, `I`, `L` → `null`).
 
 ## Homework functions (`src/db/homeworks.js`)
 
@@ -69,6 +74,9 @@ collapsed: one attempt per name"; no code computes it yet.
 - `getHomework(db, id)`: homework + **latest** version (`{ id, number, submissionCount }`) + its
   questions **including `correct`** and ids. Teacher/grading use only; never send to students as-is.
   Does not check ownership; callers do.
+- `findSharedHomework(db, shareCode)`: `{ id, title, shareCode, deadline, teacherName, questionCount }`
+  (latest version) or null. **The only homework function safe for student pages**; it reads no
+  questions or answers.
 - `listHomeworks(db, teacherId)`: newest first, `questionCount` of the latest version,
   `submissionCount` across **all** versions (the editor's notice counts the current version only).
 
