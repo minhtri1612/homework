@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"   // url comes from prisma.config.js (CLI) / the adapter (app)
+}
+
+// Times are UTC ISO 8601 text set by the services (no DB default: see "false drift" above).
+
+model Teacher {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique                 // + COLLATE NOCASE in migration SQL
+  name         String
+  passwordHash String     @map("password_hash")
+  createdAt    String     @map("created_at")
+  sessions     Session[]
+  homeworks    Homework[]
+  @@map("teachers")
+}
+
+model Session {
+  id        String  @id                            // SHA-256 hex of the cookie token
+  teacherId Int     @map("teacher_id")
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt String  @map("created_at")
+  expiresAt String  @map("expires_at")
+  @@index([teacherId], map: "sessions_teacher")
+  @@map("sessions")
+}
+
+model Homework {
+  id               Int               @id @default(autoincrement())
+  teacherId        Int               @map("teacher_id")
+  teacher          Teacher           @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title            String                                   // CHECK (trim(title) <> '')
+  shareCode        String            @unique @map("share_code")
+  revealMode       String            @default("after_submit") @map("reveal_mode") // CHECK IN (...)
+  deadline         String?
+  shuffleQuestions Boolean           @default(false) @map("shuffle_questions")
+  createdAt        String            @map("created_at")
+  updatedAt        String            @map("updated_at")
+  versions         HomeworkVersion[]
+  submissions      Submission[]
+  // CHECK (reveal_mode <> 'after_deadline' OR deadline IS NOT NULL)
+  @@index([teacherId], map: "homeworks_teacher")
+  @@map("homeworks")
+}
+
+model HomeworkVersion {
+  id          Int          @id @default(autoincrement())
+  homeworkId  Int          @map("homework_id")
+  homework    Homework     @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  number      Int                                         // CHECK (number >= 1)
+  createdAt   String       @map("created_at")
+  questions   Question[]
+  submissions Submission[]
+  @@unique([homeworkId, number])
+  @@map("homework_versions")
+}
+
+model Question {
+  id                Int                @id @default(autoincrement())
+  versionId         Int                @map("version_id")
+  version           HomeworkVersion    @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  position          Int
+  text              String             @default("")
+  shuffleAnswers    Boolean            @default(false) @map("shuffle_answers")
+  answers           Answer[]
+  submissionAnswers SubmissionAnswer[]
+  @@unique([versionId, position])
+  @@map("questions")
+}
+
+model Answer {
+  id         Int                @id @default(autoincrement())
+  questionId Int                @map("question_id")
+  question   Question           @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  position   Int                                           // 1 = A
+  text       String                                        // CHECK (trim(text) <> '')
+  isCorrect  Boolean            @default(false) @map("is_correct")
+  chosenIn   SubmissionAnswer[]
+  @@unique([questionId, position])
+  @@unique([id, questionId])      // target of the two-column FK below
+  // + CREATE UNIQUE INDEX answers_one_correct ON answers(question_id) WHERE is_correct = 1  (hand-written)
+  @@map("answers")
+}
+
+model Submission {
+  id           Int                @id @default(autoincrement())
+  homeworkId   Int                @map("homework_id")
+  homework     Homework           @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  versionId    Int                @map("version_id")
+  version      HomeworkVersion    @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  studentName  String             @map("student_name")    // CHECK (trim(student_name) <> '')
+  studentKey   String             @map("student_key")
+  startedAt    String?            @map("started_at")
+  submittedAt  String             @map("submitted_at")
+  correctCount Int                @map("correct_count")   // CHECK (correct_count >= 0)
+  totalCount   Int                @map("total_count")     // CHECK (total_count >= correct_count)
+  score        Float                                      // CHECK (score BETWEEN 0 AND 10)
+  answers      SubmissionAnswer[]
+  @@unique([homeworkId, studentKey])
+  @@map("submissions")
+}
+
+model SubmissionAnswer {
+  submissionId Int        @map("submission_id")
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  questionId   Int        @map("question_id")
+  question     Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answerId     Int?       @map("answer_id")                // NULL = left blank
+  // NoAction, not Prisma's default Restrict: Restrict would block deleting a homework that has
+  // submissions, because the cascade removes answers before their submission_answers rows.
+  answer       Answer?    @relation(fields: [answerId, questionId], references: [id, questionId], onDelete: NoAction, onUpdate: NoAction)
+  @@id([submissionId, questionId])
+  @@map("submission_answers")
+}

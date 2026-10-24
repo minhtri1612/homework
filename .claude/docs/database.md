@@ -14,6 +14,10 @@ Data access: `src/db/teachers.js`, `src/db/sessions.js`, `src/db/homeworks.js`. 
   safe on startup (`src/server.js` calls it) and in `npm run db:init`.
 - `dropSchema(db)` drops tables children-first (`TABLES` list in `client.js`). If you add a table,
   add it to that list in the right order.
+- **Refactor in progress (PLAN.md Step 4.5).** `prisma/schema.prisma`, `prisma/migrations/` and
+  `src/config/migrate.js` (`applyMigrations`, table `_migrations`) exist and are tested
+  (`test/migrate.test.js`), but the app still uses `schema.sql` + `initSchema` until part 2. Do not change
+  one schema without the other until then.
 - **No migrations.** `IF NOT EXISTS` does not alter existing tables. Changing a column on an existing
   database means `npm run db:reset` locally; for a deployed database there is no mechanism yet.
   Raise this before changing existing tables after Step 8.
