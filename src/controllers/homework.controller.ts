@@ -69,7 +69,7 @@ export function setSiteUrl(req: Request, res: Response, next: NextFunction) {
 }
 
 /** The homework in :id; renders 404 and returns null unless this teacher owns it. */
-async function ownHomework(req: Request, res: Response) {
+export async function ownHomework(req: Request, res: Response) {
   const id = homeworkIdParam.parse(req.params.id);
   const homework = id === null ? null : await getHomework(req.prisma, id);
   if (homework?.teacherId === currentTeacher(req).id) return homework;
@@ -79,7 +79,8 @@ async function ownHomework(req: Request, res: Response) {
 
 export async function getDashboardPage(req: Request, res: Response) {
   const homeworks = await listHomeworks(req.prisma, currentTeacher(req).id);
-  res.render('dashboard', { title: 'Bài tập của tôi', homeworks });
+  const notice = req.query.notice === 'homework-deleted' ? 'Đã xoá bài tập.' : null;
+  res.render('dashboard', { title: 'Bài tập của tôi', homeworks, notice });
 }
 
 export function getNewHomeworkPage(req: Request, res: Response) {

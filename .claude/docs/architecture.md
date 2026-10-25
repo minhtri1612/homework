@@ -84,6 +84,10 @@ All listed in `routes/web.ts`; controllers in `src/controllers/`.
 | POST | `/teacher/homeworks` | `homework.postCreateHomework` | create → 302 `/teacher/homeworks/:id/edit?saved=new` |
 | GET | `/teacher/homeworks/:id/edit` | `homework.getEditHomeworkPage` | `?saved=1` / `?saved=new` / `?saved=vN` show a notice |
 | POST | `/teacher/homeworks/:id` | `homework.postUpdateHomework` | update → 302 back to edit page |
+| GET | `/teacher/homeworks/:id/results?version=N` | `results.getResultsPage` | submissions (oldest first), average; version tabs when > 1 version; per-question stats for the selected version (the only one is selected automatically); unknown version 404 |
+| GET | `/teacher/homeworks/:id/results.csv?version=N` | `results.getResultsCsv` | CSV attachment `ket-qua-CODE[-vN].csv` (see `grading.md`) |
+| GET/POST | `/teacher/homeworks/:id/submissions/:submissionId/delete` | `results.getDeleteSubmissionPage` / `postDeleteSubmission` | confirmation page, then delete → 303 results `?notice=submission-deleted`; the name can submit again |
+| GET/POST | `/teacher/homeworks/:id/delete` | `results.getDeleteHomeworkPage` / `postDeleteHomework` | confirmation page (checkbox required when there are submissions, checked in the delete transaction), then delete → 303 `/teacher?notice=homework-deleted` |
 | GET | `/join?code=…` | `share.getJoin` | home-page code box (GET form) → 302 `/h/CODE`; bad/empty code → 400 home with error |
 | GET | `/h/:code` | `share.getSharedHomework` | student start page (name form); non-canonical code (lower case…) → 302 to `/h/CODE`; unknown → 404 |
 | GET | `/h/:code/answer?name=…` | `share.getAnswerPage` | questions without correct answers; bad name 400, name already used 409, closed 403 |
@@ -106,12 +110,14 @@ and this browser's last result link (cookie). Sub-routes with a lower-case code 
 upper-case address, keeping the rest of the URL. The answer page uses `getQuestionsForStudent()`, which
 builds each answer as `{ id, text }` only. Grading, reveal and the result link: `grading.md`.
 
-Not built yet: results/CSV for the teacher (Step 7), deleting a homework.
+Not built yet: deploying (Step 8).
 
 ## Views (`src/views/`)
 
 `home` (code box + teacher links), `register`, `login`, `dashboard`, `editor`, `share` (student start page),
 `answer` (questions, loads `/js/answer.js`), `result` (score and review, loads `/js/copy.js`),
+`results` (teacher: table + per-question stats), `confirm-delete` (shared by both deletes: `lines`, `action`,
+`cancel`, `button`, optional `check` label, `error`),
 `error`, plus `partials/head` (topbar, logout form), `partials/foot` and `partials/share-link` (readonly
 link box + copy button + "Xem trang học sinh"; pages using it also load `/js/copy.js`). Every page passes `title`. Use `<%= %>` (escaped) for all data; `<%- %>`
 is only used for `include` and for `initialJson`, which is pre-escaped by `scriptJson()`.

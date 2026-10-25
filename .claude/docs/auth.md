@@ -65,6 +65,11 @@ Students have no account. What protects their data:
 - **Output escaping**: EJS `<%= %>` for all user data. JSON inside `<script>` must go through
   `scriptJson()` (`controllers/homework.controller.ts`), which escapes `<`, U+2028, U+2029. Tests check both
   (`test/auth.test.ts` XSS name, `test/editor.test.ts` `</script>` in question text).
+- **Untrusted text in exports**: anything a student typed that goes into a CSV passes `csvCell()`
+  (formula prefix + quoting). Do not build CSV by joining strings elsewhere.
+- **Destructive actions**: GET shows a confirmation page, only POST deletes (behind `sameOriginPosts` and
+  the ownership check). Deleting a homework with submissions needs the ticked box, checked inside the
+  delete transaction.
 - **Correct answers**: never render `answers[].correct` into a student page before the reveal rules
   allow it (see `grading.md`).
 - `x-powered-by` is disabled; `trust proxy` is 1 (Render).

@@ -86,7 +86,7 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
 | `submissions` | `homework_id`, `version_id`, `student_name`, `student_key`, `started_at` (nullable), `submitted_at`, `correct_count`, `total_count` ≥ `correct_count`, `score` REAL 0–10; UNIQUE (`homework_id`, `student_key`) |
 | `submission_answers` | PK (`submission_id`, `question_id`), `answer_id` NULL = left blank; composite FK (`answer_id`, `question_id`) → `answers(id, question_id)` so the chosen answer must belong to that question |
 
-All child FKs use `ON DELETE CASCADE`: deleting a homework removes its versions, questions, answers and
+All child FKs use `ON DELETE CASCADE`: deleting a homework (`deleteHomework()` in `results.service.ts`) removes its versions, questions, answers and
 submissions. The database enforces "at most one correct answer"; "exactly one" and "2–6 answers"
 are enforced by `validateQuestion()` before saving.
 

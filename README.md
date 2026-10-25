@@ -147,6 +147,28 @@ Sau khi đăng nhập, bấm **+ Tạo bài tập mới**. Bấm vào tên một
 
 Giới hạn: tối đa 200 câu, mỗi câu hỏi 2000 ký tự, mỗi đáp án 500 ký tự.
 
+## Xem kết quả
+
+Bấm **kết quả** cạnh bài tập ở trang **Bài tập của tôi** (hoặc **Xem kết quả** ở trang sửa bài).
+
+- Bảng bài nộp: họ tên, điểm, số câu đúng, giờ nộp (cũ nhất trước), cùng số bài nộp và điểm trung bình.
+- **Từng câu hỏi**: bao nhiêu học sinh làm đúng (câu dưới 50% hiện màu đỏ), mỗi đáp án được bao nhiêu
+  em chọn, bao nhiêu em bỏ trống.
+- Bài tập có nhiều **phiên bản**: chọn **Tất cả** hoặc một phiên bản. Thống kê từng câu chỉ hiện khi
+  chọn một phiên bản, vì các phiên bản có câu hỏi khác nhau.
+- **Tải bảng điểm (CSV)**: mở được bằng Google Sheets hoặc Excel (dấu phẩy ngăn cột, điểm viết `7.25`,
+  giờ Việt Nam). Nếu Excel cài tiếng Việt hiện tất cả trong một cột, hãy mở bằng
+  *Data → From Text/CSV* và chọn dấu phẩy. Tên bắt đầu bằng `=`, `+`, `-`, `@` được thêm dấu `'` ở đầu
+  để bảng tính không chạy nó như công thức.
+- **Xoá bài nộp** (nút *Xoá* ở mỗi dòng, có trang xác nhận): ví dụ học sinh gõ sai tên hoặc được làm lại.
+  Sau khi xoá, tên đó nộp lại được.
+
+## Xoá bài tập
+
+Ở cuối trang sửa bài tập có **Xoá bài tập này…**. Trang xác nhận cho biết số phiên bản và số bài nộp;
+nếu đã có bài nộp thì phải đánh dấu ô *“Tôi hiểu rằng … bài nộp của học sinh cũng bị xoá”*. Xoá là
+**vĩnh viễn**: câu hỏi, các phiên bản và bài nộp đều mất, link và mã bài tập ngừng hoạt động.
+
 ## Chia sẻ bài tập
 
 Mỗi bài tập có một **mã 6 ký tự** (ví dụ `ABC234`), không dùng các ký tự dễ nhầm `0 O 1 I L`.
@@ -179,7 +201,6 @@ Quy tắc:
   *sau hạn nộp* (trước hạn chỉ thấy điểm), hoặc *không cho xem* (chỉ thấy điểm).
 - Nếu giáo viên sửa câu hỏi đúng lúc học sinh đang làm bài (khi chưa ai nộp), bài làm đó không chấm được
   và trang sẽ báo học sinh làm lại.
-- Giáo viên xem danh sách bài nộp ở bước sau _(sắp có)_.
 
 ## Cú pháp nhập câu hỏi
 
@@ -281,6 +302,7 @@ src/
     home.controller.ts     trang chủ
     auth.controller.ts     đăng ký, đăng nhập, đăng xuất
     homework.controller.ts trang của giáo viên: danh sách và soạn bài tập
+    results.controller.ts  trang kết quả, tải CSV, xoá bài nộp và bài tập
     share.controller.ts    trang của học sinh: mở bài bằng mã, làm bài, nộp bài, kết quả
   validation/     kiểm tra và làm sạch dữ liệu từ form (Zod), thông báo lỗi tiếng Việt
   services/
@@ -288,6 +310,7 @@ src/
     homework.service.ts   lưu và đọc bộ bài tập (kiểm tra lại câu hỏi trước khi lưu)
     session.service.ts    phiên đăng nhập
     share-code.service.ts tạo và đọc mã chia sẻ
+    results.service.ts    kết quả cho giáo viên, thống kê, file CSV, xoá
     submission.service.ts học sinh làm bài, chấm điểm, trang kết quả
     shuffle.service.ts    xáo trộn cố định theo từng học sinh
     password.service.ts   mã hoá và kiểm tra mật khẩu

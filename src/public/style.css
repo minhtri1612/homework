@@ -215,3 +215,21 @@ button:disabled { opacity: 0.4; cursor: default; }
 .review-answers .is-correct { background: var(--success-bg); font-weight: 600; }
 .review-answers .is-chosen:not(.is-correct) { background: var(--danger-bg); }
 .tag { font-size: 0.85rem; font-weight: 400; color: var(--muted); margin-left: 6px; }
+
+/* Teacher results and delete confirmation. */
+.version-tabs { flex-wrap: wrap; margin-bottom: 12px; }
+.version-tabs a.tab { padding: 10px 12px; text-decoration: none; color: var(--muted); border-bottom: 3px solid transparent; }
+.version-tabs a.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.summary p { margin: 0 0 8px; }
+.summary p:last-child { margin-bottom: 0; }
+.table-wrap { overflow-x: auto; margin-bottom: 16px; }
+table.results { width: 100%; border-collapse: collapse; background: var(--card); border-radius: var(--radius); }
+table.results th, table.results td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+table.results .num { text-align: right; white-space: nowrap; }
+.hard { color: var(--error); font-weight: 600; }
+.danger-link { color: var(--error); }
+.delete-link { margin: 16px 0 0; text-align: right; }
+.danger-zone { border: 2px solid var(--error); }
+.danger-zone .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+button.danger-button { background: var(--error); color: #fff; margin: 0; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -1,5 +1,6 @@
 <%- include('partials/head') %>
 <h1>Bài tập của tôi</h1>
+<% if (notice) { %><p class="notice success" role="status"><%= notice %></p><% } %>
 <p><a class="button" href="/teacher/homeworks/new">+ Tạo bài tập mới</a></p>
 <% if (homeworks.length === 0) { %>
   <p class="card muted">Chưa có bài tập nào. Bấm “Tạo bài tập mới” để bắt đầu.</p>
@@ -9,7 +10,8 @@
       <li class="card">
         <a class="title" href="/teacher/homeworks/<%= homework.id %>/edit"><%= homework.title %></a>
         <span class="muted">
-          <%= homework.questionCount %> câu · <%= homework.submissionCount %> bài nộp ·
+          <%= homework.questionCount %> câu · <%= homework.submissionCount %> bài nộp
+          (<a href="/teacher/homeworks/<%= homework.id %>/results">kết quả</a>) ·
           mã <code><%= homework.shareCode %></code> · tạo ngày <%= formatDate(homework.createdAt) %>
         </span>
         <%- include('partials/share-link', { url: `${siteUrl}/h/${homework.shareCode}` }) %>

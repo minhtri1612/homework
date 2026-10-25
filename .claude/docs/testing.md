@@ -17,6 +17,7 @@ Run the whole file instead.
 | `test/browser-build.test.ts` | served `/shared/parser.js`, `/js/editor.js`, `/js/copy.js` equal a fresh `tsc` build of their `.ts` sources; `.ts` sources are not served | compiles into a temp folder + real HTTP |
 | `test/imports.test.ts` | every relative import in `src`, `scripts`, `test` names a file that exists (the type checker accepts `./x.js` for `x.ts`; Node does not) | reads the files |
 | `test/student.test.ts` | name form, answer page without correct answers, per-student shuffle, grading and storage, one attempt per name, deadline, questions changed while answering, old version, result page per reveal mode, result link and cookie, escaping | real HTTP via `startApp()` |
+| `test/results.test.ts` | results page (order, average, per-question stats, versions, escaping), CSV (BOM, header, CRLF, filter, quoting, formula injection), deleting a submission and a homework (confirmation, checkbox, ownership 404, Origin 403, cascade) | real HTTP via `startApp()`, submissions through `submitAnswers()` |
 | `test/validation.test.ts` | Zod schemas: register messages and cleaning, editor form coercion, homework id, share code | pure functions |
 | `test/grading.test.ts` | `computeScore`: nearest 0.25, ties up, 0 and 10 | pure function |
 | `test/parser.test.ts` | all syntax styles, splitting, title, errors, normalisation, `validateQuestion`, `serialize` round-trip | pure functions |

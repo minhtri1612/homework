@@ -7,10 +7,10 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 4.6 is pushed (773442f). Step 6 (student flow) is done, **not committed yet, waiting
-for review**. 167 tests pass.
+**Where we stopped:** Step 6 is pushed (3740c83). Step 7 (results, CSV, deleting) is done, **not committed yet,
+waiting for review**. 182 tests pass.
 
-**Next: Step 7 (results for the teacher)**, after the user approves Step 6.
+**Next: Step 8 (deploy to Render + Turso)**, after the user approves Step 7.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -44,8 +44,15 @@ for review**. 167 tests pass.
     (`result_token_hash`, migration `20261025034647_submission_result_token`) and a cookie per homework
   - Tests: `test/student.test.ts` (21) + `/js/answer.js` in the build check; 167 in total. Checked that breaking the reveal check or the deadline check makes the
     matching tests fail.
-- [ ] **Step 7 — Results for the teacher**: submissions list per homework, per-version view, CSV export ← **next**
-- [ ] **Step 8 — Deploy**: Render (web service) + Turso (database), production settings
+- [x] **Step 7 — Results for the teacher**: submissions list per homework, per-version view, CSV export
+  (decisions 2026-10-25 in `.claude/docs/grading.md`), plus deleting (asked for by the user)
+  - [x] results page: submissions oldest first, average, version tabs, per-question % correct and answer counts
+  - [x] CSV: standard (comma, dot, UTF-8 BOM, CRLF), summary per submission, formula injection neutralised
+  - [x] delete one submission (frees the name) and a whole homework, each with a confirmation page; a homework
+    with submissions needs a ticked box, checked in the delete transaction
+  - Tests: `test/results.test.ts` (15). Checked that removing the formula protection or the confirmation
+    check makes the matching tests fail.
+- [ ] **Step 8 — Deploy**: Render (web service) + Turso (database), production settings ← **next**
   - Build command `npm install && npm run build` (Prisma client + browser JavaScript). `typescript` is a dev
     dependency, so the build must install dev dependencies (do not set `NODE_ENV=production` for the build).
     `npm start` also runs `build:browser` first (`prestart`).

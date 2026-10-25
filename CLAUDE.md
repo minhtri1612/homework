@@ -9,8 +9,9 @@ Website for Vietnamese teachers to set single-correct-answer multiple-choice hom
 register, then write questions either as pasted text in a small syntax (`==` marks the correct answer)
 or as editable cards, and share the homework by link (`/h/CODE`) or 6-character code. Students (no
 account) open it, enter a name, answer and submit; the server grades on a 10-point scale and shows the
-result by a private link, revealing the answers according to the homework's reveal mode. Results for the
-teacher (Step 7) are not built yet (see `PLAN.md`).
+result by a private link, revealing the answers according to the homework's reveal mode. Teachers see the results (per version,
+per question), download them as CSV, and can delete a submission or a whole homework after a
+confirmation. Deploying (Step 8) is next (see `PLAN.md`).
 
 ## Tech Stack
 
@@ -115,7 +116,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - [.claude/docs/parser.md](.claude/docs/parser.md): syntax rules, splitting heuristics, title rule, error codes, normalisation, serialize round-trip
 - [.claude/docs/database.md](.claude/docs/database.md): tables, constraints, homework versioning, validation limits, libSQL local vs Turso, scripts
 - [.claude/docs/auth.md](.claude/docs/auth.md): teacher registration/login, sessions and cookies, CSRF/Origin check, ownership, escaping
-- [.claude/docs/grading.md](.claude/docs/grading.md): score formula, Step 6 decisions (blank answers, names, shuffle, deadline, reveal, result link), submitting
+- [.claude/docs/grading.md](.claude/docs/grading.md): score formula, Step 6 decisions (blank answers, names, shuffle, deadline, reveal, result link), submitting, teacher results and CSV
 - [.claude/docs/testing.md](.claude/docs/testing.md): `node:test` layout, `startApp()` helper, how to add a test, known gaps
 - `PLAN.md`: the 8-step plan and its current status
 - `README.md`: user-facing setup and syntax guide (Vietnamese)

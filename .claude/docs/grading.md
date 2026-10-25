@@ -91,3 +91,17 @@ One write transaction, so it cannot interleave with `updateHomework`:
 3. Each chosen answer must belong to its question (else 400; only hand-made requests do that).
 4. `computeScore(correct, total)`; insert the submission with all `submission_answers` rows.
 A second submission with the same `student_key` fails on the UNIQUE constraint (409, "đã nộp bài này rồi").
+
+## Teacher results (Step 7, `results.service.ts`, decided 2026-10-25)
+
+- **List**: oldest submission first; average = mean of the listed scores, rounded to 2 decimals, shown with
+  a decimal comma.
+- **Per question** (one version only; questions differ between versions): `correctCount` = submissions
+  that chose the correct answer, `blankCount`, and `chosenCount` per answer. Letters are in the teacher's
+  order; students may have seen another order when answers were shuffled (the page says so).
+- **CSV**: one row per submission: `STT, Họ tên, Điểm, Số câu đúng, Tổng số câu, Phiên bản, Nộp lúc (giờ
+  Việt Nam)`. Comma-separated, score with a dot (`7.25`), time `YYYY-MM-DD HH:MM` Vietnam time, UTF-8 with
+  BOM, CRLF, RFC 4180 quoting. Text cells starting with `= + - @`, tab or CR get a leading `'` (CSV
+  formula injection: student names are untrusted). Same version filter as the page.
+- **Deleting a submission** frees the name (one attempt per name), so the student can submit again.
+

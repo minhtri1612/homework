@@ -11,6 +11,14 @@ import {
   getEditHomeworkPage,
   postUpdateHomework,
 } from '../controllers/homework.controller.ts';
+import {
+  getResultsPage,
+  getResultsCsv,
+  getDeleteSubmissionPage,
+  postDeleteSubmission,
+  getDeleteHomeworkPage,
+  postDeleteHomework,
+} from '../controllers/results.controller.ts';
 import { getJoin, getSharedHomework, getAnswerPage, postSubmit, getResultPage } from '../controllers/share.controller.ts';
 
 export function webRoutes() {
@@ -32,6 +40,12 @@ export function webRoutes() {
   router.post('/teacher/homeworks', postCreateHomework);
   router.get('/teacher/homeworks/:id/edit', getEditHomeworkPage);
   router.post('/teacher/homeworks/:id', postUpdateHomework);
+  router.get('/teacher/homeworks/:id/results', getResultsPage);
+  router.get('/teacher/homeworks/:id/results.csv', getResultsCsv);
+  router.get('/teacher/homeworks/:id/submissions/:submissionId/delete', getDeleteSubmissionPage);
+  router.post('/teacher/homeworks/:id/submissions/:submissionId/delete', postDeleteSubmission);
+  router.get('/teacher/homeworks/:id/delete', getDeleteHomeworkPage);
+  router.post('/teacher/homeworks/:id/delete', postDeleteHomework);
 
   // Students (no account)
   router.get('/join', getJoin);

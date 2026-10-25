@@ -1,0 +1,70 @@
+<%- include('partials/head') %>
+<h1>Kết quả: <%= homework.title %></h1>
+<p><a href="/teacher">← Bài tập của tôi</a> · <a href="/teacher/homeworks/<%= homework.id %>/edit">Sửa bài tập</a></p>
+<% if (notice) { %><p class="notice success" role="status"><%= notice %></p><% } %>
+
+<% if (versions.length > 1) { %>
+  <nav class="tabs version-tabs" aria-label="Phiên bản">
+    <a class="tab <%= selected ? '' : 'active' %>" href="?" <% if (!selected) { %>aria-current="page"<% } %>>Tất cả</a>
+    <% for (const version of versions) { %>
+      <a class="tab <%= selected?.id === version.id ? 'active' : '' %>" href="?version=<%= version.number %>"
+         <% if (selected?.id === version.id) { %>aria-current="page"<% } %>>Phiên bản <%= version.number %> (<%= version.submissionCount %>)</a>
+    <% } %>
+  </nav>
+  <% if (!selected) { %>
+    <p class="muted">Mỗi bài nộp được chấm theo đúng phiên bản câu hỏi học sinh đã làm. Chọn một phiên bản để xem thống kê từng câu.</p>
+  <% } %>
+<% } %>
+
+<section class="card summary">
+  <p><strong><%= submissions.length %></strong> bài nộp<% if (average !== null) { %> · điểm trung bình <strong><%= average %></strong><% } %></p>
+  <% if (submissions.length) { %><p><a class="button secondary" href="<%= csvUrl %>" download>Tải bảng điểm (CSV)</a></p><% } %>
+</section>
+
+<% if (submissions.length === 0) { %>
+  <p class="card muted">Chưa có học sinh nào nộp bài<%= selected && versions.length > 1 ? ' ở phiên bản này' : '' %>.</p>
+<% } else { %>
+  <div class="table-wrap">
+    <table class="results">
+      <thead>
+        <tr><th>STT</th><th>Họ tên</th><th>Điểm</th><th>Đúng</th><% if (versions.length > 1) { %><th>Phiên bản</th><% } %><th>Nộp lúc</th><th><span class="visually-hidden">Xoá</span></th></tr>
+      </thead>
+      <tbody>
+        <% submissions.forEach((s, i) => { %>
+          <tr>
+            <td><%= i + 1 %></td>
+            <td><%= s.studentName %></td>
+            <td class="num"><strong><%= s.scoreText %></strong></td>
+            <td class="num"><%= s.correctCount %>/<%= s.totalCount %></td>
+            <% if (versions.length > 1) { %><td class="num"><%= s.versionNumber %></td><% } %>
+            <td><%= formatDateTime(s.submittedAt) %></td>
+            <td><a class="danger-link" href="/teacher/homeworks/<%= homework.id %>/submissions/<%= s.id %>/delete" aria-label="Xoá bài nộp của <%= s.studentName %>">Xoá</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<% if (stats) { %>
+  <h2>Từng câu hỏi<%= versions.length > 1 ? ` (phiên bản ${selected.number})` : '' %></h2>
+  <% const letters = 'ABCDEFGH'; const n = selected.submissionCount; %>
+  <ol class="review">
+    <% stats.forEach((q, i) => { %>
+      <% const percent = Math.round((q.correctCount / n) * 100); %>
+      <li class="card question">
+        <p><strong>Câu <%= i + 1 %>.</strong> <span class="question-text-view"><%= q.text %></span></p>
+        <p class="<%= percent < 50 ? 'hard' : 'muted' %>"><%= q.correctCount %>/<%= n %> học sinh làm đúng (<%= percent %>%)<% if (q.blankCount) { %> · <%= q.blankCount %> bỏ trống<% } %></p>
+        <ul class="review-answers">
+          <% q.answers.forEach((a, j) => { %>
+            <li class="<%= a.correct ? 'is-correct' : '' %>">
+              <%= letters[j] %>. <%= a.text %> <span class="tag"><%= a.chosenCount %> chọn<%= a.correct ? ' · đáp án đúng' : '' %></span>
+            </li>
+          <% }) %>
+        </ul>
+      </li>
+    <% }) %>
+  </ol>
+  <p class="muted">Chữ cái A, B, C… theo thứ tự giáo viên soạn; học sinh có thể đã thấy đáp án theo thứ tự khác nếu bật xáo trộn.</p>
+<% } %>
+<%- include('partials/foot') %>

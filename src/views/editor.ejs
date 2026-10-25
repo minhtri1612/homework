@@ -4,7 +4,8 @@
 <% if (saved) { %><p class="notice success" role="status"><%= saved %></p><% } %>
 <% if (homework.shareCode) { %>
   <section class="card share">
-    <p class="muted">Mã bài tập: <code><%= homework.shareCode %></code> · phiên bản <%= homework.version.number %></p>
+    <p class="muted">Mã bài tập: <code><%= homework.shareCode %></code> · phiên bản <%= homework.version.number %> ·
+      <a href="/teacher/homeworks/<%= homework.id %>/results">Xem kết quả</a></p>
     <%- include('partials/share-link', { url: `${siteUrl}/h/${homework.shareCode}` }) %>
   </section>
   <script type="module" src="/js/copy.js"></script>
@@ -99,6 +100,10 @@ A. sáng xủa
     <a href="/teacher">Quay lại</a>
   </div>
 </form>
+
+<% if (homework.shareCode) { %>
+  <p class="delete-link"><a class="danger-link" href="/teacher/homeworks/<%= homework.id %>/delete">Xoá bài tập này…</a></p>
+<% } %>
 
 <details id="help" class="card help">
   <summary>Hướng dẫn cú pháp</summary>

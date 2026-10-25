@@ -1,0 +1,16 @@
+<%- include('partials/head') %>
+<h1><%= heading %></h1>
+<section class="card danger-zone">
+  <% for (const line of lines) { %><p><%= line %></p><% } %>
+  <% if (error) { %><p class="notice danger" role="alert"><%= error %></p><% } %>
+  <form method="post" action="<%= action %>" class="form">
+    <% if (check) { %>
+      <label class="check"><input type="checkbox" name="confirm" value="1" required> <%= check %></label>
+    <% } %>
+    <div class="actions">
+      <button type="submit" class="danger-button"><%= button %></button>
+      <a href="<%= cancel %>">Huỷ, quay lại</a>
+    </div>
+  </form>
+</section>
+<%- include('partials/foot') %>
