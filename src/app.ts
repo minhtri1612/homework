@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { loadTeacher } from './middleware/auth.ts';
 import { sameOriginPosts } from './middleware/same-origin.ts';
 import { webRoutes } from './routes/web.ts';
-import { notFound, serverError } from './routes/status.ts';
+import { healthz, notFound, serverError } from './routes/status.ts';
 import { formatVietnamDate, formatVietnamDateTime } from './vietnam-time.ts';
 
 export const BROWSER_BUILD = {
@@ -14,7 +14,13 @@ export const BROWSER_BUILD = {
   shared: fileURLToPath(new URL('../dist/browser/shared', import.meta.url)),
 };
 
-export function createApp({ prisma }: { prisma: PrismaClient }): Express {
+export interface AppOptions {
+  prisma: PrismaClient;
+  /** Required to register as a teacher; null lets anyone register (local use and tests). */
+  inviteCode?: string | null;
+}
+
+export function createApp({ prisma, inviteCode = null }: AppOptions): Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // behind Render's proxy, so req.secure sees HTTPS
@@ -36,11 +42,13 @@ export function createApp({ prisma }: { prisma: PrismaClient }): Express {
   // Middleware and controllers reach the database through req.prisma.
   app.use((req, res, next) => {
     req.prisma = prisma;
+    req.inviteCode = inviteCode;
     next();
   });
   app.use(loadTeacher);
   app.use(sameOriginPosts);
 
+  app.get('/healthz', healthz);
   app.use(webRoutes());
 
   app.use(notFound);

@@ -1,4 +1,5 @@
 // Teacher register / login / logout pages.
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { createTeacher, findTeacherByEmail } from '../services/teacher.service.ts';
 import { createSession, deleteSession } from '../services/session.service.ts';
@@ -9,6 +10,21 @@ import { registerForm, registerSchema, loginSchema, type RegisterForm } from '..
 import { fieldErrors } from '../validation/form.ts';
 
 const EMAIL_TAKEN = 'Email này đã được đăng ký. Hãy đăng nhập.';
+const INVITE_MISSING = 'Hãy nhập mã mời. Trang này chỉ dành cho giáo viên được mời.';
+const INVITE_WRONG = 'Mã mời không đúng. Hãy hỏi người quản lý trang web để lấy đúng mã mời.';
+
+/** Compares in constant time (both sides hashed to the same length), so timing reveals nothing about the code. */
+function sameInvite(given: string, expected: string): boolean {
+  const digest = (text: string) => createHash('sha256').update(text.normalize('NFC')).digest();
+  return timingSafeEqual(digest(given), digest(expected));
+}
+
+/** The invite problem, or null when the code is right or none is required. */
+function inviteError(req: Request, given: string): string | null {
+  if (req.inviteCode === null) return null;
+  if (!given) return INVITE_MISSING;
+  return sameInvite(given, req.inviteCode) ? null : INVITE_WRONG;
+}
 
 // Checked when the email is unknown, so a wrong email takes as long as a
 // wrong password and the response time does not reveal which emails exist.
@@ -20,22 +36,31 @@ async function logIn(req: Request, res: Response, teacherId: number) {
   res.redirect('/teacher');
 }
 
-function renderRegister(res: Response, { values, errors }: { values: RegisterForm; errors: Record<string, string> }) {
-  res.status(400).render('register', { title: 'Đăng ký', values: { name: values.name, email: values.email }, errors });
+// The invite code is never sent back to the page, like the passwords.
+function renderRegister(req: Request, res: Response, { values, errors }: { values: RegisterForm; errors: Record<string, string> }) {
+  res.status(400).render('register', {
+    title: 'Đăng ký',
+    values: { name: values.name, email: values.email },
+    errors,
+    needsInvite: req.inviteCode !== null,
+  });
 }
 
 export function getRegisterPage(req: Request, res: Response) {
   if (req.teacher) return res.redirect('/teacher');
-  res.render('register', { title: 'Đăng ký', values: {}, errors: {} });
+  res.render('register', { title: 'Đăng ký', values: {}, errors: {}, needsInvite: req.inviteCode !== null });
 }
 
 export async function postRegister(req: Request, res: Response) {
   const result = registerSchema.safeParse(req.body);
   const values = result.success ? result.data : registerForm.parse(req.body);
   const errors: Record<string, string> = result.success ? {} : fieldErrors(result.error);
+  const invite = inviteError(req, values.invite);
+  if (invite) errors.invite = invite;
 
-  if (!errors.email && (await findTeacherByEmail(req.prisma, values.email))) errors.email = EMAIL_TAKEN;
-  if (Object.keys(errors).length) return renderRegister(res, { values, errors });
+  // Only with a valid invite: otherwise this form would tell strangers which emails are registered.
+  if (!errors.email && !errors.invite && (await findTeacherByEmail(req.prisma, values.email))) errors.email = EMAIL_TAKEN;
+  if (Object.keys(errors).length) return renderRegister(req, res, { values, errors });
 
   let teacherId;
   try {
@@ -43,7 +68,7 @@ export async function postRegister(req: Request, res: Response) {
   } catch (error) {
     // Someone registered the same email a moment ago.
     if (!isUniqueViolation(error)) throw error;
-    return renderRegister(res, { values, errors: { email: EMAIL_TAKEN } });
+    return renderRegister(req, res, { values, errors: { email: EMAIL_TAKEN } });
   }
   await logIn(req, res, teacherId);
 }

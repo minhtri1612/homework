@@ -15,6 +15,8 @@ export const registerForm = z.object({
   email,
   password: formText,
   confirm: formText,
+  // Checked against INVITE_CODE by the controller (only when one is set).
+  invite: formText.transform((value) => value.trim()),
 });
 
 export const registerSchema = registerForm
@@ -27,6 +29,7 @@ export const registerSchema = registerForm
         .min(MIN_PASSWORD, `Mật khẩu cần ít nhất ${MIN_PASSWORD} ký tự.`)
         .max(200, 'Mật khẩu dài quá (tối đa 200 ký tự).'),
       confirm: z.string(),
+      invite: z.string(),
     }),
   )
   .refine((form) => form.password === form.confirm, {

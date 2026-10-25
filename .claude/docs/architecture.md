@@ -75,6 +75,7 @@ All listed in `routes/web.ts`; controllers in `src/controllers/`.
 
 | Method | Path | Controller | Notes |
 |---|---|---|---|
+| GET | `/healthz` | `status.healthz` (in `app.ts`) | `ok` when the database answers, 503 otherwise (Render health check) |
 | GET | `/` | `home.getHomePage` | home; links differ when logged in |
 | GET/POST | `/register` | `auth.getRegisterPage` / `postRegister` | logged-in users are redirected to `/teacher` |
 | GET/POST | `/login` | `auth.getLoginPage` / `postLogin` | |

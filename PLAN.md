@@ -7,10 +7,9 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 6 is pushed (3740c83). Step 7 (results, CSV, deleting) is done, **not committed yet,
-waiting for review**. 182 tests pass.
-
-**Next: Step 8 (deploy to Render + Turso)**, after the user approves Step 7.
+**Where we stopped:** Step 8 code changes are done and committed locally (see "Step 8 — Deploy", "Done so far");
+the smoke test passed against the throwaway Turso database `homework-check`. Next: the user creates the Render
+service step by step with Claude (push to GitHub first, when the user says so). 190 tests pass.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -53,9 +52,7 @@ waiting for review**. 182 tests pass.
   - Tests: `test/results.test.ts` (15). Checked that removing the formula protection or the confirmation
     check makes the matching tests fail.
 - [ ] **Step 8 — Deploy**: Render (web service) + Turso (database), production settings ← **next**
-  - Build command `npm install && npm run build` (Prisma client + browser JavaScript). `typescript` is a dev
-    dependency, so the build must install dev dependencies (do not set `NODE_ENV=production` for the build).
-    `npm start` also runs `build:browser` first (`prestart`).
+  (planned 2026-10-25, see "Step 8 — Deploy" below; nothing deployed until the user confirms)
 
 ---
 
@@ -521,3 +518,80 @@ Planned `tsconfig.json` settings:
   `test/imports.test.js` catches it (found in part 2).
 - **Strict mode will flag** some `null` handling in today's code, for example `req.teacher`. Fixes must keep
   the same behaviour, and the tests decide.
+
+---
+
+## Step 8 — Deploy (plan, 2026-10-25; not started)
+
+Facts checked on 2026-10-25 (official pages):
+- **Render free web service**: no persistent disk (local files are lost on redeploy, restart or spin-down),
+  spins down after 15 minutes without traffic, the next request waits about one minute; 750 free instance
+  hours per workspace per month. Node version: `NODE_VERSION` env var, else `.node-version`, else `.nvmrc`
+  (ours: `24`). One instance, which matches the single-process assumption in `database.md`.
+- **Turso free plan**: 100 databases, 5 GB, 500 M rows read and 10 M rows written per month, point-in-time
+  restore 1 day, no credit card. Over a limit, databases are blocked until upgrading (no surprise bill).
+  Database URL `libsql://<db>-<org>.turso.io` + a database token (`turso db tokens create`, `--expiration`).
+  The docs describe the CLI for creating databases and tokens; in WSL, log in with `turso auth login --headless`.
+  CLI login expires after a week (the database token does not, unless created with an expiration).
+
+### Decided 2026-10-25
+- Teacher registration needs an invite code (`INVITE_CODE` on Render, ≥ 12 characters).
+- Render service name `homework-minhtri` (→ `homework-minhtri.onrender.com` if free).
+- The Turso databases are in Tokyo (`aws-ap-northeast-1`); Singapore does not seem to be offered on AWS.
+
+### Done so far
+- [x] Turso account, CLI, `homework-check` database; `npm run smoke` written and passing against it.
+- [x] Smoke test found that saving 200 questions failed on Turso (one statement per question, ~137 ms each,
+      30 s timeout); fixed with batch inserts (`createManyAndReturn` / `createMany`), now ~1.7 s.
+- [x] Production settings check, `/healthz`, invite code, `.env.example`, docs (README "Triển khai").
+- [x] Checked: `.env` gitignored, never committed; no token, Turso URL or JWT in any commit.
+- [ ] `turso db destroy homework-check`, empty `.env`; token for `homework`.
+- [ ] Render service, environment variables, first deploy, check on the real site.
+
+### Accounts (user)
+1. GitHub: already have it (repo `minhtri1612/homework`, public).
+2. Turso: sign up at turso.tech (with GitHub).
+3. Render: sign up at render.com (with GitHub).
+
+### Code changes before deploying (Claude, one commit, tests)
+1. `src/server.ts`: with `NODE_ENV=production`, refuse to start without `DATABASE_URL` (otherwise it would
+   silently use a local file that Render deletes on every restart).
+2. `GET /healthz`: runs `SELECT 1`, answers `ok` (Render health check; a failed deploy keeps the old version).
+3. Render commands: build `npm ci --include=dev && npm run build` (dev dependencies are needed for
+   `build:browser`, even with `NODE_ENV=production`), start `node src/server.ts` (skips `prestart`, which would
+   rebuild on every cold start).
+4. `scripts/smoke-test.ts` (`npm run smoke`): against the database in `.env`, applies migrations and runs one
+   teacher → homework → submission → result → delete cycle through the real services, then removes its data.
+   Needed because every automated test uses a `file:` database; Turso's network path (and Prisma's
+   interactive transactions over it) has never been tested.
+5. README (Vietnamese) "Triển khai" section, `CLAUDE.md`, `.claude/docs/database.md`.
+
+### By hand (user), step by step
+1. Install the Turso CLI in WSL: `curl -sSfL https://get.tur.so/install.sh | bash`, open a new terminal, `turso`.
+2. Log in: `turso auth login --headless`, open the printed link in the Windows browser, approve.
+3. Create a throwaway database for the smoke test, and the real one, near Vietnam (Singapore if offered):
+   `turso db create homework-check` and `turso db create homework`.
+4. For `homework-check`: `turso db show homework-check --url` and
+   `turso db tokens create homework-check`; put both into `.env` (`DATABASE_URL`, `DATABASE_AUTH_TOKEN`) with
+   an editor. **Never paste a token into the chat, a commit or a screenshot.**
+5. Claude runs `npm run smoke` against it. Then `turso db destroy homework-check` and empty `.env` again.
+6. For `homework`: `turso db show homework --url` and `turso db tokens create homework`; keep both for step 8.
+7. Render dashboard → New → Web Service → connect GitHub → repo `minhtri1612/homework`, branch `main`,
+   region Singapore, runtime Node, instance type Free, build and start commands from "Code changes" 3,
+   health check path `/healthz`.
+8. Environment variables in Render: `NODE_ENV=production`, `DATABASE_URL=libsql://…`,
+   `DATABASE_AUTH_TOKEN=…` (paste in Render only). Create the service; the first deploy applies the migrations.
+9. Open `https://<name>.onrender.com`, register the real teacher account, create a homework, open the student
+   link on a phone, submit, check the results page and the CSV. Claude checks the deploy log with the user.
+
+### Operating notes
+- Every push to `main` deploys automatically (Render's default); Claude still pushes only when asked.
+- Before a lesson, open the site a minute early (free plan wakes up in about a minute).
+- Backups: Turso keeps 1 day of point-in-time restore; download the CSV after each homework.
+- Rotating a leaked token: `turso db tokens invalidate homework` (this invalidates **every** token of the
+  databases in the same group), create a new one, update it in Render (and in `.env` if used).
+
+### Open questions for the user
+- Registration: open to anyone (as now), or protected by an invite code set in Render?
+- Service name (it becomes `<name>.onrender.com`), e.g. `baitap-tracnghiem`.
+

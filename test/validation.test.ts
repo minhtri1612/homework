@@ -14,7 +14,7 @@ describe('register form', () => {
   const ok = { name: ' Cô   Lan ', email: ' Lan@Example.COM ', password: 'matkhau123', confirm: 'matkhau123' };
 
   test('cleans name and email', () => {
-    assert.deepEqual(registerSchema.parse(ok), { name: 'Cô Lan', email: 'lan@example.com', password: 'matkhau123', confirm: 'matkhau123' });
+    assert.deepEqual(registerSchema.parse(ok), { name: 'Cô Lan', email: 'lan@example.com', password: 'matkhau123', confirm: 'matkhau123', invite: '' });
   });
 
   test('missing fields are empty, not a crash; one message per field', () => {
@@ -23,7 +23,7 @@ describe('register form', () => {
       email: 'Email không hợp lệ.',
       password: 'Mật khẩu cần ít nhất 8 ký tự.',
     });
-    assert.deepEqual(registerForm.parse({}), { name: '', email: '', password: '', confirm: '' });
+    assert.deepEqual(registerForm.parse({}), { name: '', email: '', password: '', confirm: '', invite: '' });
   });
 
   test('mismatched passwords are reported next to other errors, but not when the password is too short', () => {

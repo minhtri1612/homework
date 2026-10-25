@@ -20,6 +20,7 @@
     "db:seed": "node scripts/db-seed.ts",
     "db:generate": "prisma generate",
     "db:migration": "node scripts/db-new-migration.ts",
+    "smoke": "node scripts/smoke-test.ts",
     "predev": "npm run build:browser",
     "dev": "node --watch src/server.ts",
     "prestart": "npm run build:browser",

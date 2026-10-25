@@ -9,13 +9,14 @@ import { applyMigrations } from '../src/config/migrate.ts';
 import { createPrisma, openDb } from '../src/config/client.ts';
 import { createApp } from '../src/app.ts';
 
-export async function startApp() {
+/** inviteCode: as INVITE_CODE on Render; by default registration is open. */
+export async function startApp({ inviteCode = null }: { inviteCode?: string | null } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'homework-test-'));
   const url = `file:${join(dir, 'test.db')}`;
   const db = openDb({ url });
   await applyMigrations(db);
   const prisma = createPrisma({ url });
-  const server = createApp({ prisma }).listen(0);
+  const server = createApp({ prisma, inviteCode }).listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   const base = `http://localhost:${(server.address() as AddressInfo).port}`;
 

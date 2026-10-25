@@ -192,7 +192,8 @@ export async function submitAnswers(
           totalCount: total,
           score,
           resultTokenHash: hashToken(token),
-          answers: { create: answers },
+          // One statement for all answers (see insertQuestions in homework.service.ts).
+          answers: { createMany: { data: answers } },
         },
         select: { id: true },
       });

@@ -63,6 +63,13 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
   versioning check in `updateHomework`, assumes one server process. With several instances, two could
   pick the same code at once: the UNIQUE constraint on `share_code` would then fail the save with P2002
   instead of retrying. Before scaling out, add a retry on P2002 (and recheck the versioning race).
+- **Round trips on Turso.** Locally a statement costs almost nothing; on Turso each one is a network round
+  trip (measured 2026-10-25 from WSL to Tokyo: ~137 ms). Saving one question per statement made a
+  200-question save take ~100 s and hit the 30 s transaction timeout (`TRANSACTION_CLOSED`). Saves now
+  use `question.createManyAndReturn` + `answer.createMany` (answers matched to questions by `position`),
+  and submissions `answers: { createMany }`: 200 questions save in ~1.7 s. Turso itself only closes an
+  interactive transaction that is **idle** for > ~6–11 s; busy transactions of 20 s+ were fine.
+  `npm run smoke` (`scripts/smoke-test.ts`) checks all this against a real Turso database.
 - Independent writes that must succeed together without reads in between use the array form
   `prisma.$transaction([...])` (`createSession`).
 

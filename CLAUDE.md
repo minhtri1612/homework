@@ -51,6 +51,7 @@ npm run db:seed                      # sample teacher giaovien@example.com / mat
 npm run db:reset                     # DROP all tables + _migrations, re-apply; refuses non-file: DATABASE_URL
 npm run db:migration -- <name>       # after editing prisma/schema.prisma: write the next migration (review it!)
 npm run db:generate                  # regenerate the Prisma client (npm install and npm test do it too)
+npm run smoke                        # one real cycle against the (Turso) database in .env, then cleans up
 npm run parse -- examples/mau.txt    # run the parser on a file (or pipe text on stdin)
 ```
 
@@ -107,6 +108,13 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - **Work in `PLAN.md` steps.** Do one step, then stop and summarise for review; the user is a beginner
   and reviews each step. Update the step's checkboxes in `PLAN.md` to match what is actually done.
   Keep the README (Vietnamese) in sync with user-visible changes.
+- **Deployed on Render + Turso** (README "Triển khai"). With `NODE_ENV=production` the server refuses to start
+  without a Turso `DATABASE_URL`, `DATABASE_AUTH_TOKEN` and an `INVITE_CODE` of ≥ 12 characters
+  (`src/config/production.ts`). Teacher registration requires the invite code when set; locally it is open.
+  Never print, commit or paste tokens; `.env` is gitignored.
+- **Every statement is a network round trip on Turso (~0.1–0.2 s).** Keep the number of statements per request
+  and per transaction small and independent of input size (`createMany`, `createManyAndReturn`), never one
+  statement per question or answer. Run `npm run smoke` against a throwaway Turso database after such changes.
 - **Commit and push only when the user says so.** Always report whether a push actually succeeded.
 - Do not add dependencies without asking; the stack is deliberately small.
 

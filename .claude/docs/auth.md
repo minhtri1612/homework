@@ -6,6 +6,12 @@ Files: `src/controllers/auth.controller.ts`, `src/validation/auth.schema.ts`, `s
 
 ## Registration (`POST /register`)
 
+- **Invite code**: `createApp({ inviteCode })`, from `INVITE_CODE` (required in production, ≥ 12 chars,
+  `config/production.ts`). When set, the form has an "Mã mời" field; empty → "Hãy nhập mã mời…", wrong →
+  "Mã mời không đúng…". Compared in constant time (SHA-256 of both, `timingSafeEqual`), never echoed back,
+  and the "email already registered" lookup only runs with a valid code (no probing emails without it).
+  There is no rate limit, hence the minimum length. `null` (local, tests) = open registration.
+
 - Name: NFC, whitespace collapsed, trimmed, required, ≤ 100 chars.
 - Email: trimmed, lower-cased, simple regex `^[^\s@]+@[^\s@]+\.[^\s@]+$`, ≤ 254 chars; unique in any
   case (code lower-cases, column is `COLLATE NOCASE`). A race on the UNIQUE constraint (Prisma error

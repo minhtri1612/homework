@@ -200,26 +200,31 @@ async function insertVersion(
   return version.id;
 }
 
-// One nested create per question: the question and its answers in one call.
+// All questions in one statement, then all answers in one: every statement
+// is a network round trip to Turso (about 0.1 s), so one statement per
+// question made a 200-question save take over a minute.
 async function insertQuestions(tx: Prisma.TransactionClient, versionId: number, questions: QuestionInput[]): Promise<void> {
-  for (const [i, question] of questions.entries()) {
-    await tx.question.create({
-      data: {
-        versionId,
-        position: i + 1,
-        text: clean(question.text),
-        shuffleAnswers: Boolean(question.shuffleAnswers),
-        answers: {
-          create: question.answers.map((answer, j) => ({
-            position: j + 1,
-            text: clean(answer.text),
-            isCorrect: Boolean(answer.correct),
-          })),
-        },
-      },
-      select: { id: true },
-    });
-  }
+  const created = await tx.question.createManyAndReturn({
+    data: questions.map((question, i) => ({
+      versionId,
+      position: i + 1,
+      text: clean(question.text),
+      shuffleAnswers: Boolean(question.shuffleAnswers),
+    })),
+    select: { id: true, position: true },
+  });
+  // Matched by position, which is unique per version, not by the order of the returned rows.
+  const idAt = new Map(created.map((q) => [q.position, q.id]));
+  await tx.answer.createMany({
+    data: questions.flatMap((question, i) =>
+      question.answers.map((answer, j) => ({
+        questionId: idAt.get(i + 1)!,
+        position: j + 1,
+        text: clean(answer.text),
+        isCorrect: Boolean(answer.correct),
+      })),
+    ),
+  });
 }
 
 /**

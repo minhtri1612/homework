@@ -1,8 +1,15 @@
 <%- include('partials/head') %>
 <h1>Đăng ký tài khoản giáo viên</h1>
 <form method="post" action="/register" class="card form" novalidate>
+  <% if (needsInvite) { %>
+    <label>Mã mời <span class="muted">(người quản lý trang web gửi cho bạn)</span>
+      <input name="invite" autocomplete="off" required autofocus>
+    </label>
+    <% if (errors.invite) { %><p class="error"><%= errors.invite %></p><% } %>
+  <% } %>
+
   <label>Họ tên
-    <input name="name" value="<%= values.name ?? '' %>" autocomplete="name" required maxlength="100" autofocus>
+    <input name="name" value="<%= values.name ?? '' %>" autocomplete="name" required maxlength="100" <%= needsInvite ? '' : 'autofocus' %>>
   </label>
   <% if (errors.name) { %><p class="error"><%= errors.name %></p><% } %>
 

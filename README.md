@@ -60,6 +60,7 @@ npm run db:seed  # thêm dữ liệu mẫu: 1 giáo viên và 2 bộ bài tập
 npm run db:reset # XOÁ HẾT dữ liệu rồi tạo lại bảng trống từ các migration (chỉ với file trên máy)
 npm run db:migration -- <tên>  # sau khi sửa prisma/schema.prisma: tạo migration mới (xem mục bên dưới)
 npm run db:generate            # tạo lại mã Prisma (npm install và npm test cũng tự làm)
+npm run smoke    # kiểm tra cơ sở dữ liệu Turso ghi trong .env (chạy thử một vòng rồi tự dọn dữ liệu)
 npm run dev      # chạy website ở http://localhost:3000, tự khởi động lại khi sửa file (Ctrl+C để dừng)
 npm start        # chạy website (không tự khởi động lại) — dùng khi triển khai
 ```
@@ -283,6 +284,28 @@ Câu chỉ có đáp án mà không có nội dung (như ví dụ `1. A. cat ...
 Văn bản dán từ Word, Mac hay Windows đều được chuẩn hoá (Unicode NFC, xuống dòng, dấu cách đặc biệt),
 nên chữ tiếng Việt gõ trên máy nào cũng so sánh đúng.
 
+## Triển khai (Render + Turso)
+
+Website chạy trên **Render** (gói miễn phí), dữ liệu nằm ở **Turso** (gói miễn phí). Không cần thẻ tín dụng.
+
+- **Turso**: cơ sở dữ liệu `homework`. Địa chỉ `libsql://…` và token lấy bằng lệnh `turso` trong WSL
+  (`turso db show homework --url`, `turso db tokens create homework`). **Không bao giờ** dán token vào
+  chat, commit hay ảnh chụp màn hình.
+- **Render**: Web Service `homework-minhtri`, vùng Singapore, gói Free.
+  - Build Command: `npm ci --include=dev && npm run build`
+  - Start Command: `node src/server.ts`
+  - Health Check Path: `/healthz`
+  - Biến môi trường: `NODE_ENV=production`, `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `INVITE_CODE`.
+- **Mã mời** (`INVITE_CODE`, ít nhất 12 ký tự): ai đăng ký tài khoản giáo viên cũng phải nhập đúng mã này.
+  Gửi mã riêng cho từng giáo viên được mời. Đổi mã: sửa biến trên Render (website tự khởi động lại).
+- Thiếu một cài đặt nào thì website **không khởi động** và nhật ký (Logs) trên Render ghi rõ thiếu gì.
+- Mỗi lần đẩy code lên nhánh `main` trên GitHub, Render tự triển khai bản mới.
+- Gói miễn phí **ngủ sau 15 phút** không ai vào; lần mở đầu tiên sau đó chờ khoảng 1 phút. Trước giờ học
+  hãy mở trang trước một chút.
+- Sao lưu: Turso giữ lịch sử 1 ngày để khôi phục. Sau mỗi bài tập nên tải bảng điểm CSV về máy.
+- Trước khi triển khai lần đầu (hoặc khi đổi cơ sở dữ liệu), ghi địa chỉ và token của một cơ sở dữ liệu
+  **thử** vào `.env` rồi chạy `npm run smoke`.
+
 ## Cấu trúc thư mục
 
 ```
@@ -292,6 +315,7 @@ src/
   config/
     client.ts     kết nối tới cơ sở dữ liệu (file trên máy hoặc Turso), qua Prisma hoặc trực tiếp
     migrate.ts    tạo/cập nhật các bảng bằng các file trong prisma/migrations/
+    production.ts kiểm tra cài đặt bắt buộc khi chạy trên Render
   routes/
     web.ts        danh sách mọi trang: địa chỉ → kiểm tra đăng nhập → controller
     status.ts     trang "không tìm thấy" (404) và trang lỗi (500)
@@ -329,7 +353,7 @@ src/
 prisma/           các bảng của cơ sở dữ liệu (schema.prisma) và các migration
 prisma.config.js  cài đặt cho lệnh prisma (website không dùng file này)
 test/             kiểm thử (npm test)
-scripts/          công cụ dòng lệnh (npm run parse, db:init, db:seed, db:reset, db:migration)
+scripts/          công cụ dòng lệnh (npm run parse, db:init, db:seed, db:reset, db:migration, smoke)
 examples/         văn bản mẫu
 data/             file cơ sở dữ liệu khi chạy máy cá nhân (không đưa lên git)
 dist/             mã JavaScript cho trình duyệt do npm run build:browser tạo ra (không đưa lên git)
