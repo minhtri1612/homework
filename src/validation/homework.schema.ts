@@ -3,7 +3,7 @@
 // does that on every save, with the same messages as the editor preview.
 import { z } from 'zod';
 import { formLine, formText } from './form.ts';
-import { fromVietnamInput } from '../vietnam-time.js';
+import { fromVietnamInput } from '../vietnam-time.ts';
 
 /** Anything that is not a plain object is read as {}, so its fields become defaults. */
 function objectOrEmpty<T extends z.ZodType>(schema: T) {

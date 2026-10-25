@@ -7,10 +7,8 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 4.6 part 1 is committed and pushed (a9d31bf). Part 2 (config, services, validation in
-TypeScript) is done, **not committed yet, waiting for review**. All 141 tests pass; `npm run typecheck` passes.
-
-**Next: Step 4.6 part 3 (middleware, controllers, routes, app, server)**, after the user approves part 2.
+**Where we stopped:** Step 4.6 parts 3–6 run back to back (user's instruction 2026-10-25): each part is tested
+and committed locally, **nothing after part 2 (4c5ecd2) is pushed** until the user reviews. Part 3 done.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -31,7 +29,7 @@ TypeScript) is done, **not committed yet, waiting for review**. All 141 tests pa
   - [x] part 3: services on Prisma
   - [x] part 4: validation + controllers + routes
   - [x] part 5: scripts, docs, cleanup
-- [ ] **Step 4.6 — Convert to TypeScript** (parts 1–2 of 6 done, see below) ← **next**
+- [ ] **Step 4.6 — Convert to TypeScript** (parts 1–3 of 6 done, see below) ← **next**
 - [x] **Step 5 — Sharing**: link `/h/CODE` and a "nhập mã" box on the home page (commit 2258768)
   - [x] `/h/CODE` finds the homework (code typed in any letter case), 404 in Vietnamese otherwise
   - [x] code entry form on the home page
@@ -457,9 +455,14 @@ Planned `tsconfig.json` settings:
     promise because `util.promisify(scrypt)` loses the options overload; same behaviour.
   - Found: three `./form.js` imports inside `src/validation/` passed `tsc` (it maps `.js` to `.ts`) but
     failed in Node. Fixed, and `test/imports.test.js` now checks every relative import names a real file.
-- [ ] 3. **Middleware, controllers, routes, app, server.** `src/middleware`, `src/controllers`, `src/routes`,
+- [x] 3. **Middleware, controllers, routes, app, server.** `src/middleware`, `src/controllers`, `src/routes`,
   `src/app.ts`, `src/server.ts`, `src/vietnam-time.ts`, `src/load-env.ts`. The `dev`/`start` scripts point at
   `src/server.ts`.
+  - Done. Strict mode findings, fixed without changing behaviour: `req.teacher` on `/teacher` routes now goes
+    through `currentTeacher(req)` (`middleware/auth.ts`), which throws (500) if a route ever forgets
+    `requireTeacher` instead of acting for nobody; `?saved=` is read only when it is a string (a repeated
+    parameter gave no notice before and still gives none); `sessionCookieOptions()` returns `CookieOptions`.
+    `prisma.config.js` imports `load-env.ts` and is now covered by `test/imports.test.js`.
 - [ ] 4. **Scripts and tests.**
   - `scripts/*.ts` and `test/*.test.ts`; the glob becomes `test/**/*.test.ts`.
   - Only the file types change; no assertion changes.

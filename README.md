@@ -243,16 +243,16 @@ src/
     client.ts     kết nối tới cơ sở dữ liệu (file trên máy hoặc Turso), qua Prisma hoặc trực tiếp
     migrate.ts    tạo/cập nhật các bảng bằng các file trong prisma/migrations/
   routes/
-    web.js        danh sách mọi trang: địa chỉ → kiểm tra đăng nhập → controller
-    status.js     trang "không tìm thấy" (404) và trang lỗi (500)
+    web.ts        danh sách mọi trang: địa chỉ → kiểm tra đăng nhập → controller
+    status.ts     trang "không tìm thấy" (404) và trang lỗi (500)
   middleware/
-    auth.js       đọc cookie đăng nhập, chặn trang cần đăng nhập
-    same-origin.js chặn form gửi từ trang web khác
+    auth.ts       đọc cookie đăng nhập, chặn trang cần đăng nhập
+    same-origin.ts chặn form gửi từ trang web khác
   controllers/    đọc yêu cầu, gọi kiểm tra dữ liệu và services, trả về trang
-    home.controller.js     trang chủ
-    auth.controller.js     đăng ký, đăng nhập, đăng xuất
-    homework.controller.js trang của giáo viên: danh sách và soạn bài tập
-    share.controller.js    trang của học sinh: mở bài tập bằng mã (/h/MÃ, ô nhập mã)
+    home.controller.ts     trang chủ
+    auth.controller.ts     đăng ký, đăng nhập, đăng xuất
+    homework.controller.ts trang của giáo viên: danh sách và soạn bài tập
+    share.controller.ts    trang của học sinh: mở bài tập bằng mã (/h/MÃ, ô nhập mã)
   validation/     kiểm tra và làm sạch dữ liệu từ form (Zod), thông báo lỗi tiếng Việt
   services/
     teacher.service.ts    lưu giáo viên
@@ -265,11 +265,11 @@ src/
   public/         CSS, ảnh, JavaScript cho trình duyệt
     js/editor.js  trang soạn bài tập (hai thẻ Cú pháp / Dạng thẻ)
     js/copy.js    nút “Sao chép link”
-  app.js          ghép các phần thành website
-  server.js       khởi động website (npm run dev)
-  load-env.js     đọc file .env nếu có
+  app.ts          ghép các phần thành website
+  server.ts       khởi động website (npm run dev)
+  load-env.ts     đọc file .env nếu có
   grading.ts      tính điểm thang 10 (làm tròn đến 0,25)
-  vietnam-time.js đổi giờ Việt Nam ↔ giờ UTC lưu trong cơ sở dữ liệu
+  vietnam-time.ts đổi giờ Việt Nam ↔ giờ UTC lưu trong cơ sở dữ liệu
 prisma/           các bảng của cơ sở dữ liệu (schema.prisma) và các migration
 prisma.config.js  cài đặt cho lệnh prisma (website không dùng file này)
 test/             kiểm thử (npm test)

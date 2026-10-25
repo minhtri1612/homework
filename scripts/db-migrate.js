@@ -1,6 +1,6 @@
 // npm run db:init: applies the migrations in prisma/migrations/ that have not
 // run on this database yet (safe to run any time; the server does it on start).
-import '../src/load-env.js';
+import '../src/load-env.ts';
 import { applyMigrations } from '../src/config/migrate.ts';
 import { openDb, DEFAULT_URL } from '../src/config/client.ts';
 

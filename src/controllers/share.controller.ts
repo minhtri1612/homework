@@ -1,9 +1,10 @@
 // Pages for students, who have no account: open a homework by its share code.
+import type { Request, Response } from 'express';
 import { findSharedHomework } from '../services/homework.service.ts';
 import { joinSchema, shareCodeParam } from '../validation/share.schema.ts';
 
 // The code box on the home page (a GET form, so nothing to protect).
-export function getJoin(req, res) {
+export function getJoin(req: Request, res: Response) {
   const result = joinSchema.safeParse(req.query);
   if (result.success) return res.redirect(`/h/${result.data.code}`);
   res.status(400).render('home', {
@@ -13,7 +14,7 @@ export function getJoin(req, res) {
   });
 }
 
-export async function getSharedHomework(req, res) {
+export async function getSharedHomework(req: Request, res: Response) {
   const code = shareCodeParam.parse(req.params.code);
   // One address per homework: /h/abc234 → /h/ABC234.
   if (code && code !== req.params.code) return res.redirect(`/h/${code}`);

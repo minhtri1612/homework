@@ -2,7 +2,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTeacher } from '../src/services/teacher.service.ts';
 import { getHomework, updateHomework } from '../src/services/homework.service.ts';
-import { fromVietnamInput, toVietnamInput, INVALID_TIME } from '../src/vietnam-time.js';
+import { fromVietnamInput, toVietnamInput, INVALID_TIME } from '../src/vietnam-time.ts';
 import { parse } from '../src/shared/parser.js';
 import { startApp, sessionCookie } from './helpers.js';
 

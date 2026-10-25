@@ -41,7 +41,7 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
   used, by `db:reset`.
 - `applyMigrations(db)` runs every migration not yet recorded in `_migrations` (name, checksum,
   applied_at), each in its own write transaction. It fails if an applied `migration.sql` was edited
-  afterwards. Called by `src/server.js` on startup, `npm run db:init`, `db:seed` and the tests
+  afterwards. Called by `src/server.ts` on startup, `npm run db:init`, `db:seed` and the tests
   (`test/helpers.js`, `test/db.test.js`). Never edit an applied migration; add a new one.
 - `dropSchema(db)` drops tables children-first, then `_migrations` (`TABLES` list in `migrate.ts`), so
   `db:reset` re-applies every migration. If you add a table, add it to that list in the right order.
@@ -68,7 +68,7 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
 
 ## Conventions
 
-- Times: UTC ISO 8601 text (`2026-10-24T16:45:00.000Z`), set in code with `new Date().toISOString()`. Convert Vietnam time with `src/vietnam-time.js`.
+- Times: UTC ISO 8601 text (`2026-10-24T16:45:00.000Z`), set in code with `new Date().toISOString()`. Convert Vietnam time with `src/vietnam-time.ts`.
 - Booleans: `BOOLEAN` columns stored as 0/1 with `CHECK (x IN (0, 1))`; data-access functions return JS booleans.
 - Rows are mapped to camelCase objects in the data-access modules; routes never see raw rows.
 - Text is NFC-normalised and trimmed before insert (`clean()` in `homework.service.ts`).

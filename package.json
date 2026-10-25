@@ -18,8 +18,8 @@
     "db:seed": "node scripts/db-seed.js",
     "db:generate": "prisma generate",
     "db:migration": "node scripts/db-new-migration.js",
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "dev": "node --watch src/server.ts",
+    "start": "node src/server.ts"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",

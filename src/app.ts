@@ -1,14 +1,15 @@
 // Builds the web app. Kept apart from server.js so tests can start it with
 // their own database (a Prisma client).
-import express from 'express';
+import express, { type Express } from 'express';
+import type { PrismaClient } from './generated/prisma/client.ts';
 import { fileURLToPath } from 'node:url';
-import { loadTeacher } from './middleware/auth.js';
-import { sameOriginPosts } from './middleware/same-origin.js';
-import { webRoutes } from './routes/web.js';
-import { notFound, serverError } from './routes/status.js';
-import { formatVietnamDate, formatVietnamDateTime } from './vietnam-time.js';
+import { loadTeacher } from './middleware/auth.ts';
+import { sameOriginPosts } from './middleware/same-origin.ts';
+import { webRoutes } from './routes/web.ts';
+import { notFound, serverError } from './routes/status.ts';
+import { formatVietnamDate, formatVietnamDateTime } from './vietnam-time.ts';
 
-export function createApp({ prisma }) {
+export function createApp({ prisma }: { prisma: PrismaClient }): Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // behind Render's proxy, so req.secure sees HTTPS

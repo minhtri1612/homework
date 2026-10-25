@@ -4,17 +4,17 @@
 
 ```
 src/
-  server.js         entry point: load .env, open DB, applyMigrations(), listen on PORT (default 3000)
-  app.js            createApp({ prisma }): builds the Express app (tests call this with their own DB)
-  load-env.js       process.loadEnvFile() if .env exists; import first in every entry point
-  vietnam-time.js   Vietnam time (UTC+7) <-> UTC ISO; date formatting for views
+  server.ts         entry point: load .env, open DB, applyMigrations(), listen on PORT (default 3000)
+  app.ts            createApp({ prisma }): builds the Express app (tests call this with their own DB)
+  load-env.ts       process.loadEnvFile() if .env exists; import first in every entry point
+  vietnam-time.ts   Vietnam time (UTC+7) <-> UTC ISO; date formatting for views
   shared/parser.js  syntax parser, used by browser AND server (see parser.md)
   config/client.ts  createPrisma() (the app's Prisma client, libSQL adapter), openDb() (plain libSQL
                     client for migrations, db:reset and SQL in tests), isUniqueViolation()
   config/migrate.ts applyMigrations(), dropSchema() (see database.md)
-  routes/web.js     every page: path → middleware → controller
-  routes/status.js  notFound (404) and serverError (500)
-  middleware/       auth.js (cookie, loadTeacher, requireTeacher), same-origin.js (sameOriginPosts)
+  routes/web.ts     every page: path → middleware → controller
+  routes/status.ts  notFound (404) and serverError (500)
+  middleware/       auth.ts (cookie, loadTeacher, requireTeacher), same-origin.ts (sameOriginPosts)
   controllers/      read req, call validation + services, render/redirect; no database queries
                     home, auth, homework (dashboard + editor), share (/join, /h/:code)
   validation/       Zod schemas: shape and coercion of form input, Vietnamese messages
@@ -35,7 +35,7 @@ data/               local SQLite file (data/*.db is gitignored)
 
 There is no build step. Files under `src/public/` and `src/shared/` are served as-is.
 
-## Request flow (`src/app.js`, in order)
+## Request flow (`src/app.ts`, in order)
 
 1. `express.static(src/public)`: `/style.css`, `/js/editor.js`
 2. `express.static(src/shared)` mounted at `/shared`: `/shared/parser.js` for the browser
@@ -45,7 +45,7 @@ There is no build step. Files under `src/public/` and `src/shared/` are served a
    controllers use `req.prisma` and pass it to the services, so each test has its own database.
 5. `loadTeacher`: reads cookie `sid`, sets `req.teacher` / `res.locals.teacher` (or null)
 6. `sameOriginPosts`: rejects POSTs whose `Origin` host differs from `Host` (403)
-7. `webRoutes()` (`routes/web.js`)
+7. `webRoutes()` (`routes/web.ts`)
 8. `notFound` renders `error.ejs`; `serverError` logs and renders a generic Vietnamese 500.
    Express 5 forwards rejected promises from async handlers here, so controllers do not need try/catch
    for unexpected errors.
@@ -55,7 +55,7 @@ There is no build step. Files under `src/public/` and `src/shared/` are served a
 
 ## Routes
 
-All listed in `routes/web.js`; controllers in `src/controllers/`.
+All listed in `routes/web.ts`; controllers in `src/controllers/`.
 
 | Method | Path | Controller | Notes |
 |---|---|---|---|
@@ -72,7 +72,7 @@ All listed in `routes/web.js`; controllers in `src/controllers/`.
 | GET | `/h/:code` | `share.getSharedHomework` | student page; non-canonical code (lower case…) → 302 to `/h/CODE`; unknown → 404 |
 
 Everything under `/teacher` goes through `requireTeacher` (302 to `/login`) and `setSiteUrl`. Routes with
-`:id` use `ownHomework()` (`homework.controller.js`), which returns a 404 page when the id is not a
+`:id` use `ownHomework()` (`homework.controller.ts`), which returns a 404 page when the id is not a
 positive integer written plainly (`homeworkIdParam`: `abc`, `01`, `1e2` → 404), does not exist, or
 belongs to another teacher. Unknown and someone else's homework look the same on purpose.
 
@@ -96,7 +96,7 @@ is only used for `include` and for `initialJson`, which is pre-escaped by `scrip
 
 ## Layers (rules for new code)
 
-Add a route to `routes/web.js`, its handler to a controller, input parsing to a Zod schema in
+Add a route to `routes/web.ts`, its handler to a controller, input parsing to a Zod schema in
 `validation/`, and database work to a service. Controllers never query Prisma directly; schemas never
 query the database (an "email already exists" check inside validation would reveal which emails
 exist). Business rules (`validateHomework`, the parser's `validateQuestion`) stay in services, so the
@@ -110,7 +110,7 @@ server re-validates with the editor's messages. Security rules for new routes: `
   is unavailable (plain http other than localhost).
 - Both: `src/shared/parser.js`. It must not import Node modules or use DOM APIs.
 
-## Editor data flow (`views/editor.ejs` + `public/js/editor.js` + `controllers/homework.controller.js`)
+## Editor data flow (`views/editor.ejs` + `public/js/editor.js` + `controllers/homework.controller.ts`)
 
 1. Server renders the form and embeds the questions (without ids) as JSON in
    `<script type="application/json" id="initial-questions">`, escaped with `scriptJson()`.

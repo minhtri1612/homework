@@ -1,7 +1,7 @@
 // Fills the database with a sample teacher and two homework sets:
 //   npm run db:seed
 // The questions go through the same parser teachers will use.
-import '../src/load-env.js';
+import '../src/load-env.ts';
 import { applyMigrations } from '../src/config/migrate.ts';
 import { createPrisma, openDb, DEFAULT_URL } from '../src/config/client.ts';
 import { createTeacher, findTeacherByEmail } from '../src/services/teacher.service.ts';

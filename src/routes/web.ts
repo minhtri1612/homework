@@ -1,8 +1,8 @@
 // Every page of the site: path → middleware → controller.
 import { Router } from 'express';
-import { requireTeacher } from '../middleware/auth.js';
-import { getHomePage } from '../controllers/home.controller.js';
-import { getRegisterPage, postRegister, getLoginPage, postLogin, postLogout } from '../controllers/auth.controller.js';
+import { requireTeacher } from '../middleware/auth.ts';
+import { getHomePage } from '../controllers/home.controller.ts';
+import { getRegisterPage, postRegister, getLoginPage, postLogin, postLogout } from '../controllers/auth.controller.ts';
 import {
   setSiteUrl,
   getDashboardPage,
@@ -10,8 +10,8 @@ import {
   postCreateHomework,
   getEditHomeworkPage,
   postUpdateHomework,
-} from '../controllers/homework.controller.js';
-import { getJoin, getSharedHomework } from '../controllers/share.controller.js';
+} from '../controllers/homework.controller.ts';
+import { getJoin, getSharedHomework } from '../controllers/share.controller.ts';
 
 export function webRoutes() {
   const router = Router();

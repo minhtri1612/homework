@@ -19,7 +19,7 @@ function sourceFiles(dir) {
 
 test('every relative import names a file that exists', () => {
   const missing = [];
-  for (const file of ['src', 'scripts', 'test'].flatMap(sourceFiles)) {
+  for (const file of [...['src', 'scripts', 'test'].flatMap(sourceFiles), join(ROOT, 'prisma.config.js')]) {
     for (const [, specifier] of readFileSync(file, 'utf8').matchAll(IMPORT)) {
       if (!existsSync(resolve(dirname(file), specifier))) missing.push(`${relative(ROOT, file)} → ${specifier}`);
     }

@@ -19,7 +19,7 @@ account) open it; answering and server-side grading on a 10-point scale are Step
   SQLite file `data/local.db` locally, Turso when deployed. Services in `src/services/` query with Prisma
   Client; migrations are applied by our own `src/config/migrate.ts`
 - `zod` `4.6.7`: form input schemas in `src/validation/` (shape and coercion only)
-- Layers: `routes/web.js` → `controllers/` → `services/` → Prisma; `req.prisma`, no global client
+- Layers: `routes/web.ts` → `controllers/` → `services/` → Prisma; `req.prisma`, no global client
   (see `.claude/docs/architecture.md`)
 - TypeScript `7.0.2` (dev, with `@types/node` `24.19.2`, `@types/express` `5.0.6`): type checking only;
   conversion of the `.js` files is in progress (PLAN.md Step 4.6). `src/types/express.d.ts` types
@@ -47,7 +47,7 @@ npm run db:generate                  # regenerate the Prisma client (npm install
 npm run parse -- examples/mau.txt    # run the parser on a file (or pipe text on stdin)
 ```
 
-`npm run dev` / `npm start` also apply pending migrations on startup (`src/server.js`). The schema lives in
+`npm run dev` / `npm start` also apply pending migrations on startup (`src/server.ts`). The schema lives in
 `prisma/migrations/*/migration.sql` (applied by `src/config/migrate.ts`), not in a `schema.sql`.
 Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `file:data/local.db`.
 
@@ -88,7 +88,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - **All UI text, error messages and the README are Vietnamese.** Code, comments and identifiers are English.
   Validation messages are written in Vietnamese at the source (parser, `validateHomework`, Zod schemas, controllers).
 - **Times are stored as UTC ISO strings**; teachers type and read Vietnam time (UTC+7) via
-  `src/vietnam-time.js`. Do not store local times.
+  `src/vietnam-time.ts`. Do not store local times.
 - **Text is NFC-normalised** before comparing or storing (Vietnamese from macOS arrives as NFD).
 - **Tests never touch `data/local.db`**; they use a fresh temp database (`test/helpers.js`).
 - **Security rules in `.claude/docs/auth.md` are not optional**: hashed session tokens, Origin check

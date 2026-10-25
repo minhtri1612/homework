@@ -12,7 +12,7 @@ export const INVALID_TIME = 'invalid';
  * "2026-11-01T17:00" → "2026-11-01T10:00:00.000Z"; '' → null.
  * Anything else gives INVALID_TIME, which validation reports as invalid.
  */
-export function fromVietnamInput(value) {
+export function fromVietnamInput(value: unknown): string | null {
   const text = String(value ?? '').trim();
   if (!text) return null;
   if (!INPUT.test(text)) return INVALID_TIME;
@@ -23,7 +23,7 @@ export function fromVietnamInput(value) {
 }
 
 /** "2026-11-01T10:00:00.000Z" → "2026-11-01T17:00"; null → ''. */
-export function toVietnamInput(iso) {
+export function toVietnamInput(iso: string | null): string {
   if (!iso) return '';
   return new Date(new Date(iso).getTime() + OFFSET_MS).toISOString().slice(0, 16);
 }
@@ -42,11 +42,11 @@ const TIME = new Intl.DateTimeFormat('vi-VN', {
 });
 
 /** "2026-11-01T10:00:00.000Z" → "01/11/2026". */
-export function formatVietnamDate(iso) {
+export function formatVietnamDate(iso: string): string {
   return DATE.format(new Date(iso));
 }
 
 /** "2026-11-01T10:00:00.000Z" → "17:00 01/11/2026". */
-export function formatVietnamDateTime(iso) {
+export function formatVietnamDateTime(iso: string): string {
   return `${TIME.format(new Date(iso))} ${formatVietnamDate(iso)}`;
 }

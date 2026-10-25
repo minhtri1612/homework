@@ -1,7 +1,7 @@
 # Teacher auth and security rules
 
-Files: `src/controllers/auth.controller.js`, `src/validation/auth.schema.ts`, `src/middleware/auth.js`,
-`src/middleware/same-origin.js`, `src/services/password.service.ts`,
+Files: `src/controllers/auth.controller.ts`, `src/validation/auth.schema.ts`, `src/middleware/auth.ts`,
+`src/middleware/same-origin.ts`, `src/services/password.service.ts`,
 `src/services/session.service.ts`, `src/services/teacher.service.ts`. Tests: `test/auth.test.js`. Students have no accounts (planned; see `PLAN.md`).
 
 ## Registration (`POST /register`)
@@ -44,14 +44,14 @@ match. Comparison uses `timingSafeEqual`.
 
 - **Teacher pages**: mount under `/teacher` so `requireTeacher` applies (302 to `/login`).
 - **Ownership**: any route taking a homework id must check `homework.teacherId === req.teacher.id` and
-  answer 404 otherwise (see `ownHomework()` in `controllers/homework.controller.js`). Data functions that write
+  answer 404 otherwise (see `ownHomework()` in `controllers/homework.controller.ts`). Data functions that write
   (`updateHomework`) also filter by `teacher_id`.
 - **CSRF**: `sameOriginPosts` rejects a POST whose `Origin` host differs from the `Host` header (403).
   A POST **without** an `Origin` header is allowed (non-browser clients); together with
   `SameSite=Lax` this is the whole CSRF defence. There are no CSRF tokens. Keep state-changing actions
   on POST, never GET.
 - **Output escaping**: EJS `<%= %>` for all user data. JSON inside `<script>` must go through
-  `scriptJson()` (`controllers/homework.controller.js`), which escapes `<`, U+2028, U+2029. Tests check both
+  `scriptJson()` (`controllers/homework.controller.ts`), which escapes `<`, U+2028, U+2029. Tests check both
   (`test/auth.test.js` XSS name, `test/editor.test.js` `</script>` in question text).
 - **Correct answers**: never render `answers[].correct` into a student page before the reveal rules
   allow it (see `grading.md`).
