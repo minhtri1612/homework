@@ -7,9 +7,8 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Steps 0–10 are done and the site is live on Render + Turso (Step 8). **Step 11 — Grades
-and sections**: parts 1–3 and the docs are done locally (not committed); 236 tests pass. Next: the user reviews,
-backs up the Turso database, then says when to commit and push (the push deploys the migration). Every push to `main`
+**Where we stopped:** Steps 0–11 are done and live on Render + Turso (Step 11 = commit 5eb7ee2, deployed
+2026-10-25). 236 tests pass. Left: the user moves the existing homeworks out of "Chưa xếp lớp". Every push to `main`
 redeploys the live site, so push only when the user says so.
 
 **Decided 2026-10-25:**
@@ -88,8 +87,9 @@ redeploys the live site, so push only when the user says so.
     skipping the grade check makes the matching tests fail.
   - [ ] part 4: deploy
     - [x] docs: README "Lớp và mục" + backup note in "Triển khai", `CLAUDE.md`, `.claude/docs/{architecture,database,testing}.md`
-    - [ ] user: back up Turso (`turso db shell homework .dump > ~/homework-backup-YYYYMMDD.sql`)
-    - [ ] commit, push when the user says so; check the Render log ("applied migration …") and the live site
+    - [x] backup before the push: `~/homework-backup-20261025.sql` (3 homeworks, 3 submissions)
+    - [x] commit 5eb7ee2 pushed; live site checked: `/`, `/healthz`, `/lop/12`, `/lop/12/tu-vung`,
+      `/lop/12/bai-tap` 200, `/lop/13` 404, the 3 old `/h/CODE` links 200
     - [ ] user: move the existing homeworks out of "Chưa xếp lớp"
 
 ---
