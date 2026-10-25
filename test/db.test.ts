@@ -9,7 +9,7 @@ import { createTeacher } from '../src/services/teacher.service.ts';
 import { createHomework, getHomework, updateHomework, HomeworkValidationError, LIMITS } from '../src/services/homework.service.ts';
 import { generateShareCode } from '../src/services/share-code.service.ts';
 import { hashPassword, verifyPassword } from '../src/services/password.service.ts';
-import { parse } from '../src/shared/parser.js';
+import { parse } from '../src/shared/parser.ts';
 import type { Client } from '@libsql/client';
 import type { PrismaClient } from '../src/generated/prisma/client.ts';
 /** What getHomework() returns for a homework that exists. */
@@ -89,7 +89,7 @@ describe('teachers', () => {
 describe('homeworks', () => {
   test('parsed text is saved and loaded back unchanged', async () => {
     const { title, questions } = parse(TEXT);
-    const { id, shareCode } = await createHomework(prisma, { teacherId, title, questions });
+    const { id, shareCode } = await createHomework(prisma, { teacherId, title: title ?? '', questions });
     const homework = (await getHomework(prisma, id))!;
 
     assert.equal(homework.title, 'Bài 1: Ôn tập');

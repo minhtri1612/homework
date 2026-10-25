@@ -1,11 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { parse, serialize, validateQuestion, normalizeText } from '../src/shared/parser.js';
-
-// The parser is still JavaScript (Step 4.6 part 5), so its results are typed by hand here.
-type ParsedAnswer = { text: string; correct: boolean };
-type ParsedQuestion = { text: string; answers: ParsedAnswer[] };
-type ParseResult = { questions: ParsedQuestion[]; errors: { code: string }[] };
+import { parse, serialize, validateQuestion, normalizeText, type ParseResult, type ParsedQuestion } from '../src/shared/parser.ts';
 
 // Compact view of parsed questions: text + answers, "==" marking the correct one.
 function simple(result: ParseResult) {

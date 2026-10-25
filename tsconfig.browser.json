@@ -1,0 +1,21 @@
+{
+  // Compiles the browser code to JavaScript (npm run build:browser):
+  //   src/shared/parser.ts  → dist/browser/shared/parser.js   served at /shared/parser.js
+  //   src/public/js/*.ts    → dist/browser/public/js/*.js     served at /js/*.js
+  // Browsers cannot run TypeScript; the server imports parser.ts directly.
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    // No Node types: browser code (and the shared parser) must not use Node APIs.
+    "types": [],
+    "strict": true,
+    "erasableSyntaxOnly": true,
+    "rootDir": "src",
+    "outDir": "dist/browser",
+    // editor.ts imports the parser by its URL; this tells the checker which file that is.
+    "paths": { "/shared/parser.js": ["./src/shared/parser.ts"] }
+  },
+  "include": ["src/shared/parser.ts", "src/public/js/*.ts"]
+}

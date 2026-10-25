@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createTeacher } from '../src/services/teacher.service.ts';
 import { createHomework, getHomework, updateHomework } from '../src/services/homework.service.ts';
 import { normalizeShareCode } from '../src/services/share-code.service.ts';
-import { parse } from '../src/shared/parser.js';
+import { parse } from '../src/shared/parser.ts';
 import { startApp, sessionCookie } from './helpers.ts';
 import type { TestApp } from './helpers.ts';
 /** What getHomework() returns for a homework that exists. */

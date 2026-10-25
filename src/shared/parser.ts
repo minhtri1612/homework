@@ -1,6 +1,61 @@
-// Parser for the "syntax" question format. Plain ES module with no
-// dependencies, so the same file runs in the browser (live preview) and in
-// Node (validation before saving).
+// Parser for the "syntax" question format. An ES module with no dependencies
+// and no Node or DOM APIs, so the same code runs in the browser (live preview,
+// compiled to /shared/parser.js by npm run build:browser) and in Node
+// (validation before saving, which imports this .ts file directly).
+
+/** An error or warning. message is Vietnamese; line is 1-based in the pasted text. */
+export interface Problem {
+  code: string;
+  message: string;
+  line?: number;
+  /** 1-based question number (only in parse()'s top-level lists). */
+  question?: number;
+}
+
+export interface ParsedAnswer {
+  text: string;
+  correct: boolean;
+  line?: number;
+}
+
+export interface ParsedQuestion {
+  text: string;
+  answers: ParsedAnswer[];
+  line: number;
+  errors: Problem[];
+  warnings: Problem[];
+}
+
+export interface ParseResult {
+  title: string | null;
+  questions: ParsedQuestion[];
+  errors: Problem[];
+  warnings: Problem[];
+}
+
+/**
+ * What validateQuestion() accepts: a parsed question, a form card or a
+ * question from the server. Fields may be missing or of the wrong type when
+ * they come from a form, so everything is optional.
+ */
+export interface QuestionToCheck {
+  text?: string;
+  answers?: readonly { text?: unknown; correct?: boolean; line?: number }[];
+  line?: number;
+}
+
+interface AnswerLine {
+  letter: string | null;
+  correct: boolean;
+  text: string;
+}
+
+interface InlineMarker {
+  start: number;
+  end: number;
+  letter: string;
+  correct: boolean;
+}
 
 export const MIN_ANSWERS = 2;
 export const MAX_ANSWERS = 6;
@@ -15,7 +70,7 @@ const LETTER_PREFIX = /^(?:\(([A-Ha-h])\)|([A-Ha-h])\s*[.):])\s*/u;
 const INLINE_MARKER = /(^|\s)(==\s*)?(?:\(([A-Ha-h])\)|([A-Ha-h])[.):])/gu;
 const CORRECT_MARK = /^==\s*/u;
 
-const SYNTAX_HINTS = {
+const SYNTAX_HINTS: Record<string, string> = {
   NO_CORRECT: 'Thêm == vào đầu đáp án đúng.',
   MULTIPLE_CORRECT: 'Chỉ giữ == ở một đáp án.',
 };
@@ -24,7 +79,7 @@ const SYNTAX_HINTS = {
  * Normalises pasted text without changing its line count, so line numbers in
  * error messages still match what the teacher sees.
  */
-export function normalizeText(input) {
+export function normalizeText(input: unknown): string {
   return String(input ?? '')
     .normalize('NFC')
     .replace(/\r\n?|[\u2028\u2029]/g, '\n')
@@ -33,25 +88,25 @@ export function normalizeText(input) {
     .replace(/\uFF1D/g, '=');
 }
 
-function collapse(text) {
+function collapse(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
 
-function letterAt(index) {
+function letterAt(index: number): string {
   return LETTERS[index] ?? String(index + 1);
 }
 
 /** Returns the text after "1." / "Câu 1:" (possibly ''), or null if not numbered. */
-function matchNumbering(line) {
+function matchNumbering(line: string): string | null {
   const match = line.match(NUMBERED_WORD) ?? line.match(NUMBERED);
   return match ? (match[2] ?? '') : null;
 }
 
 /** Splits "==B. text" / "B. ==text" / "==text" / "text" into its parts. */
-function parseAnswerLine(line) {
+function parseAnswerLine(line: string): AnswerLine {
   let rest = line;
   let correct = false;
-  let letter = null;
+  let letter: string | null = null;
 
   if (CORRECT_MARK.test(rest)) {
     correct = true;
@@ -59,7 +114,7 @@ function parseAnswerLine(line) {
   }
   const prefix = rest.match(LETTER_PREFIX);
   if (prefix) {
-    letter = (prefix[1] ?? prefix[2]).toUpperCase();
+    letter = (prefix[1] ?? prefix[2]!).toUpperCase();
     rest = rest.slice(prefix[0].length);
     if (!correct && CORRECT_MARK.test(rest)) {
       correct = true;
@@ -76,26 +131,26 @@ function parseAnswerLine(line) {
  * letter if it begins the line, for "C. x   D. y" continuation lines).
  * Returns null when the line holds fewer than two answers.
  */
-function findInlineAnswers(line) {
-  const markers = [];
+function findInlineAnswers(line: string): { prefix: string; answers: AnswerLine[] } | null {
+  const markers: InlineMarker[] = [];
   for (const match of line.matchAll(INLINE_MARKER)) {
     markers.push({
-      start: match.index + match[1].length,
+      start: match.index + match[1]!.length,
       end: match.index + match[0].length,
-      letter: (match[3] ?? match[4]).toUpperCase(),
+      letter: (match[3] ?? match[4]!).toUpperCase(),
       correct: Boolean(match[2]),
     });
   }
 
   // Longest run wins; on a tie the later one, so "vitamin A." in the
   // question text does not swallow the real answers.
-  let best = null;
-  let run = null;
+  let best: InlineMarker[] | null = null;
+  let run: InlineMarker[] | null = null;
   for (const marker of markers) {
     const index = LETTERS.indexOf(marker.letter);
     if (index === 0 || marker.start === 0) {
       run = [marker];
-    } else if (run && index === LETTERS.indexOf(run.at(-1).letter) + 1) {
+    } else if (run && index === LETTERS.indexOf(run.at(-1)!.letter) + 1) {
       run.push(marker);
     } else {
       continue;
@@ -103,9 +158,10 @@ function findInlineAnswers(line) {
     if (run.length >= 2 && (!best || run.length >= best.length)) best = run;
   }
   if (!best) return null;
+  const found = best;
 
-  const answers = best.map((marker, i) => {
-    const next = best[i + 1];
+  const answers = found.map((marker, i) => {
+    const next = found[i + 1];
     let text = line.slice(marker.end, next ? next.start : line.length).trim();
     let correct = marker.correct;
     if (CORRECT_MARK.test(text)) {
@@ -114,18 +170,18 @@ function findInlineAnswers(line) {
     }
     return { letter: marker.letter, correct, text: collapse(text) };
   });
-  return { prefix: collapse(line.slice(0, best[0].start)), answers };
+  return { prefix: collapse(line.slice(0, found[0]!.start)), answers };
 }
 
 /**
  * Checks one question (from the parser or from a form card).
  * Question shape: { text, answers: [{ text, correct }], line? }.
  */
-export function validateQuestion(question) {
-  const errors = [];
-  const warnings = [];
+export function validateQuestion(question: QuestionToCheck): { errors: Problem[]; warnings: Problem[] } {
+  const errors: Problem[] = [];
+  const warnings: Problem[] = [];
   const answers = question.answers ?? [];
-  const add = (list, code, message, line = question.line) => {
+  const add = (list: Problem[], code: string, message: string, line = question.line) => {
     list.push({ code, message, ...(line !== undefined && { line }) });
   };
 
@@ -152,7 +208,7 @@ export function validateQuestion(question) {
     );
   }
 
-  const seen = new Map();
+  const seen = new Map<string, number>();
   answers.forEach((answer, i) => {
     const text = collapse(String(answer.text ?? '').normalize('NFC'));
     if (!text) {
@@ -164,7 +220,7 @@ export function validateQuestion(question) {
       add(
         errors,
         'DUPLICATE_ANSWER',
-        `Đáp án ${letterAt(i)} trùng với đáp án ${letterAt(seen.get(key))}.`,
+        `Đáp án ${letterAt(i)} trùng với đáp án ${letterAt(seen.get(key)!)}.`,
         answer.line ?? question.line,
       );
     } else {
@@ -179,10 +235,10 @@ export function validateQuestion(question) {
  * The first non-empty line is the homework title when a blank line follows it
  * and it is not an answer line. Returns { text, index } or null.
  */
-function findTitle(lines) {
+function findTitle(lines: string[]): { text: string; index: number } | null {
   const index = lines.findIndex((raw) => collapse(raw) !== '');
-  if (index === -1 || index + 1 >= lines.length || collapse(lines[index + 1]) !== '') return null;
-  const text = collapse(lines[index]);
+  if (index === -1 || index + 1 >= lines.length || collapse(lines[index + 1]!) !== '') return null;
+  const text = collapse(lines[index]!);
   const answer = parseAnswerLine(text);
   if (answer.letter !== null || answer.correct || findInlineAnswers(text)) return null;
   return { text, index };
@@ -198,12 +254,20 @@ function findTitle(lines) {
  * lists repeat them with the question number added, plus EMPTY_INPUT when
  * there are no questions at all.
  */
-export function parse(input) {
+/** A question being collected line by line. */
+interface Block {
+  line: number;
+  head: { text: string; line: number }[];
+  answers: (AnswerLine & { line: number })[];
+  mode: 'lettered' | 'plain' | null;
+}
+
+export function parse(input: unknown): ParseResult {
   const lines = normalizeText(input).split('\n');
   const title = findTitle(lines);
   if (title) lines[title.index] = '';
-  const blocks = [];
-  let block = null;
+  const blocks: Block[] = [];
+  let block: Block | null = null;
 
   // mode: null = no answer marker seen yet, 'lettered' = answers use A. B. …,
   // 'plain' = answers have no letters (the correct one only has ==).
@@ -211,9 +275,11 @@ export function parse(input) {
     if (block) blocks.push(block);
     block = null;
   };
-  const open = (line) => {
+  // Returns the new block, so callers below can keep using it with its type.
+  const open = (line: number): Block => {
     close();
     block = { line, head: [], answers: [], mode: null };
+    return block;
   };
 
   lines.forEach((raw, i) => {
@@ -226,7 +292,7 @@ export function parse(input) {
 
     const numbered = matchNumbering(text);
     if (numbered !== null) {
-      open(line);
+      block = open(line);
       text = numbered;
       if (!text) return;
     }
@@ -234,8 +300,8 @@ export function parse(input) {
     const inline = findInlineAnswers(text);
     if (inline) {
       const startsNewQuestion =
-        block?.answers.length > 0 && (inline.prefix !== '' || inline.answers[0].letter === 'A');
-      if (!block || startsNewQuestion) open(line);
+        (block?.answers.length ?? 0) > 0 && (inline.prefix !== '' || inline.answers[0]!.letter === 'A');
+      if (!block || startsNewQuestion) block = open(line);
       if (inline.prefix) block.head.push({ text: inline.prefix, line });
       block.mode ??= 'lettered';
       block.answers.push(...inline.answers.map((answer) => ({ ...answer, line })));
@@ -246,7 +312,7 @@ export function parse(input) {
     const isAnswer = answer.letter !== null || answer.correct;
 
     if (!block) {
-      open(line);
+      block = open(line);
     }
 
     if (block.answers.length === 0) {
@@ -269,7 +335,7 @@ export function parse(input) {
     if (block.mode === 'lettered') {
       if (!isAnswer || answer.letter === 'A') {
         // A line without a letter, or a second "A.", starts the next question.
-        open(line);
+        block = open(line);
         if (!isAnswer) {
           block.head.push({ text, line });
           return;
@@ -283,7 +349,7 @@ export function parse(input) {
     // Plain mode: a line ending in "?" or ":" after enough answers is
     // taken as the next question even without a blank line.
     if (!isAnswer && /[?:]$/u.test(text) && block.answers.length >= MIN_ANSWERS) {
-      open(line);
+      block = open(line);
       block.head.push({ text, line });
       return;
     }
@@ -293,7 +359,7 @@ export function parse(input) {
 
   const questions = blocks.map((b) => {
     let head = b.head;
-    let answers = b.answers;
+    let answers: { text: string; correct: boolean; line: number }[] = b.answers;
     if (b.mode === null && head.length > 1) {
       answers = head.slice(1).map((h) => ({ correct: false, ...h }));
       head = head.slice(0, 1);
@@ -310,7 +376,7 @@ export function parse(input) {
     return { ...question, errors, warnings };
   });
 
-  const flatten = (key) =>
+  const flatten = (key: 'errors' | 'warnings'): Problem[] =>
     questions.flatMap((q, i) => q[key].map((item) => ({ ...item, question: i + 1 })));
   const errors = flatten('errors');
   if (questions.length === 0) {
@@ -324,7 +390,10 @@ export function parse(input) {
  * Turns questions (e.g. form cards) back into syntax text that parse() reads
  * back. An optional title goes on the first line, followed by a blank line.
  */
-export function serialize(questions, title = '') {
+export function serialize(
+  questions: readonly { text?: string; answers: readonly { text?: unknown; correct?: boolean }[] }[],
+  title: unknown = '',
+): string {
   const heading = collapse(String(title ?? ''));
   const body = questions
     .map((question, i) => {

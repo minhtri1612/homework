@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from '../generated/prisma/client.ts';
-import { validateQuestion } from '../shared/parser.js';
+import { validateQuestion } from '../shared/parser.ts';
 import { generateShareCode } from './share-code.service.ts';
 
 const REVEAL_MODES = ['never', 'after_submit', 'after_deadline'];

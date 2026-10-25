@@ -6,48 +6,61 @@ import { parse, serialize, validateQuestion, MAX_ANSWERS } from '/shared/parser.
 
 const LETTERS = 'ABCDEFGH';
 
-const form = document.getElementById('editor');
-const titleInput = document.getElementById('title');
-const syntax = document.getElementById('syntax');
-const syntaxStatus = document.getElementById('syntax-status');
-const syntaxProblems = document.getElementById('syntax-problems');
-const cardsList = document.getElementById('cards');
-const cardsEmpty = document.getElementById('cards-empty');
-const shuffleAll = document.getElementById('shuffle-all');
-const shuffleAllLabel = document.getElementById('shuffle-all-label');
-const titleNote = document.getElementById('title-note');
-const saveStatus = document.getElementById('save-status');
-const questionsJson = document.getElementById('questions-json');
+// The elements of views/editor.ejs. The casts say which kind each one is.
+const form = document.getElementById('editor') as HTMLFormElement;
+const titleInput = document.getElementById('title') as HTMLInputElement;
+const syntax = document.getElementById('syntax') as HTMLTextAreaElement;
+const syntaxStatus = document.getElementById('syntax-status') as HTMLElement;
+const syntaxProblems = document.getElementById('syntax-problems') as HTMLElement;
+const cardsList = document.getElementById('cards') as HTMLElement;
+const cardsEmpty = document.getElementById('cards-empty') as HTMLElement;
+const shuffleAll = document.getElementById('shuffle-all') as HTMLInputElement;
+const shuffleAllLabel = document.getElementById('shuffle-all-label') as HTMLElement;
+const titleNote = document.getElementById('title-note') as HTMLElement;
+const saveStatus = document.getElementById('save-status') as HTMLElement;
+const questionsJson = document.getElementById('questions-json') as HTMLInputElement;
 
-// Each card: { text, answers: [{ text, correct }], shuffleAnswers, fresh }.
-// "fresh" hides the errors of a card just added until the teacher types in it.
-let cards = JSON.parse(document.getElementById('initial-questions').textContent);
-let activeTab = null;
+type Tab = 'syntax' | 'form';
+
+interface Card {
+  text: string;
+  answers: { text: string; correct: boolean }[];
+  shuffleAnswers: boolean;
+  /** Hides the errors of a card just added until the teacher types in it. */
+  fresh?: boolean;
+}
+
+let cards: Card[] = JSON.parse((document.getElementById('initial-questions') as HTMLElement).textContent ?? '[]');
+let activeTab: Tab | null = null;
 // The syntax text as last synced with the cards; if the teacher has not
 // changed it since, switching tabs does not need to re-read it.
-let syncedText = null;
+let syncedText: string | null = null;
 let dirty = false;
 
 /** Creates an element: h('button', { type: 'button', class: 'x' }, 'text', child…). */
-function h(tag, attributes = {}, ...children) {
+function h(
+  tag: string,
+  attributes: Record<string, string | number | boolean | null | undefined> = {},
+  ...children: (Node | string)[]
+): HTMLElement {
   const element = document.createElement(tag);
   for (const [name, value] of Object.entries(attributes)) {
     if (value === false || value === null || value === undefined) continue;
-    element.setAttribute(name, value === true ? '' : value);
+    element.setAttribute(name, value === true ? '' : String(value));
   }
   element.append(...children);
   return element;
 }
 
-function letter(index) {
+function letter(index: number): string {
   return LETTERS[index] ?? String(index + 1);
 }
 
-function emptyCard() {
+function emptyCard(): Card {
   return { text: '', answers: [{ text: '', correct: false }, { text: '', correct: false }], shuffleAnswers: false, fresh: true };
 }
 
-function problemsOf(card) {
+function problemsOf(card: Card) {
   const { errors, warnings } = validateQuestion(card);
   return { errors: card.fresh ? [] : errors, warnings: card.fresh ? [] : warnings, blocking: errors.length > 0 };
 }
@@ -59,7 +72,7 @@ function markDirty() {
 
 // ---- Tabs -----------------------------------------------------------------
 
-function showTab(name) {
+function showTab(name: Tab) {
   if (name === activeTab) return;
   if (name === 'form' && activeTab === 'syntax') readSyntax();
   if (name === 'syntax') {
@@ -68,16 +81,16 @@ function showTab(name) {
     updateSyntaxStatus();
   }
   activeTab = name;
-  for (const tab of document.querySelectorAll('.tab')) {
+  for (const tab of document.querySelectorAll<HTMLElement>('.tab')) {
     const selected = tab.dataset.tab === name;
     tab.setAttribute('aria-selected', String(selected));
     tab.classList.toggle('active', selected);
-    document.getElementById(`tab-${tab.dataset.tab}`).hidden = !selected;
+    (document.getElementById(`tab-${tab.dataset.tab}`) as HTMLElement).hidden = !selected;
   }
   if (name === 'form') renderCards();
 }
 
-function isBlank(card) {
+function isBlank(card: Card): boolean {
   return !card.text.trim() && card.answers.every((answer) => !answer.text.trim());
 }
 
@@ -99,7 +112,7 @@ function readSyntax() {
   markDirty();
 }
 
-function showTitleNote(title) {
+function showTitleNote(title: string | null) {
   titleNote.replaceChildren();
   titleNote.hidden = true;
   if (!title || title === titleInput.value.trim()) return;
@@ -120,7 +133,7 @@ function showTitleNote(title) {
 
 // ---- Syntax tab -------------------------------------------------------------
 
-let statusTimer;
+let statusTimer: ReturnType<typeof setTimeout> | undefined;
 function updateSyntaxStatus() {
   clearTimeout(statusTimer);
   statusTimer = setTimeout(() => {
@@ -154,7 +167,7 @@ function renderCards() {
   updateShuffleAll();
 }
 
-function renderCard(card, index) {
+function renderCard(card: Card, index: number): HTMLElement {
   const answers = h('ol', { class: 'answers' });
   card.answers.forEach((answer, j) => {
     answers.append(
@@ -219,10 +232,10 @@ function renderCard(card, index) {
   return element;
 }
 
-function updateProblems(element, card) {
+function updateProblems(element: HTMLElement, card: Card) {
   const { errors, warnings } = problemsOf(card);
   element.classList.toggle('invalid', errors.length > 0);
-  element.querySelector('.problems').replaceChildren(
+  (element.querySelector('.problems') as HTMLElement).replaceChildren(
     ...errors.map((error) => h('li', { class: 'error' }, error.message)),
     ...warnings.map((warning) => h('li', { class: 'warning' }, warning.message)),
   );
@@ -235,17 +248,17 @@ function updateShuffleAll() {
 }
 
 /** Re-renders after a change of structure and puts the cursor back. */
-function rerender(focusSelector) {
+function rerender(focusSelector: string | null) {
   renderCards();
   markDirty();
-  if (focusSelector) cardsList.querySelector(focusSelector)?.focus();
+  if (focusSelector) cardsList.querySelector<HTMLElement>(focusSelector)?.focus();
 }
 
 cardsList.addEventListener('click', (event) => {
-  const button = event.target.closest('button[data-action]');
+  const button = (event.target as HTMLElement).closest<HTMLElement>('button[data-action]');
   if (!button) return;
-  const index = Number(button.closest('.question').dataset.index);
-  const card = cards[index];
+  const index = Number((button.closest('.question') as HTMLElement).dataset.index);
+  const card = cards[index]!;
   const answer = Number(button.dataset.answer);
   card.fresh = false;
 
@@ -262,7 +275,7 @@ cardsList.addEventListener('click', (event) => {
     case 'up':
     case 'down': {
       const target = button.dataset.action === 'up' ? index - 1 : index + 1;
-      [cards[index], cards[target]] = [cards[target], cards[index]];
+      [cards[index], cards[target]] = [cards[target]!, cards[index]!];
       return rerender(`[data-index="${target}"] [data-action="${button.dataset.action}"]`);
     }
     case 'delete':
@@ -273,11 +286,12 @@ cardsList.addEventListener('click', (event) => {
 });
 
 cardsList.addEventListener('input', (event) => {
-  const element = event.target.closest('.question');
+  const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+  const element = target.closest<HTMLElement>('.question');
   if (!element) return;
-  const card = cards[Number(element.dataset.index)];
-  if (event.target.classList.contains('question-text')) card.text = event.target.value;
-  else if (event.target.classList.contains('answer-text')) card.answers[Number(event.target.dataset.answer)].text = event.target.value;
+  const card = cards[Number(element.dataset.index)]!;
+  if (target.classList.contains('question-text')) card.text = target.value;
+  else if (target.classList.contains('answer-text')) card.answers[Number(target.dataset.answer)]!.text = target.value;
   else return;
   card.fresh = false;
   updateProblems(element, card);
@@ -285,8 +299,9 @@ cardsList.addEventListener('input', (event) => {
 });
 
 cardsList.addEventListener('change', (event) => {
-  if (!event.target.classList.contains('shuffle-answers')) return;
-  cards[Number(event.target.closest('.question').dataset.index)].shuffleAnswers = event.target.checked;
+  const target = event.target as HTMLInputElement;
+  if (!target.classList.contains('shuffle-answers')) return;
+  cards[Number((target.closest('.question') as HTMLElement).dataset.index)]!.shuffleAnswers = target.checked;
   updateShuffleAll();
   markDirty();
 });
@@ -296,7 +311,7 @@ shuffleAll.addEventListener('change', () => {
   rerender(null);
 });
 
-document.getElementById('add-question').addEventListener('click', () => {
+(document.getElementById('add-question') as HTMLElement).addEventListener('click', () => {
   cards.push(emptyCard());
   rerender(`[data-index="${cards.length - 1}"] .question-text`);
 });
@@ -323,10 +338,10 @@ form.addEventListener('submit', (event) => {
 
 // ---- Start --------------------------------------------------------------------
 
-for (const tab of document.querySelectorAll('.tab')) {
-  tab.addEventListener('click', () => showTab(tab.dataset.tab));
+for (const tab of document.querySelectorAll<HTMLElement>('.tab')) {
+  tab.addEventListener('click', () => showTab(tab.dataset.tab as Tab));
 }
-document.getElementById('convert').addEventListener('click', () => showTab('form'));
+(document.getElementById('convert') as HTMLElement).addEventListener('click', () => showTab('form'));
 syntax.addEventListener('input', () => {
   markDirty();
   updateSyntaxStatus();
@@ -336,4 +351,4 @@ window.addEventListener('beforeunload', (event) => {
   if (dirty) event.preventDefault();
 });
 
-showTab(form.dataset.startTab);
+showTab(form.dataset.startTab as Tab);

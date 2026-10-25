@@ -2,8 +2,8 @@
 // buttons stay hidden without JavaScript; the box can still be selected by hand.
 const LABEL = 'Sao chép link';
 
-for (const button of document.querySelectorAll('[data-copy]')) {
-  const input = button.parentElement.querySelector('input');
+for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
+  const input = button.parentElement!.querySelector('input')!;
   button.hidden = false;
   input.addEventListener('focus', () => input.select());
   button.addEventListener('click', async () => {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createTeacher } from '../src/services/teacher.service.ts';
 import { getHomework, updateHomework } from '../src/services/homework.service.ts';
 import { fromVietnamInput, toVietnamInput, INVALID_TIME } from '../src/vietnam-time.ts';
-import { parse } from '../src/shared/parser.js';
+import { parse } from '../src/shared/parser.ts';
 import { startApp, sessionCookie } from './helpers.ts';
 import type { TestApp } from './helpers.ts';
 import type { QuestionInput } from '../src/services/homework.service.ts';
@@ -230,7 +230,7 @@ describe('edit', () => {
 describe('syntax text to saved homework', () => {
   test('what the parser produces can be saved as-is', async () => {
     const { title, questions } = parse('BÀI TẬP\n\n1. A. cat   B. dog   ==C. pencil\n\nCâu 2: Q?\n==x\ny');
-    const id = await createViaForm({ title, questions: JSON.stringify(questions) });
+    const id = await createViaForm({ title: title ?? '', questions: JSON.stringify(questions) });
     const homework = (await getHomework(prisma, id))!;
     assert.equal(homework.title, 'BÀI TẬP');
     assert.deepEqual(simple(homework.questions), [['', 'cat', 'dog', '==pencil'], ['Q?', '==x', 'y']]);

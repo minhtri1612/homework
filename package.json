@@ -8,9 +8,11 @@
     "node": ">=24"
   },
   "scripts": {
-    "pretest": "prisma generate && npm run typecheck",
+    "pretest": "prisma generate && npm run typecheck && npm run build:browser",
     "test": "node --test \"test/**/*.test.ts\"",
-    "typecheck": "tsc -p .",
+    "typecheck": "tsc -p . && tsc -p tsconfig.browser.json --noEmit",
+    "build:browser": "node -e \"require('fs').rmSync('dist/browser', { recursive: true, force: true })\" && tsc -p tsconfig.browser.json",
+    "build": "prisma generate && npm run build:browser",
     "postinstall": "prisma generate",
     "parse": "node scripts/parse.ts",
     "db:init": "node scripts/db-migrate.ts",
@@ -18,7 +20,9 @@
     "db:seed": "node scripts/db-seed.ts",
     "db:generate": "prisma generate",
     "db:migration": "node scripts/db-new-migration.ts",
+    "predev": "npm run build:browser",
     "dev": "node --watch src/server.ts",
+    "prestart": "npm run build:browser",
     "start": "node src/server.ts"
   },
   "dependencies": {

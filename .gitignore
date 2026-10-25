@@ -5,3 +5,4 @@ data/*.db-*
 npm-debug.log*
 .DS_Store
 src/generated/
+dist/

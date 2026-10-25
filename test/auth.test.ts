@@ -2,7 +2,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createTeacher } from '../src/services/teacher.service.ts';
 import { createHomework } from '../src/services/homework.service.ts';
-import { parse } from '../src/shared/parser.js';
+import { parse } from '../src/shared/parser.ts';
 import { startApp, sessionCookie } from './helpers.ts';
 import type { TestApp } from './helpers.ts';
 

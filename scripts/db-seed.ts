@@ -6,7 +6,7 @@ import { applyMigrations } from '../src/config/migrate.ts';
 import { createPrisma, openDb, DEFAULT_URL } from '../src/config/client.ts';
 import { createTeacher, findTeacherByEmail } from '../src/services/teacher.service.ts';
 import { createHomework } from '../src/services/homework.service.ts';
-import { parse } from '../src/shared/parser.js';
+import { parse } from '../src/shared/parser.ts';
 
 const TEACHER = { email: 'giaovien@example.com', name: 'Cô Lan', password: 'matkhau123' };
 
@@ -63,7 +63,7 @@ for (const text of HOMEWORKS) {
   const { title, questions } = parse(text);
   const { shareCode } = await createHomework(prisma, {
     teacherId,
-    title,
+    title: title ?? '',
     questions: questions.map((q) => ({ ...q, shuffleAnswers: true })),
   });
   console.log(`✔ ${title}: ${questions.length} câu, mã ${shareCode}`);

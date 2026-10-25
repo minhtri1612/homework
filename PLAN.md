@@ -8,7 +8,7 @@
 ## Next session (stopped 2026-10-25)
 
 **Where we stopped:** Step 4.6 parts 3–6 run back to back (user's instruction 2026-10-25): each part is tested
-and committed locally, **nothing after part 2 (4c5ecd2) is pushed** until the user reviews. Parts 3–4 done.
+and committed locally, **nothing after part 2 (4c5ecd2) is pushed** until the user reviews. Parts 3–5 done.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -29,7 +29,7 @@ and committed locally, **nothing after part 2 (4c5ecd2) is pushed** until the us
   - [x] part 3: services on Prisma
   - [x] part 4: validation + controllers + routes
   - [x] part 5: scripts, docs, cleanup
-- [ ] **Step 4.6 — Convert to TypeScript** (parts 1–4 of 6 done, see below) ← **next**
+- [ ] **Step 4.6 — Convert to TypeScript** (parts 1–5 of 6 done, see below) ← **next**
 - [x] **Step 5 — Sharing**: link `/h/CODE` and a "nhập mã" box on the home page (commit 2258768)
   - [x] `/h/CODE` finds the homework (code typed in any letter case), 404 in Vietnamese otherwise
   - [x] code entry form on the home page
@@ -470,7 +470,7 @@ Planned `tsconfig.json` settings:
     a test knows exist use `!`. The changed assertion lines only add `?? ''` / `!` for nullable header values
     and results, and `tx.execute({ sql, args })` (the typed form of the same call); what they check is the same.
     The parser is still JS, so `test/parser.test.ts` and `scripts/parse.ts` type its results by hand until part 5.
-- [ ] 5. **Parser and browser code (needs a build step).**
+- [x] 5. **Parser and browser code (needs a build step).**
   - `src/shared/parser.ts`. Browsers cannot run TypeScript, so `npm run build:browser` (`tsc -p
     tsconfig.browser.json`) compiles `parser.ts` and `src/public/js/*.ts` to JavaScript in a `dist/public`
     folder.
@@ -478,6 +478,17 @@ Planned `tsconfig.json` settings:
   - The build runs in `predev`, `pretest` and on Render. A test checks that the served `/shared/parser.js`
     is the compiled output of the current `parser.ts`, so the preview can never run a stale parser.
   - The parser's behaviour does not change: `test/parser.test.js` passes unchanged except for its file type.
+  - Done: `tsconfig.browser.json` (DOM types, no Node types, `paths` maps the `/shared/parser.js` URL to
+    `parser.ts`) compiles to `dist/browser/` (gitignored); the main tsconfig excludes `src/public`.
+    `npm run build:browser` empties `dist/browser` first; it runs in `predev`, `prestart`, `pretest` and in
+    `npm run build` (for Render). `typecheck` checks both configs. Same URLs as before; `.ts` sources are not
+    served (404); the server warns at start if the build is missing. `test/browser-build.test.ts` compiles
+    afresh into a temp folder and compares with what is served (checked: it fails after editing `parser.ts`
+    without rebuilding). Compiled parser compared line by line with the old `parser.js`: only the three
+    strict-mode rewrites differ (`block = open(line)`, `(block?.answers.length ?? 0) > 0`, `found`).
+    Typing `parse()` showed `title` is `string | null`; the three callers now pass `title ?? ''` (a missing
+    title was already reported as "chưa có tiêu đề"). `node --watch` does not rebuild browser code: after
+    editing it, restart `npm run dev` (or run `npm run build:browser`). 145 tests.
 - [ ] 6. **Docs.** README, CLAUDE.md (stack, commands), `.claude/docs/*`; tick this step.
 
 ### Risks

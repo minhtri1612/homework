@@ -9,6 +9,11 @@ import { webRoutes } from './routes/web.ts';
 import { notFound, serverError } from './routes/status.ts';
 import { formatVietnamDate, formatVietnamDateTime } from './vietnam-time.ts';
 
+export const BROWSER_BUILD = {
+  public: fileURLToPath(new URL('../dist/browser/public', import.meta.url)),
+  shared: fileURLToPath(new URL('../dist/browser/shared', import.meta.url)),
+};
+
 export function createApp({ prisma }: { prisma: PrismaClient }): Express {
   const app = express();
   app.disable('x-powered-by');
@@ -18,9 +23,14 @@ export function createApp({ prisma }: { prisma: PrismaClient }): Express {
   app.locals.formatDate = formatVietnamDate;
   app.locals.formatDateTime = formatVietnamDateTime;
 
-  app.use(express.static(fileURLToPath(new URL('./public', import.meta.url))));
-  // The parser also runs in the browser, for the editor's live preview.
-  app.use('/shared', express.static(fileURLToPath(new URL('./shared', import.meta.url))));
+  // Browser JavaScript is compiled from TypeScript by npm run build:browser:
+  // /js/*.js from src/public/js/*.ts, and /shared/parser.js from the same
+  // parser the server uses (for the editor's live preview).
+  app.use(express.static(BROWSER_BUILD.public));
+  app.use('/shared', express.static(BROWSER_BUILD.shared));
+  // style.css; src/public also holds the .ts sources of the browser code, which are not served.
+  const publicFiles = express.static(fileURLToPath(new URL('./public', import.meta.url)));
+  app.use((req, res, next) => (req.path.endsWith('.ts') ? next() : publicFiles(req, res, next)));
   // 1 MB fits 200 long questions; the default 100 KB does not.
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
   // Middleware and controllers reach the database through req.prisma.
