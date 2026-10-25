@@ -2,8 +2,11 @@
 
 Schema: `prisma/schema.prisma` + `prisma/migrations/*/migration.sql` (the SQL files are what runs; the
 init migration has hand-written CHECKs, `COLLATE NOCASE` and the partial index). Applier:
-`src/config/migrate.js`. Connection: `src/db/client.js`.
-Data access: `src/db/teachers.js`, `src/db/sessions.js`, `src/db/homeworks.js`. Tests: `test/db.test.js`.
+`src/config/migrate.js`. Connections: `src/config/client.js` (`createPrisma()`, used by the app and the
+services) and `src/db/client.js` (`openDb()`, a plain libSQL client used only to apply migrations, by
+`db:reset`, and by tests that check rows with SQL).
+Data access: `src/services/teacher.service.js`, `session.service.js`, `homework.service.js` (Prisma Client;
+the first argument is the PrismaClient or a transaction `tx`). Tests: `test/db.test.js`.
 
 ## libSQL: local file vs Turso
 
@@ -21,18 +24,26 @@ Data access: `src/db/teachers.js`, `src/db/sessions.js`, `src/db/homeworks.js`. 
 - **No timestamp defaults in the database.** `created_at`, `updated_at` and `submitted_at` have no
   `DEFAULT`; the data-access code sets them (`new Date().toISOString()`). Raw-SQL inserts in tests must
   set them too, or the insert fails with `NOT NULL`.
-- Step 4.5 parts 3–5 (Prisma Client services, Zod, controllers) are not done yet: the app still queries
-  with raw SQL through `@libsql/client`.
+- `createPrisma({ url, authToken })` defaults to the same `DATABASE_URL` / `DATABASE_AUTH_TOKEN` and
+  connects through `PrismaLibSql` (`@prisma/adapter-libsql`), for `file:` and Turso alike. The client is
+  generated TypeScript in `src/generated/prisma/` (`npm run db:generate`, also run by `postinstall`;
+  regenerate after every `schema.prisma` change). Node 24 imports it from JS by stripping the types.
+- Step 4.5 parts 4–5 (Zod, controllers, scripts) are not done yet.
 - Foreign keys are enforced, including inside transactions (tested in `test/db.test.js`).
-- Multi-statement writes use `const tx = await db.transaction('write')` … `await tx.commit()` in
-  `try`, `tx.close()` in `finally`. Without commit, close rolls back.
+- Multi-statement writes use `prisma.$transaction(async (tx) => { … }, { timeout: 30_000 })`: a thrown
+  error rolls everything back. The default 5 s timeout is too short for 200 questions over Turso.
+  The adapter runs transactions of one process one at a time, which is what keeps the share-code check
+  and the "submissions exist → new version" check correct (tested: "saves at the same moment do not
+  clash"). That would not hold with several server processes; Render runs one.
+- Independent writes that must succeed together without reads in between use the array form
+  `prisma.$transaction([...])` (`createSession`).
 
 ## Conventions
 
 - Times: UTC ISO 8601 text (`2026-10-24T16:45:00.000Z`), set in code with `new Date().toISOString()`. Convert Vietnam time with `src/vietnam-time.js`.
 - Booleans: `BOOLEAN` columns stored as 0/1 with `CHECK (x IN (0, 1))`; data-access functions return JS booleans.
 - Rows are mapped to camelCase objects in the data-access modules; routes never see raw rows.
-- Text is NFC-normalised and trimmed before insert (`clean()` in `homeworks.js`).
+- Text is NFC-normalised and trimmed before insert (`clean()` in `homework.service.js`).
 
 ## Tables
 
@@ -65,24 +76,24 @@ change, also not when a new version is created.
 part after `/h/` if it is a link, removes spaces and dashes, upper-cases, then must match the alphabet
 and length exactly (`0`, `O`, `1`, `I`, `L` → `null`).
 
-## Homework functions (`src/db/homeworks.js`)
+## Homework functions (`src/services/homework.service.js`)
 
 - `validateHomework({ title, questions, revealMode, deadline })` returns a list of `{ code, message, question? }`
   (Vietnamese). Checks: title present and ≤ 200 chars; 1–200 questions; each question via
   `validateQuestion`; question text ≤ 2000 and answer text ≤ 500 chars (`LIMITS`); valid reveal mode;
   valid deadline; `after_deadline` needs a deadline. Errors are thrown as `HomeworkValidationError`
   (`.errors`); routes catch only that class.
-- `createHomework(db, {...})`: validates, then in one write transaction inserts the homework,
+- `createHomework(prisma, {...})`: validates, then in one write transaction inserts the homework,
   version 1, its questions and answers. Returns `{ id, shareCode, versionId }`.
-- `updateHomework(db, { id, teacherId, ... })`: returns `null` if the homework is not this teacher's.
+- `updateHomework(prisma, { id, teacherId, ... })`: returns `null` if the homework is not this teacher's.
   See versioning below. Returns `{ version, newVersion }`.
-- `getHomework(db, id)`: homework + **latest** version (`{ id, number, submissionCount }`) + its
+- `getHomework(prisma, id)`: homework + **latest** version (`{ id, number, submissionCount }`) + its
   questions **including `correct`** and ids. Teacher/grading use only; never send to students as-is.
   Does not check ownership; callers do.
-- `findSharedHomework(db, shareCode)`: `{ id, title, shareCode, deadline, teacherName, questionCount }`
+- `findSharedHomework(prisma, shareCode)`: `{ id, title, shareCode, deadline, teacherName, questionCount }`
   (latest version) or null. **The only homework function safe for student pages**; it reads no
   questions or answers.
-- `listHomeworks(db, teacherId)`: newest first, `questionCount` of the latest version,
+- `listHomeworks(prisma, teacherId)`: newest first, `questionCount` of the latest version,
   `submissionCount` across **all** versions (the editor's notice counts the current version only).
 
 ## Homework versioning

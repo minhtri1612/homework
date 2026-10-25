@@ -1,22 +1,27 @@
 // Shared by the tests that run the real app on a random port with a fresh
-// database file (never data/local.db).
+// database file (never data/local.db). The app uses prisma; db is a plain
+// libSQL connection to the same file, for tests that check rows with SQL.
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openDb } from '../src/db/client.js';
 import { applyMigrations } from '../src/config/migrate.js';
+import { createPrisma } from '../src/config/client.js';
 import { createApp } from '../src/app.js';
 
 export async function startApp() {
   const dir = mkdtempSync(join(tmpdir(), 'homework-test-'));
-  const db = openDb({ url: `file:${join(dir, 'test.db')}` });
+  const url = `file:${join(dir, 'test.db')}`;
+  const db = openDb({ url });
   await applyMigrations(db);
-  const server = createApp({ db }).listen(0);
+  const prisma = createPrisma({ url });
+  const server = createApp({ prisma }).listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   const base = `http://localhost:${server.address().port}`;
 
   return {
     db,
+    prisma,
     base,
     get(path, cookie) {
       return fetch(base + path, { redirect: 'manual', headers: cookie ? { cookie } : {} });
@@ -31,6 +36,7 @@ export async function startApp() {
     },
     async close() {
       await new Promise((resolve) => server.close(resolve));
+      await prisma.$disconnect();
       db.close();
       rmSync(dir, { recursive: true, force: true });
     },

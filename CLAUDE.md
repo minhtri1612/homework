@@ -15,7 +15,10 @@ account) open it; answering and server-side grading on a 10-point scale are Step
 
 - Node.js 24 (`.nvmrc`: `24`; `package.json` `engines`: `>=24`), ES modules (`"type": "module"`)
 - Express `5.3.0`, server-rendered EJS `7.0.1` views, plain browser JavaScript (no bundler, no framework)
-- `@libsql/client` `0.18.0`: SQLite file `data/local.db` locally, Turso when deployed
+- Prisma `7.10.1` (`prisma`, `@prisma/client`, `@prisma/adapter-libsql`) over `@libsql/client` `0.17.4`:
+  SQLite file `data/local.db` locally, Turso when deployed. Services in `src/services/` query with Prisma
+  Client; migrations are applied by our own `src/config/migrate.js`
+- `zod` `4.6.7` (installed for Step 4.5 part 4, not used yet)
 - Tests: built-in `node:test` + `node:assert/strict` (no test dependencies)
 - Password hashing: `node:crypto` scrypt (no native modules)
 - No linter or formatter configured; `.editorconfig` sets UTF-8, LF, 2-space indent
@@ -64,7 +67,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - **One parser for browser and server.** `src/shared/parser.js` is served to the browser at
   `/shared/parser.js` and imported by the server. It stays a dependency-free ES module with no Node or
   DOM APIs. Change it once, and the editor preview and the save-time validation change together.
-- **The server re-validates everything.** `validateHomework()` in `src/db/homeworks.js` runs on every
+- **The server re-validates everything.** `validateHomework()` in `src/services/homework.service.js` runs on every
   save; the browser check is only a convenience. Schema `CHECK`/`UNIQUE` constraints are a second line of defence.
 - **Editing questions after submissions creates a new version** (`updateHomework`). Old submissions
   keep pointing at the old version's question/answer rows. Never update or delete rows of a version

@@ -1,7 +1,7 @@
 // Pages for logged-in teachers: the homework list and the homework editor.
 import { Router } from 'express';
 import { requireTeacher } from '../auth/middleware.js';
-import { listHomeworks, getHomework, createHomework, updateHomework, HomeworkValidationError } from '../db/homeworks.js';
+import { listHomeworks, getHomework, createHomework, updateHomework, HomeworkValidationError } from '../services/homework.service.js';
 import { fromVietnamInput, toVietnamInput } from '../vietnam-time.js';
 
 const SAVED_MESSAGES = {
@@ -66,7 +66,7 @@ function renderEditor(res, { status = 200, homework, errors = [], saved = null }
   });
 }
 
-export function teacherRoutes(db) {
+export function teacherRoutes(prisma) {
   const router = Router();
   router.use('/teacher', requireTeacher, (req, res, next) => {
     // For the full student links. trust proxy makes req.protocol "https" on Render.
@@ -75,7 +75,7 @@ export function teacherRoutes(db) {
   });
 
   router.get('/teacher', async (req, res) => {
-    const homeworks = await listHomeworks(db, req.teacher.id);
+    const homeworks = await listHomeworks(prisma, req.teacher.id);
     res.render('dashboard', { title: 'Bài tập của tôi', homeworks });
   });
 
@@ -89,7 +89,7 @@ export function teacherRoutes(db) {
     const form = readEditorForm(req.body);
     try {
       if (form.unreadable) throw new HomeworkValidationError([{ code: 'BAD_FORM', message: 'Dữ liệu câu hỏi bị hỏng. Hãy tải lại trang.' }]);
-      const { id } = await createHomework(db, { teacherId: req.teacher.id, ...form });
+      const { id } = await createHomework(prisma, { teacherId: req.teacher.id, ...form });
       res.redirect(`/teacher/homeworks/${id}/edit?saved=new`);
     } catch (error) {
       if (!(error instanceof HomeworkValidationError)) throw error;
@@ -100,7 +100,7 @@ export function teacherRoutes(db) {
   // Loads the homework for the routes below; 404 unless this teacher owns it.
   async function ownHomework(req, res) {
     const id = Number(req.params.id);
-    const homework = Number.isSafeInteger(id) ? await getHomework(db, id) : null;
+    const homework = Number.isSafeInteger(id) ? await getHomework(prisma, id) : null;
     if (homework?.teacherId === req.teacher.id) return homework;
     res.status(404).render('error', { title: 'Không tìm thấy', message: 'Không có bài tập này, hoặc bài tập không phải của bạn.' });
     return null;
@@ -124,7 +124,7 @@ export function teacherRoutes(db) {
     const form = readEditorForm(req.body);
     try {
       if (form.unreadable) throw new HomeworkValidationError([{ code: 'BAD_FORM', message: 'Dữ liệu câu hỏi bị hỏng. Hãy tải lại trang.' }]);
-      const result = await updateHomework(db, { id: homework.id, teacherId: req.teacher.id, ...form });
+      const result = await updateHomework(prisma, { id: homework.id, teacherId: req.teacher.id, ...form });
       if (!result) return res.redirect('/teacher'); // deleted in the meantime
       res.redirect(`/teacher/homeworks/${homework.id}/edit?saved=${result.newVersion ? `v${result.version}` : 1}`);
     } catch (error) {

@@ -1,18 +1,19 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTeacher } from '../src/db/teachers.js';
-import { createHomework } from '../src/db/homeworks.js';
+import { createTeacher } from '../src/services/teacher.service.js';
+import { createHomework } from '../src/services/homework.service.js';
 import { parse } from '../src/shared/parser.js';
 import { startApp, sessionCookie } from './helpers.js';
 
 let app;
 let db;
+let prisma;
 let get;
 let post;
 
 before(async () => {
   app = await startApp();
-  ({ db, get, post } = app);
+  ({ db, prisma, get, post } = app);
 });
 
 after(() => app.close());
@@ -98,8 +99,8 @@ describe('register', () => {
 describe('login and logout', () => {
   let teacherId;
   before(async () => {
-    teacherId = await createTeacher(db, { email: 'lan@example.com', name: 'Cô Lan', password: 'matkhau123' });
-    await createHomework(db, { teacherId, title: 'Ôn tập', questions: parse('Q?\n==a\nb').questions });
+    teacherId = await createTeacher(prisma, { email: 'lan@example.com', name: 'Cô Lan', password: 'matkhau123' });
+    await createHomework(prisma, { teacherId, title: 'Ôn tập', questions: parse('Q?\n==a\nb').questions });
   });
 
   test('right password: logged in, sees own homework', async () => {

@@ -1,9 +1,10 @@
 // Teacher register / login / logout pages.
 import { Router } from 'express';
-import { createTeacher, findTeacherByEmail } from '../db/teachers.js';
-import { createSession, deleteSession } from '../db/sessions.js';
-import { hashPassword, verifyPassword } from '../auth/password.js';
+import { createTeacher, findTeacherByEmail } from '../services/teacher.service.js';
+import { createSession, deleteSession } from '../services/session.service.js';
+import { hashPassword, verifyPassword } from '../services/password.service.js';
 import { COOKIE_NAME, sessionCookieOptions } from '../auth/middleware.js';
+import { isUniqueViolation } from '../config/client.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 const MIN_PASSWORD = 8;
@@ -23,13 +24,13 @@ function validateRegistration({ name, email, password, confirm }) {
   return errors;
 }
 
-async function logIn(db, res, teacherId) {
-  const { token } = await createSession(db, teacherId);
+async function logIn(prisma, res, teacherId) {
+  const { token } = await createSession(prisma, teacherId);
   res.cookie(COOKIE_NAME, token, sessionCookieOptions());
   res.redirect('/teacher');
 }
 
-export function authRoutes(db) {
+export function authRoutes(prisma) {
   const router = Router();
 
   router.get('/register', (req, res) => {
@@ -45,7 +46,7 @@ export function authRoutes(db) {
     const password = String(req.body.password ?? '');
     const errors = validateRegistration({ ...values, password, confirm: String(req.body.confirm ?? '') });
 
-    if (!errors.email && (await findTeacherByEmail(db, values.email))) {
+    if (!errors.email && (await findTeacherByEmail(prisma, values.email))) {
       errors.email = 'Email này đã được đăng ký. Hãy đăng nhập.';
     }
     if (Object.keys(errors).length) {
@@ -54,14 +55,14 @@ export function authRoutes(db) {
 
     let teacherId;
     try {
-      teacherId = await createTeacher(db, { ...values, password });
+      teacherId = await createTeacher(prisma, { ...values, password });
     } catch (error) {
       // Someone registered the same email a moment ago.
-      if (!String(error.message).includes('UNIQUE')) throw error;
+      if (!isUniqueViolation(error)) throw error;
       errors.email = 'Email này đã được đăng ký. Hãy đăng nhập.';
       return res.status(400).render('register', { title: 'Đăng ký', values, errors });
     }
-    await logIn(db, res, teacherId);
+    await logIn(prisma, res, teacherId);
   });
 
   router.get('/login', (req, res) => {
@@ -72,7 +73,7 @@ export function authRoutes(db) {
   router.post('/login', async (req, res) => {
     const email = String(req.body.email ?? '').trim().toLowerCase();
     const password = String(req.body.password ?? '');
-    const teacher = await findTeacherByEmail(db, email);
+    const teacher = await findTeacherByEmail(prisma, email);
     dummyHash ??= await hashPassword('dummy password');
     const ok = await verifyPassword(password, teacher?.passwordHash ?? dummyHash);
 
@@ -84,12 +85,12 @@ export function authRoutes(db) {
       });
     }
     // A fresh session on every login; drop the old one if there was one.
-    if (req.sessionToken) await deleteSession(db, req.sessionToken);
-    await logIn(db, res, teacher.id);
+    if (req.sessionToken) await deleteSession(prisma, req.sessionToken);
+    await logIn(prisma, res, teacher.id);
   });
 
   router.post('/logout', async (req, res) => {
-    if (req.sessionToken) await deleteSession(db, req.sessionToken);
+    if (req.sessionToken) await deleteSession(prisma, req.sessionToken);
     res.clearCookie(COOKIE_NAME, { path: '/' });
     res.redirect('/');
   });

@@ -2,12 +2,15 @@
 import './load-env.js';
 import { openDb } from './db/client.js';
 import { applyMigrations } from './config/migrate.js';
+import { createPrisma } from './config/client.js';
 import { createApp } from './app.js';
 
+// Migrations run on a plain libSQL connection; the app itself uses Prisma.
 const db = openDb();
 await applyMigrations(db);
+db.close();
 
 const port = Number(process.env.PORT) || 3000;
-createApp({ db }).listen(port, () => {
+createApp({ prisma: createPrisma() }).listen(port, () => {
   console.log(`Website đang chạy ở http://localhost:${port}`);
 });

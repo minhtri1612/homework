@@ -1,12 +1,14 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTeacher } from '../src/db/teachers.js';
-import { createHomework, getHomework, normalizeShareCode, updateHomework } from '../src/db/homeworks.js';
+import { createTeacher } from '../src/services/teacher.service.js';
+import { createHomework, getHomework, updateHomework } from '../src/services/homework.service.js';
+import { normalizeShareCode } from '../src/services/share-code.service.js';
 import { parse } from '../src/shared/parser.js';
 import { startApp, sessionCookie } from './helpers.js';
 
 let app;
 let db;
+let prisma;
 let get;
 let base;
 let teacherId;
@@ -22,16 +24,16 @@ Thủ đô của Việt Nam là: A. Huế-sai  ==B. Hà-Nội-đúng  C. Đà-N�
 
 before(async () => {
   app = await startApp();
-  ({ db, get, base } = app);
-  teacherId = await createTeacher(db, { email: 'lan@example.com', name: 'Cô Lan', password: 'matkhau123' });
+  ({ db, prisma, get, base } = app);
+  teacherId = await createTeacher(prisma, { email: 'lan@example.com', name: 'Cô Lan', password: 'matkhau123' });
   cookie = sessionCookie(await app.post('/login', { email: 'lan@example.com', password: 'matkhau123' }));
-  const { id } = await createHomework(db, {
+  const { id } = await createHomework(prisma, {
     teacherId,
     title: 'Ôn tập tuần 8',
     questions: parse(TEXT).questions,
     deadline: '2099-11-01T17:00:00+07:00',
   });
-  homework = await getHomework(db, id);
+  homework = await getHomework(prisma, id);
 });
 
 after(() => app.close());
@@ -86,7 +88,7 @@ describe('student page /h/CODE', () => {
   });
 
   test('past deadline: says the homework is closed', async () => {
-    const { shareCode } = await createHomework(db, {
+    const { shareCode } = await createHomework(prisma, {
       teacherId,
       title: 'Bài cũ',
       questions: parse(TEXT).questions,
@@ -96,24 +98,24 @@ describe('student page /h/CODE', () => {
   });
 
   test('no deadline', async () => {
-    const { shareCode } = await createHomework(db, { teacherId, title: 'Không hạn', questions: parse(TEXT).questions });
+    const { shareCode } = await createHomework(prisma, { teacherId, title: 'Không hạn', questions: parse(TEXT).questions });
     assert.match(await (await get(`/h/${shareCode}`)).text(), /Không có hạn nộp/);
   });
 
   test('question count follows the latest version', async () => {
-    const { id, shareCode } = await createHomework(db, { teacherId, title: 'Có phiên bản', questions: parse(TEXT).questions });
+    const { id, shareCode } = await createHomework(prisma, { teacherId, title: 'Có phiên bản', questions: parse(TEXT).questions });
     await db.execute({
       sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
             VALUES (?, (SELECT id FROM homework_versions WHERE homework_id = ?), 'An', 'an', ?, 0, 2, 0)`,
       args: [id, id, new Date().toISOString()],
     });
     const questions = [...parse(TEXT).questions, ...parse('Câu mới?\n==x\ny').questions];
-    assert.deepEqual(await updateHomework(db, { id, teacherId, title: 'Có phiên bản', questions }), { version: 2, newVersion: true });
+    assert.deepEqual(await updateHomework(prisma, { id, teacherId, title: 'Có phiên bản', questions }), { version: 2, newVersion: true });
     assert.match(await (await get(`/h/${shareCode}`)).text(), /3 câu hỏi/);
   });
 
   test('HTML in the title is shown as text', async () => {
-    const { shareCode } = await createHomework(db, { teacherId, title: '<b>đậm</b>', questions: parse(TEXT).questions });
+    const { shareCode } = await createHomework(prisma, { teacherId, title: '<b>đậm</b>', questions: parse(TEXT).questions });
     const html = await (await get(`/h/${shareCode}`)).text();
     assert.doesNotMatch(html, /<b>đậm/);
     assert.match(html, /&lt;b&gt;đậm/);

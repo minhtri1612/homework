@@ -16,7 +16,7 @@ Run the whole file instead.
 |---|---|---|
 | `test/grading.test.js` | `computeScore`: nearest 0.25, ties up, 0 and 10 | pure function |
 | `test/parser.test.js` | all syntax styles, splitting, title, errors, normalisation, `validateQuestion`, `serialize` round-trip | pure functions |
-| `test/db.test.js` | schema idempotence, FKs, teachers, passwords, `createHomework`/`getHomework`, share codes, cascades, DB constraints | own temp DB file, calls data functions and raw SQL |
+| `test/db.test.js` | schema idempotence, FKs, teachers, passwords, `createHomework`/`getHomework`, share codes, cascades, DB constraints | own temp DB file, calls the services (Prisma) and raw SQL; also 200-question save, concurrent saves, deleting a homework with submissions |
 | `test/auth.test.js` | pages, register, login/logout, sessions, Origin check, XSS escaping | real HTTP via `startApp()` |
 | `test/share.test.js` | `normalizeShareCode`, `/h/CODE` (no answers in HTML, redirects, 404, deadline, versions), `/join`, teacher share links, https behind proxy | real HTTP via `startApp()` |
 | `test/editor.test.js` | editor pages, create/edit, validation errors, versioning, ownership 404, `</script>` escaping, Vietnam time | real HTTP via `startApp()` |
@@ -25,7 +25,9 @@ Run the whole file instead.
 
 Tests never use `data/local.db`. `startApp()` in `test/helpers.js`:
 - creates a temp folder (`mkdtempSync(tmpdir()/homework-test-*)`), opens `file:<dir>/test.db`, runs `applyMigrations`;
-- starts `createApp({ db })` on port 0 (random) and returns `{ db, base, get, post, close }`;
+- creates a Prisma client on the same file and starts `createApp({ prisma })` on port 0 (random);
+  returns `{ db, prisma, base, get, post, close }`. Pass `prisma` to services; `db` is a plain libSQL client
+  for checking or inserting rows with SQL;
 - `get(path, cookie?)` and `post(path, fields, { cookie, origin })` use `fetch` with `redirect: 'manual'`,
   so assert on `status` and `location` yourself. `post` sends form-encoded fields and sets `Origin` to the
   app's own URL by default; pass another `origin` to test the 403;
@@ -40,14 +42,14 @@ Tests never use `data/local.db`. `startApp()` in `test/helpers.js`:
 ```js
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTeacher } from '../src/db/teachers.js';
+import { createTeacher } from '../src/services/teacher.service.js';
 import { startApp, sessionCookie } from './helpers.js';
 
 let app;
 let cookie;
 before(async () => {
   app = await startApp();
-  await createTeacher(app.db, { email: 'lan@example.com', name: 'Cô Lan', password: 'matkhau123' });
+  await createTeacher(app.prisma, { email: 'lan@example.com', name: 'Cô Lan', password: 'matkhau123' });
   cookie = sessionCookie(await app.post('/login', { email: 'lan@example.com', password: 'matkhau123' }));
 });
 after(() => app.close());
@@ -65,10 +67,13 @@ Conventions seen in the existing tests:
 - Name the file `test/<area>.test.js`; one `startApp()` per file, shared by its tests.
 - Test names are English sentences describing behaviour; asserted page text is Vietnamese.
 - Check user-visible behaviour (status, redirect `location`, Vietnamese text in HTML), then the DB
-  state via data functions (`getHomework`) or `db.execute`.
+  state via services (`getHomework(prisma, id)`) or `db.execute`.
 - For security-relevant features add a negative test (other teacher → 404, foreign Origin → 403,
   HTML in input is escaped, correct answers absent from student HTML).
 - Submissions are inserted with raw SQL (`addSubmission` in `editor.test.js`) until Step 6 adds real code.
+  Raw inserts must set `submitted_at` / `created_at` / `updated_at` (no DB defaults).
+- Prisma errors carry a `code` (`P2002` unique, `P2003` foreign key) instead of SQLite's message text:
+  assert with `{ code: 'P2002' }`.
 - Use unique emails/names per test, since tests in a file share one database.
 
 ## Known gaps

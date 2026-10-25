@@ -1,5 +1,5 @@
 // Builds the web app. Kept apart from server.js so tests can start it with
-// their own database.
+// their own database (a Prisma client).
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { loadTeacher, sameOriginPosts } from './auth/middleware.js';
@@ -8,7 +8,7 @@ import { teacherRoutes } from './routes/teacher.js';
 import { studentRoutes } from './routes/student.js';
 import { formatVietnamDate, formatVietnamDateTime } from './vietnam-time.js';
 
-export function createApp({ db }) {
+export function createApp({ prisma }) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // behind Render's proxy, so req.secure sees HTTPS
@@ -22,13 +22,13 @@ export function createApp({ db }) {
   app.use('/shared', express.static(fileURLToPath(new URL('./shared', import.meta.url))));
   // 1 MB fits 200 long questions; the default 100 KB does not.
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
-  app.use(loadTeacher(db));
+  app.use(loadTeacher(prisma));
   app.use(sameOriginPosts);
 
   app.get('/', (req, res) => res.render('home', { title: 'Bài tập trắc nghiệm', codeInput: '', codeError: null }));
-  app.use(authRoutes(db));
-  app.use(teacherRoutes(db));
-  app.use(studentRoutes(db));
+  app.use(authRoutes(prisma));
+  app.use(teacherRoutes(prisma));
+  app.use(studentRoutes(prisma));
 
   app.use((req, res) => {
     res.status(404).render('error', { title: 'Không tìm thấy', message: 'Trang này không tồn tại.' });

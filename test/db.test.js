@@ -5,24 +5,31 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openDb } from '../src/db/client.js';
 import { applyMigrations } from '../src/config/migrate.js';
-import { createTeacher } from '../src/db/teachers.js';
-import { createHomework, getHomework, generateShareCode, HomeworkValidationError } from '../src/db/homeworks.js';
-import { hashPassword, verifyPassword } from '../src/auth/password.js';
+import { createPrisma } from '../src/config/client.js';
+import { createTeacher } from '../src/services/teacher.service.js';
+import { createHomework, getHomework, updateHomework, HomeworkValidationError, LIMITS } from '../src/services/homework.service.js';
+import { generateShareCode } from '../src/services/share-code.service.js';
+import { hashPassword, verifyPassword } from '../src/services/password.service.js';
 import { parse } from '../src/shared/parser.js';
 
 // Each run uses a fresh database file in a temporary folder, never data/local.db.
+// The services use prisma; db (plain libSQL, same file) checks rows with SQL.
 let dir;
 let db;
+let prisma;
 let teacherId;
 
 before(async () => {
   dir = mkdtempSync(join(tmpdir(), 'homework-test-'));
-  db = openDb({ url: `file:${join(dir, 'test.db')}` });
+  const url = `file:${join(dir, 'test.db')}`;
+  db = openDb({ url });
   await applyMigrations(db);
-  teacherId = await createTeacher(db, { email: 'Co.Lan@Example.com ', name: 'Cô Lan', password: 'bí mật' });
+  prisma = createPrisma({ url });
+  teacherId = await createTeacher(prisma, { email: 'Co.Lan@Example.com ', name: 'Cô Lan', password: 'bí mật' });
 });
 
-after(() => {
+after(async () => {
+  await prisma.$disconnect();
   db.close();
   rmSync(dir, { recursive: true, force: true });
 });
@@ -60,7 +67,7 @@ describe('teachers', () => {
   test('email is stored lower-case and is unique in any letter case', async () => {
     const row = (await db.execute('SELECT email FROM teachers WHERE id = ?', [teacherId])).rows[0];
     assert.equal(row.email, 'co.lan@example.com');
-    await assert.rejects(createTeacher(db, { email: 'CO.LAN@example.com', name: 'X', password: 'y' }), /UNIQUE/);
+    await assert.rejects(createTeacher(prisma, { email: 'CO.LAN@example.com', name: 'X', password: 'y' }), { code: 'P2002' });
   });
 
   test('password is hashed and can be verified', async () => {
@@ -79,8 +86,8 @@ describe('teachers', () => {
 describe('homeworks', () => {
   test('parsed text is saved and loaded back unchanged', async () => {
     const { title, questions } = parse(TEXT);
-    const { id, shareCode } = await createHomework(db, { teacherId, title, questions });
-    const homework = await getHomework(db, id);
+    const { id, shareCode } = await createHomework(prisma, { teacherId, title, questions });
+    const homework = await getHomework(prisma, id);
 
     assert.equal(homework.title, 'Bài 1: Ôn tập');
     assert.equal(homework.shareCode, shareCode);
@@ -97,7 +104,7 @@ describe('homeworks', () => {
   });
 
   test('settings are stored; deadline in UTC', async () => {
-    const { id } = await createHomework(db, {
+    const { id } = await createHomework(prisma, {
       teacherId,
       title: 'Có hạn nộp',
       questions: parse(TEXT).questions.map((q) => ({ ...q, shuffleAnswers: true })),
@@ -105,7 +112,7 @@ describe('homeworks', () => {
       deadline: '2026-11-01T17:00:00+07:00',
       shuffleQuestions: true,
     });
-    const homework = await getHomework(db, id);
+    const homework = await getHomework(prisma, id);
     assert.equal(homework.deadline, '2026-11-01T10:00:00.000Z');
     assert.equal(homework.revealMode, 'after_deadline');
     assert.equal(homework.shuffleQuestions, true);
@@ -116,7 +123,7 @@ describe('homeworks', () => {
     const before = await count('homeworks');
     const { questions } = parse('Q?\n2\n3');
     await assert.rejects(
-      createHomework(db, { teacherId, title: '  ', questions, revealMode: 'after_deadline' }),
+      createHomework(prisma, { teacherId, title: '  ', questions, revealMode: 'after_deadline' }),
       (error) => {
         assert.ok(error instanceof HomeworkValidationError);
         assert.deepEqual(error.errors.map((e) => e.code), ['NO_TITLE', 'NO_CORRECT', 'NO_DEADLINE']);
@@ -124,20 +131,59 @@ describe('homeworks', () => {
         return true;
       },
     );
-    await assert.rejects(createHomework(db, { teacherId, title: 'x', questions: [] }), /chưa có câu hỏi/);
+    await assert.rejects(createHomework(prisma, { teacherId, title: 'x', questions: [] }), /chưa có câu hỏi/);
     assert.equal(await count('homeworks'), before);
   });
 
   test('getHomework returns null for an unknown id', async () => {
-    assert.equal(await getHomework(db, 999999), null);
+    assert.equal(await getHomework(prisma, 999999), null);
   });
 
   test('share codes have 6 characters and no look-alikes', () => {
     for (let i = 0; i < 200; i++) assert.match(generateShareCode(), /^[A-HJKMNP-Z2-9]{6}$/);
   });
 
+  test('200 questions with the longest allowed texts are saved in one go', async () => {
+    const questions = Array.from({ length: LIMITS.questions }, (_, i) => ({
+      text: `${i + 1} `.padEnd(LIMITS.questionText, 'câu hỏi '),
+      answers: Array.from({ length: 6 }, (_, j) => ({ text: `${j}`.padEnd(LIMITS.answerText, 'đáp án '), correct: j === 0 })),
+    }));
+    const { id } = await createHomework(prisma, { teacherId, title: 'Rất dài', questions });
+    const homework = await getHomework(prisma, id);
+    assert.equal(homework.questions.length, 200);
+    assert.equal(homework.questions[199].text, questions[199].text.trim());
+    assert.equal(homework.questions.flatMap((q) => q.answers).length, 1200);
+  });
+
+  test('saves at the same moment do not clash', async () => {
+    const { questions } = parse(TEXT);
+    const created = await Promise.all(
+      Array.from({ length: 10 }, (_, i) => createHomework(prisma, { teacherId, title: `Cùng lúc ${i}`, questions })),
+    );
+    assert.equal(new Set(created.map((h) => h.shareCode)).size, 10);
+
+    // With a submission on version 1, two edits at once: the first creates
+    // version 2, the second finds version 2 without submissions and edits it.
+    // Without one-at-a-time transactions both would insert version 2 and clash.
+    const { id, versionId } = created[0];
+    await db.execute({
+      sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
+            VALUES (?, ?, 'An', 'an', ?, 0, 2, 0)`,
+      args: [id, versionId, new Date().toISOString()],
+    });
+    const edit = (text) => {
+      const changed = structuredClone(questions);
+      changed[0].text = text;
+      return updateHomework(prisma, { id, teacherId, title: 'Cùng lúc 0', questions: changed });
+    };
+    const results = await Promise.all([edit('Sửa 1'), edit('Sửa 2')]);
+    assert.deepEqual(results.map((r) => [r.version, r.newVersion]).sort(), [[2, false], [2, true]]);
+    const versions = await db.execute('SELECT count(*) AS n FROM homework_versions WHERE homework_id = ?', [id]);
+    assert.equal(versions.rows[0].n, 2);
+  });
+
   test('deleting a homework deletes its versions, questions and answers', async () => {
-    const { id } = await createHomework(db, { teacherId, title: 'Xoá', questions: parse(TEXT).questions });
+    const { id } = await createHomework(prisma, { teacherId, title: 'Xoá', questions: parse(TEXT).questions });
     const answersBefore = await count('answers');
     await db.execute('DELETE FROM homeworks WHERE id = ?', [id]);
     assert.equal(await count('answers'), answersBefore - 5);
@@ -148,8 +194,8 @@ describe('homeworks', () => {
 describe('database rules (a second line of defence behind the app)', () => {
   let homework;
   before(async () => {
-    const { id } = await createHomework(db, { teacherId, title: 'Quy tắc', questions: parse(TEXT).questions });
-    homework = await getHomework(db, id);
+    const { id } = await createHomework(prisma, { teacherId, title: 'Quy tắc', questions: parse(TEXT).questions });
+    homework = await getHomework(prisma, id);
   });
 
   test('a question cannot get a second correct answer', async () => {
@@ -181,5 +227,13 @@ describe('database rules (a second line of defence behind the app)', () => {
 
   test('one submission per student name per homework', async () => {
     await assert.rejects(submit('an', []), /UNIQUE/);
+  });
+
+  test('a homework that has submissions can be deleted (through Prisma)', async () => {
+    await prisma.homework.delete({ where: { id: homework.id } });
+    for (const table of ['homework_versions', 'submissions']) {
+      assert.equal((await db.execute(`SELECT count(*) AS n FROM ${table} WHERE homework_id = ?`, [homework.id])).rows[0].n, 0, table);
+    }
+    assert.equal(await count('submission_answers'), 0);
   });
 });

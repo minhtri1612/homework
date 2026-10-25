@@ -1,8 +1,9 @@
 // Pages for students, who have no account: open a homework by its share code.
 import { Router } from 'express';
-import { findSharedHomework, normalizeShareCode } from '../db/homeworks.js';
+import { findSharedHomework } from '../services/homework.service.js';
+import { normalizeShareCode } from '../services/share-code.service.js';
 
-export function studentRoutes(db) {
+export function studentRoutes(prisma) {
   const router = Router();
 
   // The code box on the home page (a GET form, so nothing to protect).
@@ -23,7 +24,7 @@ export function studentRoutes(db) {
     const code = normalizeShareCode(req.params.code);
     // One address per homework: /h/abc234 → /h/ABC234.
     if (code && code !== req.params.code) return res.redirect(`/h/${code}`);
-    const homework = code ? await findSharedHomework(db, code) : null;
+    const homework = code ? await findSharedHomework(prisma, code) : null;
     if (!homework) {
       return res.status(404).render('error', {
         title: 'Không tìm thấy',

@@ -7,11 +7,11 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 4.5 part 2 is done, **not committed yet, waiting for review**. The app, `db:init`,
-`db:reset`, `db:seed` and the tests now build the database with `applyMigrations()`; `src/db/schema.sql` and
-`initSchema` are gone. All 126 tests pass (123 + 3 in `test/grading.test.js`).
+**Where we stopped:** Step 4.5 part 3 is done, **not committed yet, waiting for review** (part 2 is
+5d068b4, pushed). The app and the services now query with Prisma Client; `src/db/{teachers,sessions,homeworks}.js`
+and `src/auth/password.js` are gone. All 129 tests pass.
 
-**Next: Step 4.5 part 3 (services on Prisma)**, after the user approves part 2.
+**Next: Step 4.5 part 4 (Zod validation + controllers + routes)**, after the user approves part 3.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -26,11 +26,11 @@
       dashboard, `test/auth.test.js` (commit 88873ad)
 - [x] **Step 4 — Homework editor**: syntax tab + card tab, settings (reveal mode, Vietnam-time deadline,
       shuffle), new version when questions change after submissions, `test/editor.test.js` (commit 4622932)
-- [ ] **Step 4.5 — Refactor to LaptopShop architecture** (confirmed 2026-10-25; parts 1–2 of 5 done, see below)
+- [ ] **Step 4.5 — Refactor to LaptopShop architecture** (confirmed 2026-10-25; parts 1–3 of 5 done, see below)
   - [x] part 1: Prisma schema + migrations alongside the app
   - [x] part 2: migrations replace `schema.sql`
-  - [ ] part 3: services on Prisma ← **next**
-  - [ ] part 4: validation + controllers + routes
+  - [x] part 3: services on Prisma
+  - [ ] part 4: validation + controllers + routes ← **next**
   - [ ] part 5: scripts, docs, cleanup
 - [ ] **Step 4.6 — Convert to TypeScript** (planned; starts only after Step 4.5 is approved; see below)
 - [x] **Step 5 — Sharing**: link `/h/CODE` and a "nhập mã" box on the home page (commit 2258768)
@@ -362,11 +362,19 @@ Step 8. Baseline: 114 tests (Step 5 committed as 2258768).
    homeworks and versions get their timestamps from `new Date().toISOString()`; test inserts into
    `submissions`/`homeworks` set them. The whole suite (126) runs on the migrated schema. Local DB was
    reset and re-seeded; a second `db:init` applies nothing; `npm start` serves `/` (200).
-- [ ] 3. **Services on Prisma.** `src/config/client.js`, then `password`, `teacher`, `session`, `share-code` and
+- [x] 3. **Services on Prisma.** `src/config/client.js`, then `password`, `teacher`, `session`, `share-code` and
    `homework` services, each a port of today's function with the same inputs and outputs.
    - `createApp({ prisma })`; tests switch imports.
    - New tests: delete a homework that has submissions; save 200 questions; applying migrations twice changes
      nothing.
+   Done: services take the PrismaClient (or `tx`) first; writes use `$transaction(fn, { timeout: 30_000 })`.
+   Share-code check stays inside the transaction (adapter runs them one at a time; UNIQUE backs it up) rather
+   than retry-on-P2002. The registration race now checks Prisma's `P2002` code. The old modules are deleted
+   now rather than in part 4, since nothing used them; `src/db/client.js` (`openDb`, for migrations and
+   SQL in tests) and `src/auth/middleware.js` stay until parts 4–5. Tests: 200 questions × 6 answers at max
+   length (~0.35 s locally); 10 parallel creates + 2 parallel edits (risk 3); deleting a homework with
+   submissions through Prisma (risk 6). "Migrations twice" was already covered (`migrate.test.js`, `db.test.js`).
+   Manual check with the seeded DB: login, dashboard, share page, editor, save, logout all work.
 - [ ] 4. **Validation + controllers + routes.** Zod schemas replace `readEditorForm` / `validateRegistration` and the
    ad-hoc code parsing. Controllers move out of today's route files; `routes/web.js` and `routes/status.js`;
    `middleware/`. Delete `src/db/`, `src/auth/`, the old route files.

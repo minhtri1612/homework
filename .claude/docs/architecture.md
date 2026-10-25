@@ -5,14 +5,17 @@
 ```
 src/
   server.js         entry point: load .env, open DB, applyMigrations(), listen on PORT (default 3000)
-  app.js            createApp({ db }): builds the Express app (tests call this with their own DB)
+  app.js            createApp({ prisma }): builds the Express app (tests call this with their own DB)
   load-env.js       process.loadEnvFile() if .env exists; import first in every entry point
   vietnam-time.js   Vietnam time (UTC+7) <-> UTC ISO; date formatting for views
   shared/parser.js  syntax parser, used by browser AND server (see parser.md)
+  config/client.js  createPrisma(): the Prisma client (libSQL adapter); isUniqueViolation()
   config/migrate.js applyMigrations(): runs prisma/migrations/*/migration.sql (see database.md)
-  db/               connection + data access, one module per area (see database.md)
+  db/client.js      openDb(): plain libSQL client for migrations, db:reset and SQL in tests
+  services/         data access + business rules on Prisma: teacher, session, homework, share-code, password
+  generated/prisma/ output of prisma generate (gitignored)
   grading.js        computeScore(correct, total) (see grading.md)
-  auth/             password hashing, session cookie middleware, Origin check (see auth.md)
+  auth/             session cookie middleware, Origin check (see auth.md)
   routes/           Express routers: auth.js, teacher.js, student.js
   views/            EJS templates; partials/head.ejs and partials/foot.ejs wrap every page
   public/           static files: style.css, js/editor.js, js/copy.js
@@ -31,9 +34,9 @@ There is no build step. Files under `src/public/` and `src/shared/` are served a
 2. `express.static(src/shared)` mounted at `/shared`: `/shared/parser.js` for the browser
 3. `express.urlencoded({ extended: false, limit: '1mb' })`: forms only, no JSON body parser.
    1 MB because 200 long questions exceed the 100 KB default.
-4. `loadTeacher(db)`: reads cookie `sid`, sets `req.teacher` / `res.locals.teacher` (or null)
+4. `loadTeacher(prisma)`: reads cookie `sid`, sets `req.teacher` / `res.locals.teacher` (or null)
 5. `sameOriginPosts`: rejects POSTs whose `Origin` host differs from `Host` (403)
-6. `GET /`, then `authRoutes(db)`, `teacherRoutes(db)`, `studentRoutes(db)`
+6. `GET /`, then `authRoutes(prisma)`, `teacherRoutes(prisma)`, `studentRoutes(prisma)`
 7. 404 handler renders `error.ejs`; error handler logs and renders a generic Vietnamese 500.
    Express 5 forwards rejected promises from async handlers here, so routes do not need try/catch
    for unexpected errors.

@@ -1,13 +1,14 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTeacher } from '../src/db/teachers.js';
-import { getHomework, updateHomework } from '../src/db/homeworks.js';
+import { createTeacher } from '../src/services/teacher.service.js';
+import { getHomework, updateHomework } from '../src/services/homework.service.js';
 import { fromVietnamInput, toVietnamInput, INVALID_TIME } from '../src/vietnam-time.js';
 import { parse } from '../src/shared/parser.js';
 import { startApp, sessionCookie } from './helpers.js';
 
 let app;
 let db;
+let prisma;
 let get;
 let post;
 let cookie;
@@ -15,8 +16,8 @@ let teacherId;
 
 before(async () => {
   app = await startApp();
-  ({ db, get, post } = app);
-  teacherId = await createTeacher(db, { email: 'lan@example.com', name: 'Cô Lan', password: 'matkhau123' });
+  ({ db, prisma, get, post } = app);
+  teacherId = await createTeacher(prisma, { email: 'lan@example.com', name: 'Cô Lan', password: 'matkhau123' });
   cookie = sessionCookie(await post('/login', { email: 'lan@example.com', password: 'matkhau123' }));
 });
 
@@ -52,7 +53,7 @@ function simple(questions) {
 }
 
 async function addSubmission(homeworkId) {
-  const homework = await getHomework(db, homeworkId);
+  const homework = await getHomework(prisma, homeworkId);
   const name = `Học sinh ${Math.random()}`;
   await db.execute({
     sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
@@ -87,7 +88,7 @@ describe('editor pages', () => {
 describe('create', () => {
   test('saves title, settings and questions; edit page shows them', async () => {
     const id = await createViaForm({ shuffleQuestions: '1', revealMode: 'never', deadline: '2026-11-01T17:00' });
-    const homework = await getHomework(db, id);
+    const homework = await getHomework(prisma, id);
     assert.equal(homework.title, 'Ôn tập tuần 8');
     assert.equal(homework.revealMode, 'never');
     assert.equal(homework.shuffleQuestions, true);
@@ -160,7 +161,7 @@ describe('edit', () => {
     const response = await post(`/teacher/homeworks/${id}`, editorFields({ questions: JSON.stringify(changed) }), { cookie });
     assert.equal(response.headers.get('location'), `/teacher/homeworks/${id}/edit?saved=1`);
 
-    const homework = await getHomework(db, id);
+    const homework = await getHomework(prisma, id);
     assert.equal(homework.version.number, 1);
     assert.equal(homework.questions[1].text, 'Thủ đô của nước ta?');
     assert.equal((await db.execute('SELECT count(*) AS n FROM questions q JOIN homework_versions v ON v.id = q.version_id WHERE v.homework_id = ?', [id])).rows[0].n, 2);
@@ -178,7 +179,7 @@ describe('edit', () => {
     assert.equal(response.headers.get('location'), `/teacher/homeworks/${id}/edit?saved=v2`);
     assert.match(await (await get(response.headers.get('location'), cookie)).text(), /phiên bản 2/);
 
-    const homework = await getHomework(db, id);
+    const homework = await getHomework(prisma, id);
     assert.equal(homework.version.number, 2);
     assert.equal(homework.questions.length, 3);
     const old = await db.execute('SELECT count(*) AS n FROM questions WHERE version_id = ?', [oldVersionId]);
@@ -192,7 +193,7 @@ describe('edit', () => {
     await addSubmission(id);
     const response = await post(`/teacher/homeworks/${id}`, editorFields({ title: 'Đổi tên', deadline: '2026-12-01T07:30' }), { cookie });
     assert.equal(response.headers.get('location'), `/teacher/homeworks/${id}/edit?saved=1`);
-    const homework = await getHomework(db, id);
+    const homework = await getHomework(prisma, id);
     assert.equal(homework.version.number, 1);
     assert.equal(homework.title, 'Đổi tên');
     assert.equal(homework.deadline, '2026-12-01T00:30:00.000Z');
@@ -203,23 +204,23 @@ describe('edit', () => {
     const response = await post(`/teacher/homeworks/${id}`, editorFields({ questions: '[]' }), { cookie });
     assert.equal(response.status, 400);
     assert.match(await response.text(), /chưa có câu hỏi nào/);
-    assert.equal((await getHomework(db, id)).questions.length, 2);
+    assert.equal((await getHomework(prisma, id)).questions.length, 2);
   });
 
   test("another teacher's homework: 404 for viewing and saving", async () => {
     const id = await createViaForm({ title: 'Của cô Lan' });
-    await createTeacher(db, { email: 'minh@example.com', name: 'Thầy Minh', password: 'matkhau123' });
+    await createTeacher(prisma, { email: 'minh@example.com', name: 'Thầy Minh', password: 'matkhau123' });
     const other = sessionCookie(await post('/login', { email: 'minh@example.com', password: 'matkhau123' }));
 
     assert.equal((await get(`/teacher/homeworks/${id}/edit`, other)).status, 404);
     assert.equal((await post(`/teacher/homeworks/${id}`, editorFields({ title: 'Bị sửa' }), { cookie: other })).status, 404);
-    assert.equal((await getHomework(db, id)).title, 'Của cô Lan');
+    assert.equal((await getHomework(prisma, id)).title, 'Của cô Lan');
     assert.equal((await get('/teacher/homeworks/abc/edit', cookie)).status, 404);
   });
 
   test('updateHomework refuses a teacher who does not own it', async () => {
     const id = await createViaForm();
-    const result = await updateHomework(db, { id, teacherId: teacherId + 999, title: 'x', questions: QUESTIONS });
+    const result = await updateHomework(prisma, { id, teacherId: teacherId + 999, title: 'x', questions: QUESTIONS });
     assert.equal(result, null);
   });
 });
@@ -228,7 +229,7 @@ describe('syntax text to saved homework', () => {
   test('what the parser produces can be saved as-is', async () => {
     const { title, questions } = parse('BÀI TẬP\n\n1. A. cat   B. dog   ==C. pencil\n\nCâu 2: Q?\n==x\ny');
     const id = await createViaForm({ title, questions: JSON.stringify(questions) });
-    const homework = await getHomework(db, id);
+    const homework = await getHomework(prisma, id);
     assert.equal(homework.title, 'BÀI TẬP');
     assert.deepEqual(simple(homework.questions), [['', 'cat', 'dog', '==pencil'], ['Q?', '==x', 'y']]);
   });

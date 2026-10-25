@@ -4,8 +4,9 @@
 import '../src/load-env.js';
 import { openDb, DEFAULT_URL } from '../src/db/client.js';
 import { applyMigrations } from '../src/config/migrate.js';
-import { createTeacher } from '../src/db/teachers.js';
-import { createHomework } from '../src/db/homeworks.js';
+import { createPrisma } from '../src/config/client.js';
+import { createTeacher, findTeacherByEmail } from '../src/services/teacher.service.js';
+import { createHomework } from '../src/services/homework.service.js';
 import { parse } from '../src/shared/parser.js';
 
 const TEACHER = { email: 'giaovien@example.com', name: 'Cô Lan', password: 'matkhau123' };
@@ -48,19 +49,20 @@ C. 25 cm`,
 
 const db = openDb();
 await applyMigrations(db);
+db.close();
+const prisma = createPrisma();
 
-const existing = await db.execute({ sql: 'SELECT 1 FROM teachers WHERE email = ?', args: [TEACHER.email] });
-if (existing.rows.length) {
+if (await findTeacherByEmail(prisma, TEACHER.email)) {
   console.log(`Đã có dữ liệu mẫu (${TEACHER.email}). Muốn làm lại từ đầu: npm run db:reset rồi npm run db:seed`);
   process.exit(0);
 }
 
-const teacherId = await createTeacher(db, TEACHER);
+const teacherId = await createTeacher(prisma, TEACHER);
 console.log(`✔ Giáo viên: ${TEACHER.email} / mật khẩu: ${TEACHER.password}`);
 
 for (const text of HOMEWORKS) {
   const { title, questions } = parse(text);
-  const { shareCode } = await createHomework(db, {
+  const { shareCode } = await createHomework(prisma, {
     teacherId,
     title,
     questions: questions.map((q) => ({ ...q, shuffleAnswers: true })),
@@ -69,4 +71,4 @@ for (const text of HOMEWORKS) {
 }
 
 console.log(`Xong: ${process.env.DATABASE_URL || DEFAULT_URL}`);
-db.close();
+await prisma.$disconnect();

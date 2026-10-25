@@ -1,4 +1,4 @@
-import { findSessionTeacher, SESSION_DAYS } from '../db/sessions.js';
+import { findSessionTeacher, SESSION_DAYS } from '../services/session.service.js';
 
 export const COOKIE_NAME = 'sid';
 
@@ -27,10 +27,10 @@ function readCookie(req, name) {
 }
 
 /** Sets req.teacher and res.locals.teacher (null when not logged in). */
-export function loadTeacher(db) {
+export function loadTeacher(prisma) {
   return async (req, res, next) => {
     req.sessionToken = readCookie(req, COOKIE_NAME);
-    req.teacher = req.sessionToken ? await findSessionTeacher(db, req.sessionToken) : null;
+    req.teacher = req.sessionToken ? await findSessionTeacher(prisma, req.sessionToken) : null;
     if (req.sessionToken && !req.teacher) res.clearCookie(COOKIE_NAME, { path: '/' });
     res.locals.teacher = req.teacher;
     next();
