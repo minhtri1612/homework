@@ -17,7 +17,7 @@ const score = Math.round((correct * 40) / total) / 4;
   `correct / total * 10` first and round afterwards, because of float error near the halfway points.
 - An exact tie (e.g. 7.125 = 57 of 80) goes **up** (`Math.round` behaviour); confirmed by the user
   2026-10-25.
-- Implemented as `computeScore(correct, total)` in `src/grading.ts`, tested in `test/grading.test.js`.
+- Implemented as `computeScore(correct, total)` in `src/grading.ts`, tested in `test/grading.test.ts`.
   Step 6 must use it rather than repeat the formula.
 - Blank answers count as wrong: `total` = number of questions in the submission's version.
 

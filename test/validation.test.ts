@@ -5,7 +5,7 @@ import { editorSchema, homeworkIdParam } from '../src/validation/homework.schema
 import { joinSchema, shareCodeParam } from '../src/validation/share.schema.ts';
 import { fieldErrors } from '../src/validation/form.ts';
 
-function registerErrors(body) {
+function registerErrors(body: Record<string, unknown>) {
   const result = registerSchema.safeParse(body);
   return result.success ? {} : fieldErrors(result.error);
 }
@@ -87,10 +87,10 @@ describe('editor form', () => {
 
 describe('share code', () => {
   test('the home page box: empty, malformed, any accepted form', () => {
-    const message = (code) => joinSchema.safeParse({ code }).error?.issues[0].message;
+    const message = (code: unknown) => joinSchema.safeParse({ code }).error?.issues[0].message;
     assert.equal(message(undefined), 'Hãy nhập mã bài tập.');
     assert.equal(message('   '), 'Hãy nhập mã bài tập.');
-    assert.match(message('ab"<x>'), /gồm 6 chữ cái và chữ số/);
+    assert.match(message('ab"<x>') ?? '', /gồm 6 chữ cái và chữ số/);
     assert.deepEqual(joinSchema.parse({ code: 'abc-234' }), { code: 'ABC234' });
   });
 

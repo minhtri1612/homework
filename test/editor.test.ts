@@ -4,15 +4,17 @@ import { createTeacher } from '../src/services/teacher.service.ts';
 import { getHomework, updateHomework } from '../src/services/homework.service.ts';
 import { fromVietnamInput, toVietnamInput, INVALID_TIME } from '../src/vietnam-time.ts';
 import { parse } from '../src/shared/parser.js';
-import { startApp, sessionCookie } from './helpers.js';
+import { startApp, sessionCookie } from './helpers.ts';
+import type { TestApp } from './helpers.ts';
+import type { QuestionInput } from '../src/services/homework.service.ts';
 
-let app;
-let db;
-let prisma;
-let get;
-let post;
-let cookie;
-let teacherId;
+let app: TestApp;
+let db: TestApp['db'];
+let prisma: TestApp['prisma'];
+let get: TestApp['get'];
+let post: TestApp['post'];
+let cookie: string | null;
+let teacherId: number;
 
 before(async () => {
   app = await startApp();
@@ -28,7 +30,7 @@ const QUESTIONS = [
   { text: 'Thủ đô của Việt Nam?', shuffleAnswers: false, answers: [{ text: 'Huế', correct: false }, { text: 'Hà Nội', correct: true }] },
 ];
 
-function editorFields(overrides = {}) {
+function editorFields(overrides: Record<string, string> = {}): Record<string, string> {
   return {
     title: 'Ôn tập tuần 8',
     revealMode: 'after_submit',
@@ -39,21 +41,21 @@ function editorFields(overrides = {}) {
 }
 
 /** Creates a homework through the form and returns its id. */
-async function createViaForm(overrides) {
+async function createViaForm(overrides?: Record<string, string>): Promise<number> {
   const response = await post('/teacher/homeworks', editorFields(overrides), { cookie });
   assert.equal(response.status, 302, await response.text());
-  const match = response.headers.get('location').match(/^\/teacher\/homeworks\/(\d+)\/edit\?saved=new$/);
-  assert.ok(match, response.headers.get('location'));
+  const match = response.headers.get('location')?.match(/^\/teacher\/homeworks\/(\d+)\/edit\?saved=new$/);
+  assert.ok(match, response.headers.get('location') ?? undefined);
   return Number(match[1]);
 }
 
 /** Text + answers, "==" marking the correct one. */
-function simple(questions) {
+function simple(questions: QuestionInput[]) {
   return questions.map((q) => [q.text, ...q.answers.map((a) => (a.correct ? `==${a.text}` : a.text))]);
 }
 
-async function addSubmission(homeworkId) {
-  const homework = await getHomework(prisma, homeworkId);
+async function addSubmission(homeworkId: number): Promise<number> {
+  const homework = (await getHomework(prisma, homeworkId))!;
   const name = `Học sinh ${Math.random()}`;
   await db.execute({
     sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
@@ -80,7 +82,7 @@ describe('editor pages', () => {
     for (const path of ['/js/editor.js', '/shared/parser.js']) {
       const response = await get(path);
       assert.equal(response.status, 200, path);
-      assert.match(response.headers.get('content-type'), /javascript/);
+      assert.match(response.headers.get('content-type') ?? '', /javascript/);
     }
   });
 });
@@ -88,7 +90,7 @@ describe('editor pages', () => {
 describe('create', () => {
   test('saves title, settings and questions; edit page shows them', async () => {
     const id = await createViaForm({ shuffleQuestions: '1', revealMode: 'never', deadline: '2026-11-01T17:00' });
-    const homework = await getHomework(prisma, id);
+    const homework = (await getHomework(prisma, id))!;
     assert.equal(homework.title, 'Ôn tập tuần 8');
     assert.equal(homework.revealMode, 'never');
     assert.equal(homework.shuffleQuestions, true);
@@ -161,7 +163,7 @@ describe('edit', () => {
     const response = await post(`/teacher/homeworks/${id}`, editorFields({ questions: JSON.stringify(changed) }), { cookie });
     assert.equal(response.headers.get('location'), `/teacher/homeworks/${id}/edit?saved=1`);
 
-    const homework = await getHomework(prisma, id);
+    const homework = (await getHomework(prisma, id))!;
     assert.equal(homework.version.number, 1);
     assert.equal(homework.questions[1].text, 'Thủ đô của nước ta?');
     assert.equal((await db.execute('SELECT count(*) AS n FROM questions q JOIN homework_versions v ON v.id = q.version_id WHERE v.homework_id = ?', [id])).rows[0].n, 2);
@@ -177,9 +179,9 @@ describe('edit', () => {
     const changed = [...QUESTIONS, { text: 'Câu mới?', answers: [{ text: 'x', correct: false }, { text: 'y', correct: true }] }];
     const response = await post(`/teacher/homeworks/${id}`, editorFields({ questions: JSON.stringify(changed) }), { cookie });
     assert.equal(response.headers.get('location'), `/teacher/homeworks/${id}/edit?saved=v2`);
-    assert.match(await (await get(response.headers.get('location'), cookie)).text(), /phiên bản 2/);
+    assert.match(await (await get(response.headers.get('location')!, cookie)).text(), /phiên bản 2/);
 
-    const homework = await getHomework(prisma, id);
+    const homework = (await getHomework(prisma, id))!;
     assert.equal(homework.version.number, 2);
     assert.equal(homework.questions.length, 3);
     const old = await db.execute('SELECT count(*) AS n FROM questions WHERE version_id = ?', [oldVersionId]);
@@ -193,7 +195,7 @@ describe('edit', () => {
     await addSubmission(id);
     const response = await post(`/teacher/homeworks/${id}`, editorFields({ title: 'Đổi tên', deadline: '2026-12-01T07:30' }), { cookie });
     assert.equal(response.headers.get('location'), `/teacher/homeworks/${id}/edit?saved=1`);
-    const homework = await getHomework(prisma, id);
+    const homework = (await getHomework(prisma, id))!;
     assert.equal(homework.version.number, 1);
     assert.equal(homework.title, 'Đổi tên');
     assert.equal(homework.deadline, '2026-12-01T00:30:00.000Z');
@@ -204,7 +206,7 @@ describe('edit', () => {
     const response = await post(`/teacher/homeworks/${id}`, editorFields({ questions: '[]' }), { cookie });
     assert.equal(response.status, 400);
     assert.match(await response.text(), /chưa có câu hỏi nào/);
-    assert.equal((await getHomework(prisma, id)).questions.length, 2);
+    assert.equal((await getHomework(prisma, id))!.questions.length, 2);
   });
 
   test("another teacher's homework: 404 for viewing and saving", async () => {
@@ -214,7 +216,7 @@ describe('edit', () => {
 
     assert.equal((await get(`/teacher/homeworks/${id}/edit`, other)).status, 404);
     assert.equal((await post(`/teacher/homeworks/${id}`, editorFields({ title: 'Bị sửa' }), { cookie: other })).status, 404);
-    assert.equal((await getHomework(prisma, id)).title, 'Của cô Lan');
+    assert.equal((await getHomework(prisma, id))!.title, 'Của cô Lan');
     assert.equal((await get('/teacher/homeworks/abc/edit', cookie)).status, 404);
   });
 
@@ -229,7 +231,7 @@ describe('syntax text to saved homework', () => {
   test('what the parser produces can be saved as-is', async () => {
     const { title, questions } = parse('BÀI TẬP\n\n1. A. cat   B. dog   ==C. pencil\n\nCâu 2: Q?\n==x\ny');
     const id = await createViaForm({ title, questions: JSON.stringify(questions) });
-    const homework = await getHomework(prisma, id);
+    const homework = (await getHomework(prisma, id))!;
     assert.equal(homework.title, 'BÀI TẬP');
     assert.deepEqual(simple(homework.questions), [['', 'cat', 'dog', '==pencil'], ['Q?', '==x', 'y']]);
   });

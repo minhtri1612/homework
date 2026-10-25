@@ -2,7 +2,7 @@
 
 Files: `src/controllers/auth.controller.ts`, `src/validation/auth.schema.ts`, `src/middleware/auth.ts`,
 `src/middleware/same-origin.ts`, `src/services/password.service.ts`,
-`src/services/session.service.ts`, `src/services/teacher.service.ts`. Tests: `test/auth.test.js`. Students have no accounts (planned; see `PLAN.md`).
+`src/services/session.service.ts`, `src/services/teacher.service.ts`. Tests: `test/auth.test.ts`. Students have no accounts (planned; see `PLAN.md`).
 
 ## Registration (`POST /register`)
 
@@ -52,7 +52,7 @@ match. Comparison uses `timingSafeEqual`.
   on POST, never GET.
 - **Output escaping**: EJS `<%= %>` for all user data. JSON inside `<script>` must go through
   `scriptJson()` (`controllers/homework.controller.ts`), which escapes `<`, U+2028, U+2029. Tests check both
-  (`test/auth.test.js` XSS name, `test/editor.test.js` `</script>` in question text).
+  (`test/auth.test.ts` XSS name, `test/editor.test.ts` `</script>` in question text).
 - **Correct answers**: never render `answers[].correct` into a student page before the reveal rules
   allow it (see `grading.md`).
 - `x-powered-by` is disabled; `trust proxy` is 1 (Render).

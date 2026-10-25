@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const IMPORT = /(?:\bfrom|\bimport)\s*\(?\s*['"](\.{1,2}\/[^'"]+)['"]/g;
 
-function sourceFiles(dir) {
+function sourceFiles(dir: string): string[] {
   return readdirSync(join(ROOT, dir), { withFileTypes: true, recursive: true })
     .filter((entry) => entry.isFile() && /\.(js|ts)$/.test(entry.name))
     .map((entry) => join(entry.parentPath, entry.name))

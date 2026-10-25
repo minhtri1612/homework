@@ -5,9 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyMigrations, readMigrations, MIGRATIONS_DIR } from '../src/config/migrate.ts';
 import { openDb } from '../src/config/client.ts';
+import type { Client } from '@libsql/client';
 
 // Each run uses fresh database files in a temporary folder, never data/local.db.
-let dir;
+let dir: string;
 let count = 0;
 
 before(() => {
@@ -27,7 +28,7 @@ function copyMigrations() {
   return copy;
 }
 
-async function tables(db) {
+async function tables(db: Client) {
   const result = await db.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
   return result.rows.map((row) => row.name);
 }
@@ -100,7 +101,7 @@ describe('applyMigrations', () => {
 });
 
 describe('rules written by hand in the init migration', () => {
-  let db;
+  let db: Client;
   before(async () => {
     db = freshDb();
     await applyMigrations(db);

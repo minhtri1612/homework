@@ -2,15 +2,20 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { parse, serialize, validateQuestion, normalizeText } from '../src/shared/parser.js';
 
+// The parser is still JavaScript (Step 4.6 part 5), so its results are typed by hand here.
+type ParsedAnswer = { text: string; correct: boolean };
+type ParsedQuestion = { text: string; answers: ParsedAnswer[] };
+type ParseResult = { questions: ParsedQuestion[]; errors: { code: string }[] };
+
 // Compact view of parsed questions: text + answers, "==" marking the correct one.
-function simple(result) {
+function simple(result: ParseResult) {
   return result.questions.map((q) => ({
     text: q.text,
     answers: q.answers.map((a) => (a.correct ? `==${a.text}` : a.text)),
   }));
 }
 
-function codes(result) {
+function codes(result: ParseResult) {
   return result.errors.map((e) => e.code);
 }
 
@@ -331,7 +336,7 @@ describe('serialize', () => {
     const result = parse(serialize(questions));
     assert.deepEqual(result.errors, []);
     assert.deepEqual(
-      result.questions.map(({ text, answers }) => ({
+      result.questions.map(({ text, answers }: ParsedQuestion) => ({
         text,
         answers: answers.map(({ text, correct }) => ({ text, correct })),
       })),

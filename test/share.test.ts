@@ -4,16 +4,19 @@ import { createTeacher } from '../src/services/teacher.service.ts';
 import { createHomework, getHomework, updateHomework } from '../src/services/homework.service.ts';
 import { normalizeShareCode } from '../src/services/share-code.service.ts';
 import { parse } from '../src/shared/parser.js';
-import { startApp, sessionCookie } from './helpers.js';
+import { startApp, sessionCookie } from './helpers.ts';
+import type { TestApp } from './helpers.ts';
+/** What getHomework() returns for a homework that exists. */
+type Homework = NonNullable<Awaited<ReturnType<typeof getHomework>>>;
 
-let app;
-let db;
-let prisma;
-let get;
-let base;
-let teacherId;
-let cookie;
-let homework;
+let app: TestApp;
+let db: TestApp['db'];
+let prisma: TestApp['prisma'];
+let get: TestApp['get'];
+let base: string;
+let teacherId: number;
+let cookie: string | null;
+let homework: Homework;
 
 // Answer texts that must never appear on the student's page.
 const TEXT = `Con cua có mấy càng?
@@ -33,7 +36,7 @@ before(async () => {
     questions: parse(TEXT).questions,
     deadline: '2099-11-01T17:00:00+07:00',
   });
-  homework = await getHomework(prisma, id);
+  homework = (await getHomework(prisma, id))!;
 });
 
 after(() => app.close());
@@ -180,13 +183,13 @@ describe('teacher sees the full link', () => {
   });
 
   test('uses https behind a proxy that says so (Render)', async () => {
-    const response = await fetch(`${base}/teacher`, { headers: { cookie, 'x-forwarded-proto': 'https' } });
+    const response = await fetch(`${base}/teacher`, { headers: { cookie: cookie!, 'x-forwarded-proto': 'https' } });
     assert.match(await response.text(), new RegExp(`value="https://${new URL(base).host}/h/${homework.shareCode}"`));
   });
 
   test('the copy script is served', async () => {
     const response = await get('/js/copy.js');
     assert.equal(response.status, 200);
-    assert.match(response.headers.get('content-type'), /javascript/);
+    assert.match(response.headers.get('content-type') ?? '', /javascript/);
   });
 });

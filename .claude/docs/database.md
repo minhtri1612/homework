@@ -6,7 +6,7 @@ init migration has hand-written CHECKs, `COLLATE NOCASE` and the partial index).
 services) and `openDb()` in the same file (a plain libSQL client used only to apply migrations, by
 `db:reset`, and by tests that check rows with SQL).
 Data access: `src/services/teacher.service.ts`, `session.service.ts`, `homework.service.ts` (Prisma Client;
-the first argument is the PrismaClient or a transaction `tx`). Tests: `test/db.test.js`.
+the first argument is the PrismaClient or a transaction `tx`). Tests: `test/db.test.ts`.
 
 ## Changing the schema (migrations)
 
@@ -42,7 +42,7 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
 - `applyMigrations(db)` runs every migration not yet recorded in `_migrations` (name, checksum,
   applied_at), each in its own write transaction. It fails if an applied `migration.sql` was edited
   afterwards. Called by `src/server.ts` on startup, `npm run db:init`, `db:seed` and the tests
-  (`test/helpers.js`, `test/db.test.js`). Never edit an applied migration; add a new one.
+  (`test/helpers.ts`, `test/db.test.ts`). Never edit an applied migration; add a new one.
 - `dropSchema(db)` drops tables children-first, then `_migrations` (`TABLES` list in `migrate.ts`), so
   `db:reset` re-applies every migration. If you add a table, add it to that list in the right order.
 - **No timestamp defaults in the database.** `created_at`, `updated_at` and `submitted_at` have no
@@ -52,7 +52,7 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
   connects through `PrismaLibSql` (`@prisma/adapter-libsql`), for `file:` and Turso alike. The client is
   generated TypeScript in `src/generated/prisma/` (`npm run db:generate`, also run by `postinstall`;
   regenerate after every `schema.prisma` change). Node 24 imports it from JS by stripping the types.
-- Foreign keys are enforced, including inside transactions (tested in `test/db.test.js`).
+- Foreign keys are enforced, including inside transactions (tested in `test/db.test.ts`).
 - Multi-statement writes use `prisma.$transaction(async (tx) => { … }, { timeout: 30_000 })`: a thrown
   error rolls everything back. The default 5 s timeout is too short for 200 questions over Turso.
   The adapter runs transactions of one process one at a time, which is what keeps the share-code check
@@ -144,11 +144,11 @@ use the version a submission belongs to, and new attempts use the latest version
 
 ## Scripts
 
-- `scripts/db-migrate.js`: `npm run db:init`, applies pending migrations.
-- `scripts/db-reset.js`: `npm run db:reset`, drops every table and `_migrations`, then applies all
+- `scripts/db-migrate.ts`: `npm run db:init`, applies pending migrations.
+- `scripts/db-reset.ts`: `npm run db:reset`, drops every table and `_migrations`, then applies all
   migrations; refuses non-`file:` URLs.
-- `scripts/db-new-migration.js`: `npm run db:migration -- <name>` (see "Changing the schema").
+- `scripts/db-new-migration.ts`: `npm run db:migration -- <name>` (see "Changing the schema").
 - `npm run db:generate`: `prisma generate` (also `postinstall` and `pretest`). `prisma.config.js` points
   the Prisma CLI at the schema, the migrations folder and `DATABASE_URL`; the app does not read it.
-- `scripts/db-seed.js`: `npm run db:seed`; exits early if `giaovien@example.com` exists. Seeds
+- `scripts/db-seed.ts`: `npm run db:seed`; exits early if `giaovien@example.com` exists. Seeds
   through `parse()` + `createHomework()` with `shuffleAnswers: true`.

@@ -10,13 +10,17 @@ import { createHomework, getHomework, updateHomework, HomeworkValidationError, L
 import { generateShareCode } from '../src/services/share-code.service.ts';
 import { hashPassword, verifyPassword } from '../src/services/password.service.ts';
 import { parse } from '../src/shared/parser.js';
+import type { Client } from '@libsql/client';
+import type { PrismaClient } from '../src/generated/prisma/client.ts';
+/** What getHomework() returns for a homework that exists. */
+type Homework = NonNullable<Awaited<ReturnType<typeof getHomework>>>;
 
 // Each run uses a fresh database file in a temporary folder, never data/local.db.
 // The services use prisma; db (plain libSQL, same file) checks rows with SQL.
-let dir;
-let db;
-let prisma;
-let teacherId;
+let dir: string;
+let db: Client;
+let prisma: PrismaClient;
+let teacherId: number;
 
 before(async () => {
   dir = mkdtempSync(join(tmpdir(), 'homework-test-'));
@@ -41,8 +45,8 @@ Con cua có mấy càng?
 
 Câu 2. Thủ đô của Việt Nam là: A. Huế  ==B. Hà Nội  C. Đà Nẵng`;
 
-async function count(table) {
-  return (await db.execute(`SELECT count(*) AS n FROM ${table}`)).rows[0].n;
+async function count(table: string): Promise<number> {
+  return Number((await db.execute(`SELECT count(*) AS n FROM ${table}`)).rows[0].n);
 }
 
 describe('schema', () => {
@@ -55,7 +59,7 @@ describe('schema', () => {
     await assert.rejects(db.execute("INSERT INTO homeworks (teacher_id, title, share_code, created_at, updated_at) VALUES (999, ?, ?, 't', 't')", ['x', 'ZZZZZZ']), /FOREIGN KEY/);
     const tx = await db.transaction('write');
     try {
-      await assert.rejects(tx.execute("INSERT INTO homeworks (teacher_id, title, share_code, created_at, updated_at) VALUES (999, ?, ?, 't', 't')", ['x', 'ZZZZZZ']), /FOREIGN KEY/);
+      await assert.rejects(tx.execute({ sql: "INSERT INTO homeworks (teacher_id, title, share_code, created_at, updated_at) VALUES (999, ?, ?, 't', 't')", args: ['x', 'ZZZZZZ'] }), /FOREIGN KEY/);
     } finally {
       tx.close();
     }
@@ -70,7 +74,7 @@ describe('teachers', () => {
   });
 
   test('password is hashed and can be verified', async () => {
-    const { password_hash: hash } = (await db.execute('SELECT password_hash FROM teachers WHERE id = ?', [teacherId])).rows[0];
+    const hash = String((await db.execute('SELECT password_hash FROM teachers WHERE id = ?', [teacherId])).rows[0].password_hash);
     assert.match(hash, /^scrypt\$/);
     assert.equal(await verifyPassword('bí mật', hash), true);
     assert.equal(await verifyPassword('bi mat', hash), false);
@@ -86,7 +90,7 @@ describe('homeworks', () => {
   test('parsed text is saved and loaded back unchanged', async () => {
     const { title, questions } = parse(TEXT);
     const { id, shareCode } = await createHomework(prisma, { teacherId, title, questions });
-    const homework = await getHomework(prisma, id);
+    const homework = (await getHomework(prisma, id))!;
 
     assert.equal(homework.title, 'Bài 1: Ôn tập');
     assert.equal(homework.shareCode, shareCode);
@@ -111,7 +115,7 @@ describe('homeworks', () => {
       deadline: '2026-11-01T17:00:00+07:00',
       shuffleQuestions: true,
     });
-    const homework = await getHomework(prisma, id);
+    const homework = (await getHomework(prisma, id))!;
     assert.equal(homework.deadline, '2026-11-01T10:00:00.000Z');
     assert.equal(homework.revealMode, 'after_deadline');
     assert.equal(homework.shuffleQuestions, true);
@@ -148,7 +152,7 @@ describe('homeworks', () => {
       answers: Array.from({ length: 6 }, (_, j) => ({ text: `${j}`.padEnd(LIMITS.answerText, 'đáp án '), correct: j === 0 })),
     }));
     const { id } = await createHomework(prisma, { teacherId, title: 'Rất dài', questions });
-    const homework = await getHomework(prisma, id);
+    const homework = (await getHomework(prisma, id))!;
     assert.equal(homework.questions.length, 200);
     assert.equal(homework.questions[199].text, questions[199].text.trim());
     assert.equal(homework.questions.flatMap((q) => q.answers).length, 1200);
@@ -170,13 +174,13 @@ describe('homeworks', () => {
             VALUES (?, ?, 'An', 'an', ?, 0, 2, 0)`,
       args: [id, versionId, new Date().toISOString()],
     });
-    const edit = (text) => {
+    const edit = (text: string) => {
       const changed = structuredClone(questions);
       changed[0].text = text;
       return updateHomework(prisma, { id, teacherId, title: 'Cùng lúc 0', questions: changed });
     };
     const results = await Promise.all([edit('Sửa 1'), edit('Sửa 2')]);
-    assert.deepEqual(results.map((r) => [r.version, r.newVersion]).sort(), [[2, false], [2, true]]);
+    assert.deepEqual(results.map((r) => [r!.version, r!.newVersion]).sort(), [[2, false], [2, true]]);
     const versions = await db.execute('SELECT count(*) AS n FROM homework_versions WHERE homework_id = ?', [id]);
     assert.equal(versions.rows[0].n, 2);
   });
@@ -191,10 +195,10 @@ describe('homeworks', () => {
 });
 
 describe('database rules (a second line of defence behind the app)', () => {
-  let homework;
+  let homework: Homework;
   before(async () => {
     const { id } = await createHomework(prisma, { teacherId, title: 'Quy tắc', questions: parse(TEXT).questions });
-    homework = await getHomework(prisma, id);
+    homework = (await getHomework(prisma, id))!;
   });
 
   test('a question cannot get a second correct answer', async () => {
@@ -205,7 +209,7 @@ describe('database rules (a second line of defence behind the app)', () => {
     );
   });
 
-  async function submit(name, choices) {
+  async function submit(name: string, choices: [number, number | null][]) {
     const row = await db.execute({
       sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
             VALUES (?, ?, ?, ?, ?, 0, 2, 0) RETURNING id`,

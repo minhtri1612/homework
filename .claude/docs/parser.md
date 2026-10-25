@@ -1,9 +1,9 @@
 # Parser (`src/shared/parser.js`)
 
 Dependency-free ES module used by the browser editor (live preview, tab switching) and the server
-(`validateQuestion` inside `validateHomework`, plus `scripts/db-seed.js` and `scripts/parse.js`).
+(`validateQuestion` inside `validateHomework`, plus `scripts/db-seed.ts` and `scripts/parse.ts`).
 User-facing explanation of the syntax, in Vietnamese: `README.md` "Cú pháp nhập câu hỏi".
-Tests: `test/parser.test.js`. Try it: `npm run parse -- examples/mau.txt`.
+Tests: `test/parser.test.ts`. Try it: `npm run parse -- examples/mau.txt`.
 
 ## Exports
 
@@ -84,7 +84,7 @@ unless the question has `line`.
 
 `serialize()` writes `N. <first line>`, the remaining question lines, then `==A. text` / `B. text`,
 with a blank line between questions and an optional `title` + blank line first. Guarantees tested in
-`test/parser.test.js`: `parse(serialize(x))` returns the same questions, and `serialize(parse(x))` is
+`test/parser.test.ts`: `parse(serialize(x))` returns the same questions, and `serialize(parse(x))` is
 stable for messy input. If you change either function, keep both properties and their tests.
 
 Note: the editor calls `serialize(cards)` without the title, so the syntax tab never shows the title

@@ -14,7 +14,7 @@ if (title) console.log(`Tiêu đề: ${title}`);
 questions.forEach((q, i) => {
   const status = q.errors.length ? '✖' : q.warnings.length ? '!' : '✔';
   console.log(`\n${status} Câu ${i + 1} (dòng ${q.line}): ${q.text.replaceAll('\n', '\n    ') || '(không có nội dung)'}`);
-  q.answers.forEach((a, j) => console.log(`    ${a.correct ? '==' : '  '}${LETTERS[j] ?? j + 1}. ${a.text}`));
+  q.answers.forEach((a: { text: string; correct: boolean }, j: number) => console.log(`    ${a.correct ? '==' : '  '}${LETTERS[j] ?? j + 1}. ${a.text}`));
   for (const e of q.errors) console.log(`    ✖ Lỗi (dòng ${e.line}): ${e.message}`);
   for (const w of q.warnings) console.log(`    ! Lưu ý: ${w.message}`);
 });

@@ -4,6 +4,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { AddressInfo } from 'node:net';
 import { applyMigrations } from '../src/config/migrate.ts';
 import { createPrisma, openDb } from '../src/config/client.ts';
 import { createApp } from '../src/app.ts';
@@ -16,20 +17,24 @@ export async function startApp() {
   const prisma = createPrisma({ url });
   const server = createApp({ prisma }).listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
-  const base = `http://localhost:${server.address().port}`;
+  const base = `http://localhost:${(server.address() as AddressInfo).port}`;
 
   return {
     db,
     prisma,
     base,
-    get(path, cookie) {
+    get(path: string, cookie?: string | null): Promise<Response> {
       return fetch(base + path, { redirect: 'manual', headers: cookie ? { cookie } : {} });
     },
-    post(path, fields, { cookie, origin = base } = {}) {
+    post(
+      path: string,
+      fields: Record<string, string>,
+      { cookie, origin = base }: { cookie?: string | null; origin?: string } = {},
+    ): Promise<Response> {
       return fetch(base + path, {
         method: 'POST',
         redirect: 'manual',
-        headers: { 'content-type': 'application/x-www-form-urlencoded', origin, ...(cookie && { cookie }) },
+        headers: { 'content-type': 'application/x-www-form-urlencoded', origin, ...(cookie ? { cookie } : {}) },
         body: new URLSearchParams(fields),
       });
     },
@@ -43,7 +48,9 @@ export async function startApp() {
 }
 
 /** The "sid=…" part of the response's session cookie, or null. */
-export function sessionCookie(response) {
+export function sessionCookie(response: Response): string | null {
   const header = response.headers.getSetCookie().find((c) => c.startsWith('sid='));
   return header ? header.split(';')[0] : null;
 }
+
+export type TestApp = Awaited<ReturnType<typeof startApp>>;

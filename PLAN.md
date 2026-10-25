@@ -8,7 +8,7 @@
 ## Next session (stopped 2026-10-25)
 
 **Where we stopped:** Step 4.6 parts 3–6 run back to back (user's instruction 2026-10-25): each part is tested
-and committed locally, **nothing after part 2 (4c5ecd2) is pushed** until the user reviews. Part 3 done.
+and committed locally, **nothing after part 2 (4c5ecd2) is pushed** until the user reviews. Parts 3–4 done.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -29,7 +29,7 @@ and committed locally, **nothing after part 2 (4c5ecd2) is pushed** until the us
   - [x] part 3: services on Prisma
   - [x] part 4: validation + controllers + routes
   - [x] part 5: scripts, docs, cleanup
-- [ ] **Step 4.6 — Convert to TypeScript** (parts 1–3 of 6 done, see below) ← **next**
+- [ ] **Step 4.6 — Convert to TypeScript** (parts 1–4 of 6 done, see below) ← **next**
 - [x] **Step 5 — Sharing**: link `/h/CODE` and a "nhập mã" box on the home page (commit 2258768)
   - [x] `/h/CODE` finds the homework (code typed in any letter case), 404 in Vietnamese otherwise
   - [x] code entry form on the home page
@@ -463,9 +463,13 @@ Planned `tsconfig.json` settings:
     `requireTeacher` instead of acting for nobody; `?saved=` is read only when it is a string (a repeated
     parameter gave no notice before and still gives none); `sessionCookieOptions()` returns `CookieOptions`.
     `prisma.config.js` imports `load-env.ts` and is now covered by `test/imports.test.js`.
-- [ ] 4. **Scripts and tests.**
+- [x] 4. **Scripts and tests.**
   - `scripts/*.ts` and `test/*.test.ts`; the glob becomes `test/**/*.test.ts`.
   - Only the file types change; no assertion changes.
+  - Done: still 141 tests. `test/helpers.ts` exports `TestApp`; shared test variables are typed; homeworks
+    a test knows exist use `!`. The changed assertion lines only add `?? ''` / `!` for nullable header values
+    and results, and `tx.execute({ sql, args })` (the typed form of the same call); what they check is the same.
+    The parser is still JS, so `test/parser.test.ts` and `scripts/parse.ts` type its results by hand until part 5.
 - [ ] 5. **Parser and browser code (needs a build step).**
   - `src/shared/parser.ts`. Browsers cannot run TypeScript, so `npm run build:browser` (`tsc -p
     tsconfig.browser.json`) compiles `parser.ts` and `src/public/js/*.ts` to JavaScript in a `dist/public`

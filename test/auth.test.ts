@@ -3,13 +3,14 @@ import assert from 'node:assert/strict';
 import { createTeacher } from '../src/services/teacher.service.ts';
 import { createHomework } from '../src/services/homework.service.ts';
 import { parse } from '../src/shared/parser.js';
-import { startApp, sessionCookie } from './helpers.js';
+import { startApp, sessionCookie } from './helpers.ts';
+import type { TestApp } from './helpers.ts';
 
-let app;
-let db;
-let prisma;
-let get;
-let post;
+let app: TestApp;
+let db: TestApp['db'];
+let prisma: TestApp['prisma'];
+let get: TestApp['get'];
+let post: TestApp['post'];
 
 before(async () => {
   app = await startApp();
@@ -24,7 +25,7 @@ describe('pages', () => {
   test('home page is in Vietnamese and UTF-8', async () => {
     const response = await get('/');
     assert.equal(response.status, 200);
-    assert.match(response.headers.get('content-type'), /charset=utf-8/i);
+    assert.match(response.headers.get('content-type') ?? '', /charset=utf-8/i);
     assert.match(await response.text(), /Đăng ký tài khoản giáo viên/);
   });
 
@@ -97,7 +98,7 @@ describe('register', () => {
 });
 
 describe('login and logout', () => {
-  let teacherId;
+  let teacherId: number;
   before(async () => {
     teacherId = await createTeacher(prisma, { email: 'lan@example.com', name: 'Cô Lan', password: 'matkhau123' });
     await createHomework(prisma, { teacherId, title: 'Ôn tập', questions: parse('Q?\n==a\nb').questions });

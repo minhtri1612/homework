@@ -26,8 +26,8 @@ src/
   public/           static files: style.css, js/editor.js, js/copy.js
 prisma/             schema.prisma + migrations/ (the database schema; see database.md)
 prisma.config.js    settings for the Prisma CLI only
-scripts/            CLI tools behind npm scripts: db-migrate.js (db:init), db-reset.js, db-seed.js,
-                    db-new-migration.js (db:migration), parse.js
+scripts/            CLI tools behind npm scripts: db-migrate.ts (db:init), db-reset.ts, db-seed.ts,
+                    db-new-migration.ts (db:migration), parse.ts
 test/               node:test files (see testing.md)
 examples/mau.txt    sample syntax text covering every format
 data/               local SQLite file (data/*.db is gitignored)

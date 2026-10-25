@@ -37,7 +37,7 @@ first so the Node version matches `.nvmrc`.
 npm install                          # after any package.json change
 npm run dev                          # http://localhost:3000, restarts on file changes (node --watch)
 npm start                            # same without watch; PORT env var overrides 3000
-npm test                             # prisma generate + typecheck, then node --test "test/**/*.test.js"
+npm test                             # prisma generate + typecheck, then node --test "test/**/*.test.ts"
 npm run typecheck                    # tsc -p . (noEmit; Node strips the types when running .ts)
 npm run db:init                      # apply pending migrations (idempotent)
 npm run db:seed                      # sample teacher giaovien@example.com / matkhau123 + 2 homeworks
@@ -90,7 +90,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - **Times are stored as UTC ISO strings**; teachers type and read Vietnam time (UTC+7) via
   `src/vietnam-time.ts`. Do not store local times.
 - **Text is NFC-normalised** before comparing or storing (Vietnamese from macOS arrives as NFD).
-- **Tests never touch `data/local.db`**; they use a fresh temp database (`test/helpers.js`).
+- **Tests never touch `data/local.db`**; they use a fresh temp database (`test/helpers.ts`).
 - **Security rules in `.claude/docs/auth.md` are not optional**: hashed session tokens, Origin check
   on POST, ownership check (404) on every teacher route, EJS `<%= %>` escaping, `scriptJson()` for
   JSON inside `<script>`.
