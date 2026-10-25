@@ -24,8 +24,10 @@ src/
   grading.js        computeScore(correct, total) (see grading.md)
   views/            EJS templates; partials/head.ejs and partials/foot.ejs wrap every page
   public/           static files: style.css, js/editor.js, js/copy.js
-prisma/             schema.prisma + migrations/ (the database schema)
-scripts/            CLI tools behind npm scripts: db-init.js, db-seed.js, parse.js
+prisma/             schema.prisma + migrations/ (the database schema; see database.md)
+prisma.config.js    settings for the Prisma CLI only
+scripts/            CLI tools behind npm scripts: db-migrate.js (db:init), db-reset.js, db-seed.js,
+                    db-new-migration.js (db:migration), parse.js
 test/               node:test files (see testing.md)
 examples/mau.txt    sample syntax text covering every format
 data/               local SQLite file (data/*.db is gitignored)

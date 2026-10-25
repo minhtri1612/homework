@@ -13,7 +13,8 @@ Website giao bài tập trắc nghiệm **một đáp án đúng** cho giáo vi�
 |---|---|
 | Máy chủ | Node.js 24 + Express 5 |
 | Giao diện | Trang HTML dựng sẵn trên máy chủ (EJS) + một ít JavaScript thuần |
-| Cơ sở dữ liệu | SQLite qua `@libsql/client` — chạy máy cá nhân là một file (`data/local.db`), khi triển khai dùng Turso |
+| Cơ sở dữ liệu | SQLite — chạy máy cá nhân là một file (`data/local.db`), khi triển khai dùng Turso; truy vấn qua Prisma |
+| Kiểm tra dữ liệu form | Zod |
 | Kiểm thử | `node:test` có sẵn trong Node, không cần cài thêm |
 
 ## Cài đặt trên WSL (Ubuntu)
@@ -53,6 +54,8 @@ npm run parse -- examples/mau.txt   # thử bộ đọc cú pháp với một fi
 npm run db:init  # tạo/cập nhật các bảng (chạy các migration chưa chạy; chạy lại bao nhiêu lần cũng được)
 npm run db:seed  # thêm dữ liệu mẫu: 1 giáo viên và 2 bộ bài tập
 npm run db:reset # XOÁ HẾT dữ liệu rồi tạo lại bảng trống từ các migration (chỉ với file trên máy)
+npm run db:migration -- <tên>  # sau khi sửa prisma/schema.prisma: tạo migration mới (xem mục bên dưới)
+npm run db:generate            # tạo lại mã Prisma (npm install và npm test cũng tự làm)
 npm run dev      # chạy website ở http://localhost:3000, tự khởi động lại khi sửa file (Ctrl+C để dừng)
 npm start        # chạy website (không tự khởi động lại) — dùng khi triển khai
 ```
@@ -95,6 +98,21 @@ Các bảng (chi tiết trong `prisma/schema.prisma` và `prisma/migrations/`):
 
 Vì sao có **phiên bản**: nếu giáo viên sửa câu hỏi sau khi đã có học sinh nộp bài, câu hỏi mới được lưu
 thành phiên bản mới, còn bài đã nộp vẫn giữ đúng những câu học sinh đã làm.
+
+#### Thay đổi các bảng (migration)
+
+Mỗi lần thay đổi bảng được ghi thành một file SQL trong `prisma/migrations/`. Website tự chạy các file
+chưa chạy mỗi khi khởi động (cả trên máy và trên Turso), nên không cần sửa cơ sở dữ liệu bằng tay.
+
+1. Sửa `prisma/schema.prisma`.
+2. Chạy `npm run db:migration -- ten_thay_doi` (chữ thường, không dấu, dùng `_`), ví dụ
+   `npm run db:migration -- them_lop_hoc`. Lệnh này tạo file `migration.sql` mới nhưng chưa chạy nó.
+3. **Đọc lại file đó.** Nếu lệnh báo "tạo lại bảng (RedefineTables)", Prisma đã bỏ mất các quy tắc viết tay
+   của bảng đó (CHECK, COLLATE NOCASE, chỉ mục `answers_one_correct`): chép lại chúng từ migration đầu tiên
+   (có ghi chú `hand-written`).
+4. Chạy `npm run db:init` để áp dụng, rồi `npm test`.
+
+Không sửa một migration đã chạy: website sẽ báo lỗi. Muốn thay đổi tiếp thì tạo migration mới.
 
 ## Tài khoản giáo viên
 
@@ -252,8 +270,9 @@ src/
   grading.js      tính điểm thang 10 (làm tròn đến 0,25)
   vietnam-time.js đổi giờ Việt Nam ↔ giờ UTC lưu trong cơ sở dữ liệu
 prisma/           các bảng của cơ sở dữ liệu (schema.prisma) và các migration
+prisma.config.js  cài đặt cho lệnh prisma (website không dùng file này)
 test/             kiểm thử (npm test)
-scripts/          công cụ dòng lệnh (npm run parse, db:init, db:seed, db:reset)
+scripts/          công cụ dòng lệnh (npm run parse, db:init, db:seed, db:reset, db:migration)
 examples/         văn bản mẫu
 data/             file cơ sở dữ liệu khi chạy máy cá nhân (không đưa lên git)
 ```

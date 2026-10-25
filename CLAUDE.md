@@ -38,6 +38,8 @@ npm test                             # node --test "test/**/*.test.js"
 npm run db:init                      # apply pending migrations (idempotent)
 npm run db:seed                      # sample teacher giaovien@example.com / matkhau123 + 2 homeworks
 npm run db:reset                     # DROP all tables + _migrations, re-apply; refuses non-file: DATABASE_URL
+npm run db:migration -- <name>       # after editing prisma/schema.prisma: write the next migration (review it!)
+npm run db:generate                  # regenerate the Prisma client (npm install and npm test do it too)
 npm run parse -- examples/mau.txt    # run the parser on a file (or pipe text on stdin)
 ```
 
@@ -71,6 +73,11 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
   DOM APIs. Change it once, and the editor preview and the save-time validation change together.
 - **The server re-validates everything.** `validateHomework()` in `src/services/homework.service.js` runs on every
   save; the browser check is only a convenience. Schema `CHECK`/`UNIQUE` constraints are a second line of defence.
+- **Schema changes go through migrations.** Edit `prisma/schema.prisma`, run `npm run db:migration -- <name>`,
+  then review the SQL: a `-- RedefineTables` migration silently drops the hand-written `CHECK`s,
+  `COLLATE NOCASE` and the `answers_one_correct` index of that table, so add them back. Never edit an
+  applied migration. Details: `.claude/docs/database.md`.
+- **Single server process assumed** for the share-code and new-version checks (see `database.md`).
 - **Editing questions after submissions creates a new version** (`updateHomework`). Old submissions
   keep pointing at the old version's question/answer rows. Never update or delete rows of a version
   that has submissions. Settings (title, deadline, reveal mode, shuffle) are updated in place.

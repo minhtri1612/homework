@@ -7,11 +7,10 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 4.5 part 4 is done, **not committed yet, waiting for review** (part 3 is
-3d3f87f, pushed). Zod schemas, controllers, `routes/web.js` + `routes/status.js` and `middleware/` replace the
-old route files; `src/db/` and `src/auth/` are gone. All 140 tests pass.
+**Where we stopped:** Step 4.5 is finished: part 5 is done, **not committed yet, waiting for review** (part 4 is
+399f8e3, pushed). All 140 tests pass.
 
-**Next: Step 4.5 part 5 (scripts, docs, cleanup)**, after the user approves part 4.
+**Next: Step 4.6 (TypeScript, with Node 24's built-in type stripping)**, after the user approves part 5.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -26,13 +25,13 @@ old route files; `src/db/` and `src/auth/` are gone. All 140 tests pass.
       dashboard, `test/auth.test.js` (commit 88873ad)
 - [x] **Step 4 — Homework editor**: syntax tab + card tab, settings (reveal mode, Vietnam-time deadline,
       shuffle), new version when questions change after submissions, `test/editor.test.js` (commit 4622932)
-- [ ] **Step 4.5 — Refactor to LaptopShop architecture** (confirmed 2026-10-25; parts 1–4 of 5 done, see below)
+- [x] **Step 4.5 — Refactor to LaptopShop architecture** (confirmed 2026-10-25; done, see below)
   - [x] part 1: Prisma schema + migrations alongside the app
   - [x] part 2: migrations replace `schema.sql`
   - [x] part 3: services on Prisma
   - [x] part 4: validation + controllers + routes
-  - [ ] part 5: scripts, docs, cleanup ← **next**
-- [ ] **Step 4.6 — Convert to TypeScript** (planned; starts only after Step 4.5 is approved; see below)
+  - [x] part 5: scripts, docs, cleanup
+- [ ] **Step 4.6 — Convert to TypeScript** (planned; starts only after Step 4.5 is approved; see below) ← **next**
 - [x] **Step 5 — Sharing**: link `/h/CODE` and a "nhập mã" box on the home page (commit 2258768)
   - [x] `/h/CODE` finds the homework (code typed in any letter case), 404 in Vietnamese otherwise
   - [x] code entry form on the home page
@@ -386,9 +385,20 @@ Step 8. Baseline: 114 tests (Step 5 committed as 2258768).
    must be written plainly (`01`, `1e2` → 404 instead of opening homework 1 / 100). New
    `test/validation.test.js` (11 tests: missing fields, arrays, odd JSON, id, share code). Manual check:
    every route via the running app (register errors, create, edit, other teacher 404, join, share, 403, logout).
-- [ ] 5. **Scripts, docs, cleanup.** `db:seed`, `db:migration`, README (Vietnamese), CLAUDE.md, `.claude/docs/*`;
+- [x] 5. **Scripts, docs, cleanup.** `db:seed`, `db:migration`, README (Vietnamese), CLAUDE.md, `.claude/docs/*`;
    tick this step. Manual check: `npm run db:reset && npm run db:seed && npm run dev`, click through the
    dashboard, editor and share pages.
+   Done: `scripts/db-init.js` split into `db-migrate.js` (`db:init`) and `db-reset.js` (`db:reset`); new
+   `db-new-migration.js` (`db:migration -- <name>`: `prisma migrate diff --exit-code`, writes
+   `<UTC timestamp>_<name>/migration.sql`, says "no change" when there is none, warns on `RedefineTables`);
+   `pretest: prisma generate` (risk 7). The RedefineTables rule is in `database.md`, `CLAUDE.md` and the
+   README (risk 5). `db:migration` was checked by hand: no change, a bad name, an added column (plain
+   `ALTER TABLE`), and a `NOT NULL` change (RedefineTables, warning printed, CHECKs missing in the output as
+   expected); the test migrations were deleted afterwards. Manual check: `db:reset`, `db:seed`, `npm run dev`;
+   login, dashboard, editor, share page and the browser scripts load (HTTP; the editor's in-browser behaviour
+   is unchanged code and still needs a click-through in a real browser).
+   Kept as is: `applyMigrations(db)` takes a libSQL client rather than `{ url, authToken }` as first planned,
+   because tests pass their own client.
 
 ---
 

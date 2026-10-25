@@ -8,13 +8,15 @@
     "node": ">=24"
   },
   "scripts": {
+    "pretest": "prisma generate",
     "test": "node --test \"test/**/*.test.js\"",
     "postinstall": "prisma generate",
     "parse": "node scripts/parse.js",
-    "db:init": "node scripts/db-init.js",
-    "db:reset": "node scripts/db-init.js --reset",
+    "db:init": "node scripts/db-migrate.js",
+    "db:reset": "node scripts/db-reset.js",
     "db:seed": "node scripts/db-seed.js",
     "db:generate": "prisma generate",
+    "db:migration": "node scripts/db-new-migration.js",
     "dev": "node --watch src/server.js",
     "start": "node src/server.js"
   },

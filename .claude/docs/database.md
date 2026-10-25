@@ -8,6 +8,30 @@ services) and `openDb()` in the same file (a plain libSQL client used only to ap
 Data access: `src/services/teacher.service.js`, `session.service.js`, `homework.service.js` (Prisma Client;
 the first argument is the PrismaClient or a transaction `tx`). Tests: `test/db.test.js`.
 
+## Changing the schema (migrations)
+
+1. Edit `prisma/schema.prisma`.
+2. `npm run db:migration -- <name>` (lower case, digits, `_`). It runs `prisma migrate diff
+   --from-migrations prisma/migrations --to-schema prisma/schema.prisma --script` and writes
+   `prisma/migrations/<UTC timestamp>_<name>/migration.sql`; "Không có thay đổi" when nothing differs.
+   It needs no database. It does not apply anything.
+3. **Review the SQL by hand** (rule below), then `npm run db:init` and `npm run db:generate`
+   (`npm test` regenerates by itself through `pretest`).
+4. Commit the new migration folder together with the `schema.prisma` change. The server applies it on
+   its next start, also on Turso.
+
+`prisma migrate dev` / `migrate deploy` are not used: `deploy` cannot reach Turso, and both keep their own
+history table, which would conflict with `_migrations`.
+
+**RedefineTables rule (not optional).** When SQLite cannot alter a table in place (for example making a
+column `NOT NULL`, changing a type or a foreign key), Prisma writes `-- RedefineTables`: it creates
+`new_<table>` from `schema.prisma`, copies the rows, drops the old table and renames. The new table
+**silently loses** what `schema.prisma` cannot express: that table's `CHECK` constraints, `COLLATE NOCASE`
+on `teachers.email`, and the partial index `answers_one_correct`. Copy them back from the init migration
+(they are marked `hand-written`) into the new `CREATE TABLE` / after it, before applying.
+`db:migration` prints a warning when the file contains `RedefineTables`. Never edit a migration that has
+already been applied anywhere; `applyMigrations` refuses a changed checksum.
+
 ## libSQL: local file vs Turso
 
 - `openDb({ url, authToken })` defaults to `process.env.DATABASE_URL || 'file:data/local.db'` and
@@ -19,7 +43,7 @@ the first argument is the PrismaClient or a transaction `tx`). Tests: `test/db.t
   applied_at), each in its own write transaction. It fails if an applied `migration.sql` was edited
   afterwards. Called by `src/server.js` on startup, `npm run db:init`, `db:seed` and the tests
   (`test/helpers.js`, `test/db.test.js`). Never edit an applied migration; add a new one.
-- `dropSchema(db)` drops tables children-first, then `_migrations` (`TABLES` list in `client.js`), so
+- `dropSchema(db)` drops tables children-first, then `_migrations` (`TABLES` list in `migrate.js`), so
   `db:reset` re-applies every migration. If you add a table, add it to that list in the right order.
 - **No timestamp defaults in the database.** `created_at`, `updated_at` and `submitted_at` have no
   `DEFAULT`; the data-access code sets them (`new Date().toISOString()`). Raw-SQL inserts in tests must
@@ -28,7 +52,6 @@ the first argument is the PrismaClient or a transaction `tx`). Tests: `test/db.t
   connects through `PrismaLibSql` (`@prisma/adapter-libsql`), for `file:` and Turso alike. The client is
   generated TypeScript in `src/generated/prisma/` (`npm run db:generate`, also run by `postinstall`;
   regenerate after every `schema.prisma` change). Node 24 imports it from JS by stripping the types.
-- Step 4.5 part 5 (scripts, final docs) is not done yet.
 - Foreign keys are enforced, including inside transactions (tested in `test/db.test.js`).
 - Multi-statement writes use `prisma.$transaction(async (tx) => { … }, { timeout: 30_000 })`: a thrown
   error rolls everything back. The default 5 s timeout is too short for 200 questions over Turso.
@@ -121,6 +144,11 @@ use the version a submission belongs to, and new attempts use the latest version
 
 ## Scripts
 
-- `scripts/db-init.js`: `npm run db:init` / `npm run db:reset` (`--reset` refuses non-`file:` URLs).
+- `scripts/db-migrate.js`: `npm run db:init`, applies pending migrations.
+- `scripts/db-reset.js`: `npm run db:reset`, drops every table and `_migrations`, then applies all
+  migrations; refuses non-`file:` URLs.
+- `scripts/db-new-migration.js`: `npm run db:migration -- <name>` (see "Changing the schema").
+- `npm run db:generate`: `prisma generate` (also `postinstall` and `pretest`). `prisma.config.js` points
+  the Prisma CLI at the schema, the migrations folder and `DATABASE_URL`; the app does not read it.
 - `scripts/db-seed.js`: `npm run db:seed`; exits early if `giaovien@example.com` exists. Seeds
   through `parse()` + `createHomework()` with `shuffleAnswers: true`.
