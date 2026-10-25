@@ -19,7 +19,7 @@ import {
   getDeleteHomeworkPage,
   postDeleteHomework,
 } from '../controllers/results.controller.ts';
-import { getJoin, getSharedHomework, getAnswerPage, postSubmit, getResultPage } from '../controllers/share.controller.ts';
+import { getJoin, getSharedHomework, postStart, getAnswerPage, postSubmit, getResultPage } from '../controllers/share.controller.ts';
 
 export function webRoutes() {
   const router = Router();
@@ -50,6 +50,7 @@ export function webRoutes() {
   // Students (no account)
   router.get('/join', getJoin);
   router.get('/h/:code', getSharedHomework);
+  router.post('/h/:code/start', postStart);
   router.get('/h/:code/answer', getAnswerPage);
   router.post('/h/:code/submit', postSubmit);
   router.get('/h/:code/result/:token', getResultPage);

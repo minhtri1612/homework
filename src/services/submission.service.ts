@@ -18,16 +18,73 @@ function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
+/**
+ * How late a submission may arrive after the time limit or the deadline: the
+ * page submits by itself when time is up, and the request still has to cross
+ * a slow phone network (or the phone slept through the last seconds).
+ */
+export const SUBMIT_GRACE_MS = 60_000;
+
 /** True once the deadline has passed (a homework without a deadline never closes). */
 export function isClosed(deadline: string | null, now = new Date()): boolean {
   return deadline !== null && new Date(deadline) <= now;
 }
 
-/** Whether the result page may show the correct answers now. The score is always shown. */
+/** True once even a late submission (SUBMIT_GRACE_MS) for this deadline is refused. */
+function submissionsClosed(deadline: string | null, now: Date): boolean {
+  return isClosed(deadline, new Date(now.getTime() - SUBMIT_GRACE_MS));
+}
+
+/**
+ * Whether the result page may show the correct answers now. The score is
+ * always shown. after_deadline waits for the grace period too, so nobody can
+ * read the answers while a late submission is still accepted.
+ */
 export function canReveal(homework: { revealMode: string; deadline: string | null }, now = new Date()): boolean {
   if (homework.revealMode === 'after_submit') return true;
-  if (homework.revealMode === 'after_deadline') return isClosed(homework.deadline, now);
+  if (homework.revealMode === 'after_deadline') return submissionsClosed(homework.deadline, now);
   return false;
+}
+
+/**
+ * Whole seconds this student has left on a homework with a time limit: until
+ * startedAt + the limit, or the deadline if that comes first. 0 or less means
+ * time is up. null when the homework has no time limit.
+ */
+export function secondsLeft(
+  homework: { timeLimitMinutes: number | null; deadline: string | null },
+  startedAt: string,
+  now = new Date(),
+): number | null {
+  if (homework.timeLimitMinutes === null) return null;
+  let end = new Date(startedAt).getTime() + homework.timeLimitMinutes * 60_000;
+  if (homework.deadline !== null) end = Math.min(end, new Date(homework.deadline).getTime());
+  return Math.floor((end - now.getTime()) / 1000);
+}
+
+/**
+ * Records that this student started (homework with a time limit). Starting
+ * again keeps the first time, so reloading or another device cannot restart
+ * the clock. Returns when they started.
+ */
+export async function startAttempt(prisma: PrismaClient, homeworkId: number, name: string, now = new Date()): Promise<string> {
+  const key = { homeworkId, studentKey: studentKey(name) };
+  const attempt = await prisma.attempt.upsert({
+    where: { homeworkId_studentKey: key },
+    create: { ...key, startedAt: now.toISOString() },
+    update: {},
+    select: { startedAt: true },
+  });
+  return attempt.startedAt;
+}
+
+/** When this student started, or null if they have not pressed "Bắt đầu làm bài". */
+export async function findAttempt(prisma: PrismaClient, homeworkId: number, name: string): Promise<string | null> {
+  const attempt = await prisma.attempt.findUnique({
+    where: { homeworkId_studentKey: { homeworkId, studentKey: studentKey(name) } },
+    select: { startedAt: true },
+  });
+  return attempt?.startedAt ?? null;
 }
 
 interface OrderSource {
@@ -81,6 +138,7 @@ export async function getQuestionsForStudent(prisma: PrismaClient, shareCode: st
       title: true,
       shareCode: true,
       deadline: true,
+      timeLimitMinutes: true,
       shuffleQuestions: true,
       versions: { orderBy: { number: 'desc' }, take: 1, select: { id: true, questions: ORDERED_QUESTIONS } },
     },
@@ -99,6 +157,7 @@ export async function getQuestionsForStudent(prisma: PrismaClient, shareCode: st
     title: homework.title,
     shareCode: homework.shareCode,
     deadline: homework.deadline,
+    timeLimitMinutes: homework.timeLimitMinutes,
     versionId: version.id,
     // Built field by field so that isCorrect cannot slip through.
     questions: ordered.map(
@@ -118,7 +177,7 @@ export async function hasSubmitted(prisma: PrismaClient, homeworkId: number, nam
 
 /** Why a submission was not saved. message is shown to the student (Vietnamese). */
 export class SubmissionError extends Error {
-  code: 'NOT_FOUND' | 'CLOSED' | 'NAME_TAKEN' | 'CHANGED' | 'INVALID';
+  code: 'NOT_FOUND' | 'CLOSED' | 'TIME_UP' | 'NAME_TAKEN' | 'CHANGED' | 'INVALID';
 
   constructor(code: SubmissionError['code'], message: string) {
     super(message);
@@ -150,10 +209,24 @@ export async function submitAnswers(
   const now = new Date();
   try {
     return await prisma.$transaction(async (tx) => {
-      const homework = await tx.homework.findUnique({ where: { shareCode }, select: { id: true, deadline: true } });
+      const homework = await tx.homework.findUnique({
+        where: { shareCode },
+        select: {
+          id: true,
+          deadline: true,
+          timeLimitMinutes: true,
+          attempts: { where: { studentKey: studentKey(name) }, select: { startedAt: true } },
+        },
+      });
       if (!homework) throw new SubmissionError('NOT_FOUND', 'Không có bài tập nào với mã này.');
-      if (isClosed(homework.deadline, now)) {
+      if (submissionsClosed(homework.deadline, now)) {
         throw new SubmissionError('CLOSED', 'Đã hết hạn nộp bài, bài làm không được ghi nhận.');
+      }
+      // No attempt: the teacher set the time limit while this student was already answering.
+      const startedAt = homework.attempts[0]?.startedAt ?? null;
+      const left = startedAt === null ? null : secondsLeft(homework, startedAt, now);
+      if (left !== null && left * 1000 < -SUBMIT_GRACE_MS) {
+        throw new SubmissionError('TIME_UP', `Đã hết giờ làm bài (${homework.timeLimitMinutes} phút), bài làm không được ghi nhận.`);
       }
 
       const version = await tx.homeworkVersion.findFirst({
@@ -187,6 +260,7 @@ export async function submitAnswers(
           versionId: version.id,
           studentName: name,
           studentKey: studentKey(name),
+          startedAt,
           submittedAt: now.toISOString(),
           correctCount: correct,
           totalCount: total,

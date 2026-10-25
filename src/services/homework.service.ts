@@ -41,9 +41,11 @@ export interface HomeworkInput {
   revealMode?: string;
   deadline?: string | null;
   shuffleQuestions?: boolean;
+  /** Minutes a student has once they start; null for no limit. NaN when the teacher typed something that is not a number. */
+  timeLimitMinutes?: number | null;
 }
 
-export const LIMITS = { title: 200, questions: 200, questionText: 2000, answerText: 500 };
+export const LIMITS = { title: 200, questions: 200, questionText: 2000, answerText: 500, timeLimitMinutes: 600 };
 
 // Prisma's interactive transactions give up after 5 s by default. Saving 200
 // questions is about 400 statements, which over Turso's network can take longer.
@@ -53,7 +55,13 @@ const WRITE_TIMEOUT = { timeout: 30_000 };
  * Checks a homework before saving. Returns a list of { code, message,
  * question? } in Vietnamese; empty means it can be saved.
  */
-export function validateHomework({ title, questions, revealMode = 'after_submit', deadline = null }: HomeworkInput): HomeworkError[] {
+export function validateHomework({
+  title,
+  questions,
+  revealMode = 'after_submit',
+  deadline = null,
+  timeLimitMinutes = null,
+}: HomeworkInput): HomeworkError[] {
   const errors: HomeworkError[] = [];
   if (!String(title ?? '').trim()) errors.push({ code: 'NO_TITLE', message: 'Bài tập chưa có tiêu đề.' });
   else if (title.length > LIMITS.title) {
@@ -84,6 +92,12 @@ export function validateHomework({ title, questions, revealMode = 'after_submit'
   } else if (revealMode === 'after_deadline' && deadline === null) {
     errors.push({ code: 'NO_DEADLINE', message: 'Muốn hiện đáp án sau hạn nộp thì cần đặt hạn nộp.' });
   }
+  if (timeLimitMinutes !== null && !(Number.isInteger(timeLimitMinutes) && timeLimitMinutes >= 1 && timeLimitMinutes <= LIMITS.timeLimitMinutes)) {
+    errors.push({
+      code: 'BAD_TIME_LIMIT',
+      message: `Thời gian làm bài phải là số phút từ 1 đến ${LIMITS.timeLimitMinutes}, hoặc để trống nếu không giới hạn.`,
+    });
+  }
   return errors;
 }
 
@@ -103,9 +117,17 @@ export class HomeworkValidationError extends Error {
  */
 export async function createHomework(
   prisma: PrismaClient,
-  { teacherId, title, questions, revealMode = 'after_submit', deadline = null, shuffleQuestions = false }: HomeworkInput & { teacherId: number },
+  {
+    teacherId,
+    title,
+    questions,
+    revealMode = 'after_submit',
+    deadline = null,
+    shuffleQuestions = false,
+    timeLimitMinutes = null,
+  }: HomeworkInput & { teacherId: number },
 ): Promise<{ id: number; shareCode: string; versionId: number }> {
-  const errors = validateHomework({ title, questions, revealMode, deadline });
+  const errors = validateHomework({ title, questions, revealMode, deadline, timeLimitMinutes });
   if (errors.length) throw new HomeworkValidationError(errors);
 
   const now = new Date().toISOString();
@@ -118,7 +140,7 @@ export async function createHomework(
     } while (await tx.homework.findUnique({ where: { shareCode }, select: { id: true } }));
 
     const homework = await tx.homework.create({
-      data: { ...settingsData({ title, revealMode, deadline, shuffleQuestions }), teacherId, shareCode, createdAt: now, updatedAt: now },
+      data: { ...settingsData({ title, revealMode, deadline, shuffleQuestions, timeLimitMinutes }), teacherId, shareCode, createdAt: now, updatedAt: now },
       select: { id: true },
     });
     const versionId = await insertVersion(tx, homework.id, 1, questions, now);
@@ -135,9 +157,18 @@ export async function createHomework(
  */
 export async function updateHomework(
   prisma: PrismaClient,
-  { id, teacherId, title, questions, revealMode = 'after_submit', deadline = null, shuffleQuestions = false }: HomeworkInput & { id: number; teacherId: number },
+  {
+    id,
+    teacherId,
+    title,
+    questions,
+    revealMode = 'after_submit',
+    deadline = null,
+    shuffleQuestions = false,
+    timeLimitMinutes = null,
+  }: HomeworkInput & { id: number; teacherId: number },
 ): Promise<{ version: number; newVersion: boolean } | null> {
-  const errors = validateHomework({ title, questions, revealMode, deadline });
+  const errors = validateHomework({ title, questions, revealMode, deadline, timeLimitMinutes });
   if (errors.length) throw new HomeworkValidationError(errors);
 
   const now = new Date().toISOString();
@@ -151,7 +182,7 @@ export async function updateHomework(
 
     await tx.homework.update({
       where: { id },
-      data: { ...settingsData({ title, revealMode, deadline, shuffleQuestions }), updatedAt: now },
+      data: { ...settingsData({ title, revealMode, deadline, shuffleQuestions, timeLimitMinutes }), updatedAt: now },
     });
 
     if (sameQuestions(await loadQuestions(tx, version.id), questions)) {
@@ -167,12 +198,13 @@ export async function updateHomework(
   }, WRITE_TIMEOUT);
 }
 
-function settingsData({ title, revealMode, deadline, shuffleQuestions }: Required<Omit<HomeworkInput, 'questions'>>) {
+function settingsData({ title, revealMode, deadline, shuffleQuestions, timeLimitMinutes }: Required<Omit<HomeworkInput, 'questions'>>) {
   return {
     title: title.normalize('NFC').trim(),
     revealMode,
     deadline: deadline === null ? null : new Date(deadline).toISOString(),
     shuffleQuestions: Boolean(shuffleQuestions),
+    timeLimitMinutes,
   };
 }
 
@@ -254,6 +286,7 @@ export async function getHomework(prisma: PrismaClient, id: number) {
     revealMode: homework.revealMode,
     deadline: homework.deadline,
     shuffleQuestions: homework.shuffleQuestions,
+    timeLimitMinutes: homework.timeLimitMinutes,
     createdAt: homework.createdAt,
     updatedAt: homework.updatedAt,
     version: { id: version.id, number: version.number, submissionCount: version._count.submissions },
@@ -273,6 +306,7 @@ export async function findSharedHomework(prisma: PrismaClient, shareCode: string
       title: true,
       shareCode: true,
       deadline: true,
+      timeLimitMinutes: true,
       teacher: { select: { name: true } },
       ...LATEST_QUESTION_COUNT,
     },
@@ -283,6 +317,7 @@ export async function findSharedHomework(prisma: PrismaClient, shareCode: string
     title: homework.title,
     shareCode: homework.shareCode,
     deadline: homework.deadline,
+    timeLimitMinutes: homework.timeLimitMinutes,
     teacherName: homework.teacher.name,
     questionCount: questionCount(homework),
   };

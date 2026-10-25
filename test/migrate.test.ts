@@ -41,6 +41,7 @@ describe('applyMigrations', () => {
     assert.deepEqual(await tables(db), [
       '_migrations',
       'answers',
+      'attempts',
       'homework_versions',
       'homeworks',
       'questions',

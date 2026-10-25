@@ -39,10 +39,12 @@ model Homework {
   revealMode       String            @default("after_submit") @map("reveal_mode") // CHECK IN (...)
   deadline         String?
   shuffleQuestions Boolean           @default(false) @map("shuffle_questions")
+  timeLimitMinutes Int?              @map("time_limit_minutes") // NULL = no time limit; CHECK BETWEEN 1 AND 600
   createdAt        String            @map("created_at")
   updatedAt        String            @map("updated_at")
   versions         HomeworkVersion[]
   submissions      Submission[]
+  attempts         Attempt[]
   // CHECK (reveal_mode <> 'after_deadline' OR deadline IS NOT NULL)
   @@index([teacherId], map: "homeworks_teacher")
   @@map("homeworks")
@@ -117,4 +119,15 @@ model SubmissionAnswer {
   answer       Answer?    @relation(fields: [answerId, questionId], references: [id, questionId], onDelete: NoAction, onUpdate: NoAction)
   @@id([submissionId, questionId])
   @@map("submission_answers")
+}
+
+// When a student started a homework that has a time limit: one row per name,
+// written when they press "Bắt đầu làm bài", so reloading does not restart the clock.
+model Attempt {
+  homeworkId Int      @map("homework_id")
+  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  studentKey String   @map("student_key")
+  startedAt  String   @map("started_at")
+  @@id([homeworkId, studentKey])
+  @@map("attempts")
 }

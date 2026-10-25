@@ -47,9 +47,21 @@ describe('editor form', () => {
       shuffleQuestions: false,
       deadline: null,
       deadlineInput: '',
+      timeLimitMinutes: null,
+      timeLimitInput: '',
       questions: [],
       unreadable: false,
     });
+  });
+
+  test('time limit: empty is none, digits are minutes, anything else is NaN for validation to report', () => {
+    assert.equal(editorSchema.parse({ timeLimit: ' 40 ' }).timeLimitMinutes, 40);
+    assert.equal(editorSchema.parse({ timeLimit: '  ' }).timeLimitMinutes, null);
+    for (const typed of ['40,5', '-5', 'bốn mươi', '1e3']) {
+      const form = editorSchema.parse({ timeLimit: typed });
+      assert.ok(Number.isNaN(form.timeLimitMinutes), typed);
+      assert.equal(form.timeLimitInput, typed);
+    }
   });
 
   test('Vietnam-time deadline becomes UTC; the typed text is kept', () => {

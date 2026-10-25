@@ -98,12 +98,13 @@ Các bảng (chi tiết trong `prisma/schema.prisma` và `prisma/migrations/`):
 |---|---|
 | `teachers` | giáo viên (email, tên, mật khẩu đã mã hoá) |
 | `sessions` | phiên đăng nhập của giáo viên |
-| `homeworks` | bộ bài tập: tiêu đề, mã chia sẻ, cài đặt hiện đáp án, hạn nộp, xáo câu hỏi |
+| `homeworks` | bộ bài tập: tiêu đề, mã chia sẻ, cài đặt hiện đáp án, hạn nộp, xáo câu hỏi, thời gian làm bài |
 | `homework_versions` | các phiên bản câu hỏi của một bộ bài tập |
 | `questions` | câu hỏi (thuộc một phiên bản), có xáo đáp án hay không |
 | `answers` | đáp án, đúng một đáp án đúng mỗi câu |
 | `submissions` | bài nộp của học sinh: tên, điểm, số câu đúng |
 | `submission_answers` | đáp án học sinh chọn cho từng câu (trống nếu bỏ qua) |
+| `attempts` | giờ học sinh bấm “Bắt đầu làm bài” (chỉ với bài có thời gian làm bài) |
 
 Vì sao có **phiên bản**: nếu giáo viên sửa câu hỏi sau khi đã có học sinh nộp bài, câu hỏi mới được lưu
 thành phiên bản mới, còn bài đã nộp vẫn giữ đúng những câu học sinh đã làm.
@@ -141,7 +142,8 @@ Sau khi đăng nhập, bấm **+ Tạo bài tập mới**. Bấm vào tên một
   (2 đến 6), đổi thứ tự, xoá câu, bật “Xáo trộn đáp án”. Câu có lỗi hiện **màu đỏ**; còn câu đỏ thì chưa lưu được.
 - Chuyển qua lại giữa hai thẻ thoải mái: nội dung luôn được giữ, thẻ nào đang mở cũng lưu được.
 - Cài đặt: khi nào học sinh được xem đáp án đúng (ngay sau khi nộp — mặc định / sau hạn nộp / không cho xem),
-  hạn nộp theo **giờ Việt Nam**, và xáo trộn thứ tự câu hỏi.
+  hạn nộp theo **giờ Việt Nam**, xáo trộn thứ tự câu hỏi, và **thời gian làm bài** (số phút từ 1 đến 600,
+  để trống nếu không giới hạn).
 - Máy chủ kiểm tra lại mọi thứ khi lưu, nên dù trình duyệt có lỗi cũng không lưu được bài tập sai.
 - **Sửa bài tập đã có học sinh nộp**: nếu đổi câu hỏi, bài tập được lưu thành **phiên bản mới**; bài đã nộp vẫn
   giữ câu hỏi và điểm cũ. Chỉ đổi tiêu đề, hạn nộp hay cài đặt thì không tạo phiên bản mới.
@@ -195,7 +197,14 @@ Quy tắc:
 
 - **Mỗi tên chỉ nộp một lần** (không phân biệt chữ hoa chữ thường và dấu cách thừa). Hai bạn trùng tên
   thì ghi thêm họ hoặc tên lớp.
-- **Hết hạn nộp** thì không làm bài được nữa, bài gửi sau hạn không được ghi nhận.
+- **Hết hạn nộp** thì không làm bài được nữa. Bài gửi tới máy chủ trễ quá 1 phút sau hạn không được ghi nhận
+  (1 phút để bù mạng chậm).
+- **Thời gian làm bài** (nếu giáo viên đặt, ví dụ 40 phút): đồng hồ bắt đầu khi học sinh bấm
+  **Bắt đầu làm bài**, máy chủ ghi lại giờ bắt đầu. Tải lại trang, đổi máy hay bấm bắt đầu lại đều đếm tiếp,
+  không quay về từ đầu. Trang làm bài đếm ngược (chữ đỏ khi còn 5 phút) và **tự nộp bài khi hết giờ**,
+  với những câu đã chọn. Bài tới máy chủ trễ quá 1 phút sau khi hết giờ thì không được ghi nhận. Nếu hạn nộp
+  tới trước, đồng hồ dừng ở hạn nộp. Đáp án đã chọn được giữ trong trình duyệt nên tải lại trang không mất.
+  Xoá bài nộp của một học sinh thì học sinh đó làm lại được, với đồng hồ mới.
 - **Xáo trộn**: nếu giáo viên bật, mỗi học sinh thấy thứ tự câu hỏi / đáp án khác nhau, và tải lại trang
   vẫn giữ nguyên thứ tự của mình.
 - **Xem đáp án** theo cài đặt của bài: *ngay sau khi nộp* (mỗi câu hiện đáp án em chọn và đáp án đúng),

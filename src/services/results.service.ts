@@ -118,15 +118,25 @@ export async function findSubmission(prisma: PrismaClient, homeworkId: number, s
 }
 
 /**
- * Deletes one submission (its answers cascade). The name is free again, so
- * the student can submit once more. False if it is not this teacher's.
+ * Deletes one submission (its answers cascade) and the student's start time.
+ * The name is free again, so the student can submit once more. False if it
+ * is not this teacher's.
  */
 export async function deleteSubmission(
   prisma: PrismaClient,
   { homeworkId, teacherId, submissionId }: { homeworkId: number; teacherId: number; submissionId: number },
 ): Promise<boolean> {
-  const { count } = await prisma.submission.deleteMany({ where: { id: submissionId, homework: { id: homeworkId, teacherId } } });
-  return count > 0;
+  return prisma.$transaction(async (tx) => {
+    const submission = await tx.submission.findFirst({
+      where: { id: submissionId, homework: { id: homeworkId, teacherId } },
+      select: { studentKey: true },
+    });
+    if (!submission) return false;
+    await tx.submission.delete({ where: { id: submissionId } });
+    // The student may then do it again, with a fresh clock if there is a time limit.
+    await tx.attempt.deleteMany({ where: { homeworkId, studentKey: submission.studentKey } });
+    return true;
+  });
 }
 
 /**

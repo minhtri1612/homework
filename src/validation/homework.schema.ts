@@ -12,6 +12,13 @@ function objectOrEmpty<T extends z.ZodType>(schema: T) {
 
 const isTrue = z.unknown().optional().transform((value) => value === true);
 
+/** "" → null (no limit), digits → that number, anything else → NaN, which validateHomework() reports. */
+function minutes(text: string): number | null {
+  const value = text.trim();
+  if (value === '') return null;
+  return /^\d{1,6}$/.test(value) ? Number(value) : Number.NaN;
+}
+
 const answer = objectOrEmpty(z.object({ text: formText, correct: isTrue }));
 
 const question = objectOrEmpty(
@@ -34,6 +41,7 @@ export const editorSchema = z
     revealMode: z.unknown().optional().transform((value) => String(value ?? 'after_submit')),
     deadline: formText,
     shuffleQuestions: z.unknown().optional().transform((value) => value === '1'),
+    timeLimit: formText,
     questions: z
       .unknown()
       .optional()
@@ -46,10 +54,12 @@ export const editorSchema = z
       })
       .pipe(z.union([z.null(), z.array(question), z.unknown().transform(() => [])])),
   })
-  .transform(({ deadline, questions, ...form }) => ({
+  .transform(({ deadline, timeLimit, questions, ...form }) => ({
     ...form,
     deadline: fromVietnamInput(deadline),
     deadlineInput: deadline,
+    timeLimitMinutes: minutes(timeLimit),
+    timeLimitInput: timeLimit,
     questions: questions ?? [],
     unreadable: questions === null,
   }));

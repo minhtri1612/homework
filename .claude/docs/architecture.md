@@ -91,8 +91,9 @@ All listed in `routes/web.ts`; controllers in `src/controllers/`.
 | GET/POST | `/teacher/homeworks/:id/delete` | `results.getDeleteHomeworkPage` / `postDeleteHomework` | confirmation page (checkbox required when there are submissions, checked in the delete transaction), then delete → 303 `/teacher?notice=homework-deleted` |
 | GET | `/join?code=…` | `share.getJoin` | home-page code box (GET form) → 302 `/h/CODE`; bad/empty code → 400 home with error |
 | GET | `/h/:code` | `share.getSharedHomework` | student start page (name form); non-canonical code (lower case…) → 302 to `/h/CODE`; unknown → 404 |
-| GET | `/h/:code/answer?name=…` | `share.getAnswerPage` | questions without correct answers; bad name 400, name already used 409, closed 403 |
-| POST | `/h/:code/submit` | `share.postSubmit` | grade + save → 303 to the result link, sets cookie `result_<CODE>`; closed 403, name used / questions changed 409, bad data 400 |
+| POST | `/h/:code/start` | `share.postStart` | homework with a time limit: records the start once (`attempts`) → 303 to the answer page; bad name 400, name used 409, closed 403 |
+| GET | `/h/:code/answer?name=…` | `share.getAnswerPage` | questions without correct answers (+ seconds left with a time limit); bad name 400, name already used 409, closed or time up 403; time limit but not started → the start page |
+| POST | `/h/:code/submit` | `share.postSubmit` | grade + save → 303 to the result link, sets cookie `result_<CODE>`; closed / time up (60 s grace) 403, name used / questions changed 409, bad data 400 |
 | GET | `/h/:code/result/:token` | `share.getResultPage` | score, and the answers when the reveal mode allows; unknown token 404 |
 
 Everything under `/teacher` goes through `requireTeacher` (302 to `/login`) and `setSiteUrl`. Routes with

@@ -53,6 +53,16 @@ service step by step with Claude (push to GitHub first, when the user says so). 
     check makes the matching tests fail.
 - [ ] **Step 8 — Deploy**: Render (web service) + Turso (database), production settings ← **next**
   (planned 2026-10-25, see "Step 8 — Deploy" below; nothing deployed until the user confirms)
+- [x] **Step 9 — Time limit** (asked for by the user 2026-10-25; decisions in `.claude/docs/grading.md`)
+  - [x] teacher sets minutes per homework (1–600, empty = none); migration `20261025090235_homework_time_limit`
+    (`homeworks.time_limit_minutes` + table `attempts`)
+  - [x] the server records the start (`POST /h/CODE/start`); reload / other device continue the same clock
+  - [x] countdown on the answer page, auto-submit at 0; chosen answers kept over a reload (`localStorage`)
+  - [x] submissions up to 1 minute late accepted, later refused; the same minute for the deadline;
+    `after_deadline` reveals after that minute; deleting a submission resets the clock
+  - Tests: 12 in `test/student.test.ts` "time limit" (+1 validation); 203 in total. Checked that removing the
+    late check or the time-left check makes the matching tests fail.
+  - [x] the user checked the countdown and auto-submit in a browser (no browser in the tests)
 
 ---
 

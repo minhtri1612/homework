@@ -35,6 +35,7 @@ interface EditorHomework {
   revealMode: string;
   deadlineInput: string;
   shuffleQuestions: boolean;
+  timeLimitInput: string;
   questions: QuestionInput[];
 }
 
@@ -85,7 +86,7 @@ export async function getDashboardPage(req: Request, res: Response) {
 
 export function getNewHomeworkPage(req: Request, res: Response) {
   renderEditor(res, {
-    homework: { title: '', revealMode: 'after_submit', deadlineInput: '', shuffleQuestions: false, questions: [] },
+    homework: { title: '', revealMode: 'after_submit', deadlineInput: '', shuffleQuestions: false, timeLimitInput: '', questions: [] },
   });
 }
 
@@ -110,7 +111,11 @@ export async function getEditHomeworkPage(req: Request, res: Response) {
     ? `Đã lưu thành phiên bản ${savedParam.slice(1)}. Bài đã nộp vẫn giữ câu hỏi cũ.`
     : (SAVED_MESSAGES[savedParam] ?? null);
   renderEditor(res, {
-    homework: { ...homework, deadlineInput: toVietnamInput(homework.deadline) },
+    homework: {
+      ...homework,
+      deadlineInput: toVietnamInput(homework.deadline),
+      timeLimitInput: homework.timeLimitMinutes === null ? '' : String(homework.timeLimitMinutes),
+    },
     saved,
   });
 }

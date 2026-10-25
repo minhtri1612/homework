@@ -8,6 +8,9 @@
   <% } else { %>
     <p class="muted">Không có hạn nộp.</p>
   <% } %>
+  <% if (homework.timeLimitMinutes) { %>
+    <p>Thời gian làm bài: <strong><%= homework.timeLimitMinutes %> phút</strong></p>
+  <% } %>
   <p class="muted">Mã bài tập: <code><%= homework.shareCode %></code></p>
 </section>
 <% if (notice) { %>
@@ -19,13 +22,21 @@
 <% if (closed) { %>
   <p class="notice danger" role="status">Đã hết hạn nộp bài.</p>
 <% } else { %>
-  <form method="get" action="/h/<%= homework.shareCode %>/answer" class="card form">
+  <% if (homework.timeLimitMinutes) { %>
+    <form method="post" action="/h/<%= homework.shareCode %>/start" class="card form">
+  <% } else { %>
+    <form method="get" action="/h/<%= homework.shareCode %>/answer" class="card form">
+  <% } %>
     <label>Họ và tên của em
       <input name="name" value="<%= nameInput %>" autocomplete="name" required maxlength="100" autofocus
              <% if (nameError) { %>aria-invalid="true" aria-describedby="name-error"<% } %>>
     </label>
     <% if (nameError) { %><p class="error" id="name-error"><%= nameError %></p><% } %>
     <p class="muted">Mỗi tên chỉ được nộp bài một lần. Ghi đầy đủ họ tên để thầy cô nhận ra em.</p>
+    <% if (homework.timeLimitMinutes) { %>
+      <p class="notice">Đồng hồ <strong><%= homework.timeLimitMinutes %> phút</strong> bắt đầu chạy khi em bấm “Bắt đầu làm bài”
+        và không dừng lại, kể cả khi tải lại trang hay đổi máy. Hết giờ, bài làm sẽ tự động được nộp.</p>
+    <% } %>
     <button type="submit">Bắt đầu làm bài</button>
   </form>
 <% } %>

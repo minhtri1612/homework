@@ -2,8 +2,10 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, type TestApp } from './helpers.ts';
 import { createTeacher } from '../src/services/teacher.service.ts';
-import { createHomework, getHomework, updateHomework, type QuestionInput } from '../src/services/homework.service.ts';
+import { createHomework, getHomework, updateHomework, validateHomework, type QuestionInput } from '../src/services/homework.service.ts';
 import { seededShuffle } from '../src/services/shuffle.service.ts';
+import { secondsLeft, SUBMIT_GRACE_MS } from '../src/services/submission.service.ts';
+import { deleteSubmission } from '../src/services/results.service.ts';
 
 let app: TestApp;
 let teacherId: number;
@@ -298,5 +300,160 @@ describe('result page', () => {
     const html = await (await app.get(location)).text();
     assert.ok(html.includes('&lt;b&gt;Tý&lt;/b&gt;'));
     assert.ok(!html.includes('<b>Tý</b>'));
+  });
+});
+
+describe('time limit', () => {
+  const MINUTE = 60_000;
+  const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+
+  /** Presses "Bắt đầu làm bài" as `name`; returns the answer page it leads to. */
+  async function start(code: string, name: string) {
+    const response = await app.post(`/h/${code}/start`, { name });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.get('location'), `/h/${code}/answer?name=${encodeURIComponent(name)}`);
+    return openAnswerPage(code, name);
+  }
+
+  async function setStarted(homeworkId: number, key: string, startedAt: string) {
+    await app.db.execute({ sql: 'UPDATE attempts SET started_at = ? WHERE homework_id = ? AND student_key = ?', args: [startedAt, homeworkId, key] });
+  }
+
+  async function startedAt(homeworkId: number, key: string) {
+    const rows = (await app.db.execute({ sql: 'SELECT started_at FROM attempts WHERE homework_id = ? AND student_key = ?', args: [homeworkId, key] })).rows;
+    return rows[0]?.started_at ?? null;
+  }
+
+  test('the teacher sets 1 to 600 minutes, or nothing', async () => {
+    for (const bad of [0, 601, 2.5, Number.NaN]) {
+      const errors = validateHomework({ title: 'x', questions: questions(1), timeLimitMinutes: bad });
+      assert.deepEqual(errors.map((e) => e.code), ['BAD_TIME_LIMIT'], String(bad));
+      assert.match(errors[0]!.message, /từ 1 đến 600/);
+    }
+    const { homework } = await newHomework({ timeLimitMinutes: 40 });
+    assert.equal(homework.timeLimitMinutes, 40);
+    assert.equal((await newHomework()).homework.timeLimitMinutes, null);
+    await assert.rejects(
+      app.db.execute({ sql: 'UPDATE homeworks SET time_limit_minutes = 0 WHERE id = ?', args: [homework.id] }),
+      /CHECK/,
+    );
+  });
+
+  test('the editor shows the saved time limit', async () => {
+    const login = await app.post('/login', { email: 'lan@example.com', password: 'matkhau123' });
+    const cookie = login.headers.getSetCookie()[0]!.split(';')[0]!;
+    const { id } = await newHomework({ timeLimitMinutes: 45 });
+    const html = await (await app.get(`/teacher/homeworks/${id}/edit`, cookie)).text();
+    assert.match(html, /name="timeLimit"[^>]*value="45"/);
+  });
+
+  test('the share page tells the time and starts with a POST', async () => {
+    const { shareCode } = await newHomework({ timeLimitMinutes: 40 });
+    const html = await (await app.get(`/h/${shareCode}`)).text();
+    assert.match(html, /Thời gian làm bài: <strong>40 phút<\/strong>/);
+    assert.match(html, new RegExp(`method="post" action="/h/${shareCode}/start"`));
+    assert.match(html, /tự động được nộp/);
+  });
+
+  test('without pressing start, the answer page sends the student back to the start page', async () => {
+    const { shareCode } = await newHomework({ timeLimitMinutes: 40 });
+    const { response, html } = await openAnswerPage(shareCode, 'Hoà');
+    assert.equal(response.status, 200);
+    assert.doesNotMatch(html, /name="q\d+"/, 'no questions before the clock starts');
+    assert.match(html, /name="name" value="Hoà"/);
+  });
+
+  test('starting records the time once: reloading or starting again does not restart the clock', async () => {
+    const { id, shareCode } = await newHomework({ timeLimitMinutes: 40 });
+    const first = await start(shareCode, 'Lê Hoà');
+    assert.equal(first.response.status, 200);
+    const left = Number(first.html.match(/data-seconds-left="(\d+)"/)?.[1]);
+    assert.ok(left > 40 * 60 - 5 && left <= 40 * 60, String(left));
+
+    await setStarted(id, 'lê hoà', ago(10 * MINUTE));
+    const again = await start(shareCode, 'LÊ HOÀ'); // the same student key
+    const leftAgain = Number(again.html.match(/data-seconds-left="(\d+)"/)?.[1]);
+    assert.ok(leftAgain > 30 * 60 - 5 && leftAgain <= 30 * 60, String(leftAgain));
+    assert.equal(await count('SELECT count(*) AS n FROM attempts WHERE homework_id = ?', [id]), 1);
+  });
+
+  test('time is up: no answer page, and a submission more than a minute late is refused', async () => {
+    const { id, shareCode } = await newHomework({ timeLimitMinutes: 40 });
+    const { html } = await start(shareCode, 'Muộn');
+    await setStarted(id, 'muộn', ago(40 * MINUTE + SUBMIT_GRACE_MS + 5000));
+
+    const opened = await openAnswerPage(shareCode, 'Muộn');
+    assert.equal(opened.response.status, 403);
+    assert.match(opened.html, /Đã hết giờ làm bài \(40 phút\)/);
+
+    const page = readAnswerPage(html);
+    const response = await app.post(`/h/${shareCode}/submit`, { name: page.name, versionId: page.versionId, questionIds: page.questionIds });
+    assert.equal(response.status, 403);
+    assert.match(await response.text(), /Đã hết giờ làm bài/);
+    assert.equal(await count('SELECT count(*) AS n FROM submissions WHERE homework_id = ?', [id]), 0);
+  });
+
+  test('a submission arriving within a minute after time is up is graded, with the start time', async () => {
+    const { id, shareCode, homework } = await newHomework({ timeLimitMinutes: 40 });
+    const { html } = await start(shareCode, 'Kịp');
+    const started = ago(40 * MINUTE + 30_000);
+    await setStarted(id, 'kịp', started);
+    const page = readAnswerPage(html);
+    const correct = correctOf(homework);
+    const fields: Record<string, string> = { name: page.name, versionId: page.versionId, questionIds: page.questionIds };
+    for (const q of page.order) fields[`q${q}`] = String(correct.get(q));
+    const response = await app.post(`/h/${shareCode}/submit`, fields);
+    assert.equal(response.status, 303);
+    const row = (await app.db.execute({ sql: 'SELECT score, started_at FROM submissions WHERE homework_id = ?', args: [id] })).rows[0]!;
+    assert.equal(row.score, 10);
+    assert.equal(row.started_at, started);
+  });
+
+  test('the clock stops at the deadline if that comes first', () => {
+    const now = new Date('2026-11-01T10:00:00.000Z');
+    const homework = { timeLimitMinutes: 40, deadline: '2026-11-01T10:15:00.000Z' };
+    assert.equal(secondsLeft(homework, '2026-11-01T09:50:00.000Z', now), 15 * 60);
+    assert.equal(secondsLeft({ ...homework, deadline: null }, '2026-11-01T09:50:00.000Z', now), 30 * 60);
+    assert.equal(secondsLeft({ ...homework, timeLimitMinutes: null }, '2026-11-01T09:50:00.000Z', now), null);
+  });
+
+  test('the deadline also allows a minute for a late arrival, and after_deadline answers wait for it', async () => {
+    const { id, shareCode } = await newHomework({ revealMode: 'after_deadline', deadline: '2099-01-01T00:00:00.000Z' });
+    const { html } = await openAnswerPage(shareCode, 'Sát giờ');
+    await app.db.execute({ sql: 'UPDATE homeworks SET deadline = ? WHERE id = ?', args: [ago(30_000), id] });
+    const page = readAnswerPage(html);
+    const response = await app.post(`/h/${shareCode}/submit`, { name: page.name, versionId: page.versionId, questionIds: page.questionIds });
+    assert.equal(response.status, 303);
+    const result = await (await app.get(response.headers.get('location')!)).text();
+    assert.match(result, /Đáp án sẽ hiện ở trang này sau hạn nộp/, 'not revealed while late submissions are accepted');
+  });
+
+  test('a time limit added while a student was answering does not refuse their work', async () => {
+    const { id, shareCode } = await newHomework();
+    const { html } = await openAnswerPage(shareCode, 'Đang làm');
+    await app.db.execute({ sql: 'UPDATE homeworks SET time_limit_minutes = 10 WHERE id = ?', args: [id] });
+    const page = readAnswerPage(html);
+    const response = await app.post(`/h/${shareCode}/submit`, { name: page.name, versionId: page.versionId, questionIds: page.questionIds });
+    assert.equal(response.status, 303);
+  });
+
+  test('deleting the submission frees the name with a fresh clock', async () => {
+    const { id, shareCode } = await newHomework({ timeLimitMinutes: 40 });
+    const { html } = await start(shareCode, 'Làm lại');
+    const page = readAnswerPage(html);
+    await app.post(`/h/${shareCode}/submit`, { name: page.name, versionId: page.versionId, questionIds: page.questionIds });
+    const submissionId = Number((await app.db.execute({ sql: 'SELECT id FROM submissions WHERE homework_id = ?', args: [id] })).rows[0]!.id);
+    assert.ok(await startedAt(id, 'làm lại'));
+
+    assert.equal(await deleteSubmission(app.prisma, { homeworkId: id, teacherId, submissionId }), true);
+    assert.equal(await startedAt(id, 'làm lại'), null);
+    assert.equal((await start(shareCode, 'Làm lại')).response.status, 200);
+  });
+
+  test('a homework without a time limit has no clock and needs no start', async () => {
+    const { shareCode } = await newHomework();
+    const { response, html } = await openAnswerPage(shareCode, 'Tự do');
+    assert.equal(response.status, 200);
+    assert.doesNotMatch(html, /data-seconds-left/);
   });
 });

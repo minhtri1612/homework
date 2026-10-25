@@ -55,6 +55,11 @@
       <input type="datetime-local" name="deadline" id="deadline" value="<%= homework.deadlineInput %>">
     </label>
 
+    <label>Thời gian làm bài <span class="muted">(số phút, ví dụ 40; để trống nếu không giới hạn)</span>
+      <input type="number" name="timeLimit" min="1" max="600" step="1" inputmode="numeric" class="minutes"
+             value="<%= homework.timeLimitInput %>">
+    </label>
+
     <label class="check">
       <input type="checkbox" name="shuffleQuestions" value="1" <%= homework.shuffleQuestions ? 'checked' : '' %>>
       Xáo trộn thứ tự câu hỏi cho mỗi học sinh

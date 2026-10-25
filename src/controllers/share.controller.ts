@@ -4,11 +4,14 @@ import type { Request, Response } from 'express';
 import { findSharedHomework } from '../services/homework.service.ts';
 import {
   canReveal,
+  findAttempt,
   getQuestionsForStudent,
   getResult,
   hasSubmitted,
   isClosed,
   nameTakenMessage,
+  secondsLeft,
+  startAttempt,
   submitAnswers,
   SubmissionError,
 } from '../services/submission.service.ts';
@@ -98,7 +101,33 @@ export async function getSharedHomework(req: Request, res: Response) {
   if (code) await renderShare(req, res, code);
 }
 
-// The name box is a GET form to /h/CODE/answer?name=…: nothing is saved yet.
+/**
+ * The name box of a homework with a time limit: records when this student
+ * started (the first time only), then opens the answer page.
+ */
+export async function postStart(req: Request, res: Response) {
+  const code = codeOf(req, res);
+  if (!code) return;
+  const nameInput = String(req.body?.name ?? '');
+  const parsed = nameSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return renderShare(req, res, code, { status: 400, nameInput, nameError: parsed.error.issues[0]!.message });
+  }
+  const { name } = parsed.data;
+
+  const homework = await findSharedHomework(req.prisma, code);
+  if (!homework) return notFound(res);
+  if (isClosed(homework.deadline)) return renderShare(req, res, code, { status: 403 });
+  if (await hasSubmitted(req.prisma, homework.id, name)) {
+    return renderShare(req, res, code, { status: 409, nameInput, nameError: nameTakenMessage(name) });
+  }
+  // Without a time limit (the teacher just removed it) nothing needs recording.
+  if (homework.timeLimitMinutes !== null) await startAttempt(req.prisma, homework.id, name);
+  res.redirect(303, `/h/${code}/answer?name=${encodeURIComponent(name)}`);
+}
+
+// Without a time limit, the name box is a GET form to /h/CODE/answer?name=…:
+// nothing is saved yet. With one, postStart() comes first.
 export async function getAnswerPage(req: Request, res: Response) {
   const code = codeOf(req, res);
   if (!code) return;
@@ -116,12 +145,26 @@ export async function getAnswerPage(req: Request, res: Response) {
     return renderShare(req, res, code, { status: 409, nameInput, nameError: nameTakenMessage(name) });
   }
 
-  res.render('answer', { title: homework.title, homework, name });
+  let left: number | null = null;
+  if (homework.timeLimitMinutes !== null) {
+    const startedAt = await findAttempt(req.prisma, homework.id, name);
+    // Not started yet (an old link, or the time limit was added since): the
+    // start page, with the name filled in, explains the time limit first.
+    if (startedAt === null) return renderShare(req, res, code, { nameInput });
+    left = secondsLeft(homework, startedAt)!;
+    if (left <= 0) {
+      const notice = `Đã hết giờ làm bài (${homework.timeLimitMinutes} phút), bài làm không được ghi nhận.`;
+      return renderShare(req, res, code, { status: 403, nameInput, notice });
+    }
+  }
+
+  res.render('answer', { title: homework.title, homework, name, secondsLeft: left });
 }
 
 const SUBMIT_STATUS: Record<SubmissionError['code'], number> = {
   NOT_FOUND: 404,
   CLOSED: 403,
+  TIME_UP: 403,
   NAME_TAKEN: 409,
   CHANGED: 409,
   INVALID: 400,

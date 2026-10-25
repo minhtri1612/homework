@@ -1,10 +1,13 @@
 <%- include('partials/head') %>
 <h1><%= homework.title %></h1>
 <p>Học sinh: <strong><%= name %></strong>
-  <% if (homework.deadline) { %> · Hạn nộp: <%= formatDateTime(homework.deadline) %><% } %></p>
-<noscript><p class="notice">Câu nào chưa chọn đáp án sẽ bị tính là sai.</p></noscript>
+  <% if (homework.deadline) { %> · Hạn nộp: <%= formatDateTime(homework.deadline) %><% } %>
+  <% if (secondsLeft !== null) { %> · Thời gian làm bài: <%= homework.timeLimitMinutes %> phút<% } %></p>
+<noscript><p class="notice">Câu nào chưa chọn đáp án sẽ bị tính là sai.
+  <% if (secondsLeft !== null) { %>Trình duyệt đang tắt JavaScript nên không có đồng hồ và bài không tự nộp: hãy nộp trước khi hết giờ.<% } %></p></noscript>
 
-<form method="post" action="/h/<%= homework.shareCode %>/submit" id="answer-form" class="answer-form">
+<form method="post" action="/h/<%= homework.shareCode %>/submit" id="answer-form" class="answer-form"
+      data-draft-key="<%= homework.shareCode %>:<%= homework.versionId %>:<%= name %>">
   <input type="hidden" name="name" value="<%= name %>">
   <input type="hidden" name="versionId" value="<%= homework.versionId %>">
   <input type="hidden" name="questionIds" value="<%= homework.questions.map((q) => q.id).join(',') %>">
@@ -23,6 +26,11 @@
   <% }) %>
 
   <div class="savebar">
+    <% if (secondsLeft !== null) { %>
+      <span id="timer" class="timer" data-seconds-left="<%= secondsLeft %>" role="timer">
+        Còn <%= Math.floor(secondsLeft / 60) %> phút
+      </span>
+    <% } %>
     <span id="answer-status" class="muted" aria-live="polite"></span>
     <button type="submit">Nộp bài</button>
   </div>

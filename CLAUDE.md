@@ -9,7 +9,8 @@ Website for Vietnamese teachers to set single-correct-answer multiple-choice hom
 register, then write questions either as pasted text in a small syntax (`==` marks the correct answer)
 or as editable cards, and share the homework by link (`/h/CODE`) or 6-character code. Students (no
 account) open it, enter a name, answer and submit; the server grades on a 10-point scale and shows the
-result by a private link, revealing the answers according to the homework's reveal mode. Teachers see the results (per version,
+result by a private link, revealing the answers according to the homework's reveal mode. A homework can
+have a time limit: the server records when the student starts and the page submits by itself when time is up. Teachers see the results (per version,
 per question), download them as CSV, and can delete a submission or a whole homework after a
 confirmation. Deploying (Step 8) is next (see `PLAN.md`).
 
@@ -92,6 +93,8 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
   then review the SQL: a `-- RedefineTables` migration silently drops the hand-written `CHECK`s,
   `COLLATE NOCASE` and the `answers_one_correct` index of that table, so add them back. Never edit an
   applied migration. Details: `.claude/docs/database.md`.
+- **Time limits are enforced by the server** (`attempts.started_at`, `secondsLeft()`, 60 s `SUBMIT_GRACE_MS`
+  for the limit and the deadline); the countdown in `answer.ts` is only a convenience. See `grading.md`.
 - **Single server process assumed** for the share-code and new-version checks (see `database.md`).
 - **Editing questions after submissions creates a new version** (`updateHomework`). Old submissions
   keep pointing at the old version's question/answer rows. Never update or delete rows of a version

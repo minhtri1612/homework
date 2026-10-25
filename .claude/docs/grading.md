@@ -56,6 +56,29 @@ are the teacher's order; shuffling is meant to be presentation only.
 
 **Deadline**: `homeworks.deadline` UTC ISO or NULL (none). Teachers enter Vietnam time.
 
+## Time limit (Step 9, decided by the user 2026-10-25)
+
+`homeworks.time_limit_minutes` (NULL = none, CHECK 1–600; editor field "Thời gian làm bài", `minutes()` in
+`homework.schema.ts` turns typed text into a number, NaN, or null; `validateHomework()` reports `BAD_TIME_LIMIT`).
+- **Server records the start**: with a limit, the share page form is `POST /h/CODE/start` (`postStart`), which
+  upserts `attempts(homework_id, student_key, started_at)` keeping the first time. Reload, another device or
+  starting again continue the same clock. `GET /h/CODE/answer` without an attempt shows the start page (name
+  filled in, no questions); with time up it is 403 "Đã hết giờ làm bài (N phút)…".
+- **Time left** `secondsLeft()`: until `started_at + limit`, or the deadline if earlier. The page gets the
+  seconds left (`data-seconds-left`), not an end time, so the device clock does not matter.
+- **Auto-submit**: `answer.ts` counts down (red under 5 minutes, re-checks on `visibilitychange`) and calls
+  `form.submit()` at 0, skipping the blank-question confirmation. Chosen answers are kept in `localStorage`
+  (`answers:CODE:versionId:name`, try/catch) until submitted, so a reload does not lose them.
+- **Late arrival**: `submitAnswers()` accepts up to `SUBMIT_GRACE_MS` (60 s) after time is up, else
+  `TIME_UP` (403, not saved). The same minute now applies to the **deadline** for every homework (an
+  auto-submit at the deadline would otherwise always be late), and `after_deadline` reveals the answers only
+  after deadline + 60 s, so nobody reads them while a late submission is still accepted. Opening the answer
+  page stays strict at the deadline.
+- **No attempt but a limit** (the teacher added the limit while the student was answering): accepted.
+- `submissions.started_at` is now filled from the attempt (NULL without a limit). Deleting a submission
+  (`deleteSubmission`) also deletes the attempt, so the student can redo it with a fresh clock. A student
+  whose time ran out without a submission cannot be reset by the teacher (no UI for attempts).
+
 ## Step 6 decisions (2026-10-25)
 
 - **Blank answers** are allowed, also a fully blank submission; each blank question counts as wrong and is
@@ -65,10 +88,10 @@ are the teacher's order; shuffling is meant to be presentation only.
 - **Shuffle order** is derived, not stored: `seededShuffle()` (SHA-256 of the seed → mulberry32 →
   Fisher–Yates) with seed `homeworkId:versionId:studentKey` for the questions (when `shuffle_questions`)
   and `…:questionId` for each question's answers (when `shuffle_answers`). The same student sees the same
-  order on reload, other students another one, and the result page repeats it. `started_at` stays unused.
+  order on reload, other students another one, and the result page repeats it. (`started_at`: see "Time limit".)
 - **Deadline**: after it, `/h/CODE` shows no name form, `/h/CODE/answer` is 403, and a submission that
-  arrives late is refused (403, "Đã hết hạn nộp bài, bài làm không được ghi nhận"). The check runs inside
-  the save transaction.
+  arrives more than 60 s late is refused (403, "Đã hết hạn nộp bài, bài làm không được ghi nhận"; the 60 s
+  were added with the time limit in Step 9). The check runs inside the save transaction.
 - **Result page** (`/h/CODE/result/<code>`): score (Vietnamese decimal comma, "7,25 / 10 điểm"), correct
   count, time. When `canReveal()`: every question in the student's order with their choice ("em chọn"),
   the correct answer ("đáp án đúng") and ✔ Đúng / ✖ Sai / ✖ Bỏ trống. `never`: score only.
@@ -83,7 +106,8 @@ are the teacher's order; shuffling is meant to be presentation only.
 ## Submitting (`submitAnswers`)
 
 One write transaction, so it cannot interleave with `updateHomework`:
-1. Homework by share code; refuse if closed.
+1. Homework by share code, with this student's attempt; refuse if closed (deadline + 60 s) or the time
+   limit ran out more than 60 s ago (`TIME_UP`).
 2. The version the student saw (hidden `versionId`, must belong to the homework) and its questions.
    The hidden `questionIds` must equal that version's questions: if the teacher replaced the questions in
    place (possible while nobody had submitted), the ids differ and the student is asked to redo it (409).
