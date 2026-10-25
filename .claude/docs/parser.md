@@ -1,8 +1,10 @@
-# Parser (`src/shared/parser.js`)
+# Parser (`src/shared/parser.ts`)
 
-Dependency-free ES module used by the browser editor (live preview, tab switching) and the server
+Dependency-free TypeScript module used by the browser editor (compiled to `/shared/parser.js` by
+`npm run build:browser`; live preview, tab switching) and the server (imported as `.ts`)
 (`validateQuestion` inside `validateHomework`, plus `scripts/db-seed.ts` and `scripts/parse.ts`).
 User-facing explanation of the syntax, in Vietnamese: `README.md` "Cú pháp nhập câu hỏi".
+Types: `ParseResult`, `ParsedQuestion`, `ParsedAnswer`, `Problem`, `QuestionToCheck` (exported).
 Tests: `test/parser.test.ts`. Try it: `npm run parse -- examples/mau.txt`.
 
 ## Exports

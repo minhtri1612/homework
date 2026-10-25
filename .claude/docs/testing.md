@@ -14,6 +14,7 @@ Run the whole file instead.
 
 | File | Covers | How |
 |---|---|---|
+| `test/browser-build.test.ts` | served `/shared/parser.js`, `/js/editor.js`, `/js/copy.js` equal a fresh `tsc` build of their `.ts` sources; `.ts` sources are not served | compiles into a temp folder + real HTTP |
 | `test/imports.test.ts` | every relative import in `src`, `scripts`, `test` names a file that exists (the type checker accepts `./x.js` for `x.ts`; Node does not) | reads the files |
 | `test/validation.test.ts` | Zod schemas: register messages and cleaning, editor form coercion, homework id, share code | pure functions |
 | `test/grading.test.ts` | `computeScore`: nearest 0.25, ties up, 0 and 10 | pure function |
@@ -86,7 +87,8 @@ Conventions seen in the existing tests:
 - `src/public/js/editor.js` (tabs, cards, submit blocking) has no automated tests; check it manually
   in a browser with `npm run dev`.
 - No coverage tool configured.
-- `npm test` runs `prisma generate` and `npm run typecheck` first (`pretest`); a type error stops the run. Running `node --test` directly skips it: after a
+- `npm test` runs `prisma generate`, `npm run typecheck` and `npm run build:browser` first (`pretest`); a type
+  error stops the run. Running `node --test` directly skips it: after a
   `schema.prisma` change, run `npm run db:generate` or you get confusing errors from the old client.
 - `scripts/db-new-migration.ts` has no automated test (it calls the Prisma CLI); it was checked by hand
   with an added column and with a change that rebuilds a table.

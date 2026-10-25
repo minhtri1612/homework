@@ -14,16 +14,19 @@ account) open it; answering and server-side grading on a 10-point scale are Step
 ## Tech Stack
 
 - Node.js 24 (`.nvmrc`: `24`; `package.json` `engines`: `>=24`), ES modules (`"type": "module"`)
-- Express `5.3.0`, server-rendered EJS `7.0.1` views, plain browser JavaScript (no bundler, no framework)
+- **TypeScript everywhere** (`src`, `scripts`, `test`), run by Node 24's built-in type stripping: `node src/server.ts`,
+  no compile step for the server. Only erasable syntax (no `enum`, `namespace`, parameter properties) and
+  imports name the real file (`./x.ts`). `tsc` (`7.0.2`, dev, with `@types/node` `24.19.2`, `@types/express`
+  `5.0.6`) only type-checks (`npm run typecheck`, strict). `src/types/express.d.ts` types `req.prisma` /
+  `req.teacher` / `req.sessionToken`.
+- Express `5.3.0`, server-rendered EJS `7.0.1` views (untyped: a wrong variable in a view is only caught by
+  tests). Browser code is TypeScript compiled by `tsc` to `dist/browser/` (no bundler, no framework).
 - Prisma `7.10.1` (`prisma`, `@prisma/client`, `@prisma/adapter-libsql`) over `@libsql/client` `0.17.4`:
   SQLite file `data/local.db` locally, Turso when deployed. Services in `src/services/` query with Prisma
   Client; migrations are applied by our own `src/config/migrate.ts`
 - `zod` `4.6.7`: form input schemas in `src/validation/` (shape and coercion only)
 - Layers: `routes/web.ts` → `controllers/` → `services/` → Prisma; `req.prisma`, no global client
   (see `.claude/docs/architecture.md`)
-- TypeScript `7.0.2` (dev, with `@types/node` `24.19.2`, `@types/express` `5.0.6`): type checking only;
-  conversion of the `.js` files is in progress (PLAN.md Step 4.6). `src/types/express.d.ts` types
-  `req.prisma` / `req.teacher` / `req.sessionToken`
 - Tests: built-in `node:test` + `node:assert/strict` (no test dependencies)
 - Password hashing: `node:crypto` scrypt (no native modules)
 - No linter or formatter configured; `.editorconfig` sets UTF-8, LF, 2-space indent
@@ -35,10 +38,12 @@ first so the Node version matches `.nvmrc`.
 
 ```bash
 npm install                          # after any package.json change
-npm run dev                          # http://localhost:3000, restarts on file changes (node --watch)
-npm start                            # same without watch; PORT env var overrides 3000
-npm test                             # prisma generate + typecheck, then node --test "test/**/*.test.ts"
-npm run typecheck                    # tsc -p . (noEmit; Node strips the types when running .ts)
+npm run dev                          # build:browser, then http://localhost:3000 with node --watch (server files only)
+npm start                            # build:browser, then the same without watch; PORT env var overrides 3000
+npm test                             # prisma generate + typecheck + build:browser, then node --test "test/**/*.test.ts"
+npm run typecheck                    # tsc -p . (server) and tsc -p tsconfig.browser.json --noEmit (browser)
+npm run build:browser                # compile parser.ts + src/public/js/*.ts to dist/browser/ (gitignored)
+npm run build                        # prisma generate + build:browser (the deploy build)
 npm run db:init                      # apply pending migrations (idempotent)
 npm run db:seed                      # sample teacher giaovien@example.com / matkhau123 + 2 homeworks
 npm run db:reset                     # DROP all tables + _migrations, re-apply; refuses non-file: DATABASE_URL
@@ -53,7 +58,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 
 ## Core Logic Summary
 
-**Parser** (`src/shared/parser.js`, details in `.claude/docs/parser.md`):
+**Parser** (`src/shared/parser.ts`, details in `.claude/docs/parser.md`):
 - A question is its text plus 2–6 answers; exactly one answer starts with `==` (or `==` after the letter).
 - Three accepted styles: plain lines (`==2` / `3` / `4`), lettered lines (`A.` `a)` `(A)` `A:`), and
   compact one-line (`1. A. cat   B. dog   ==C. pencil`).
@@ -72,9 +77,12 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - **Correct answers never reach a student's browser before submission.** `getHomework()` returns
   `answers[].correct` for the teacher and grading only. Student pages must strip it; grading happens
   on the server.
-- **One parser for browser and server.** `src/shared/parser.js` is served to the browser at
-  `/shared/parser.js` and imported by the server. It stays a dependency-free ES module with no Node or
-  DOM APIs. Change it once, and the editor preview and the save-time validation change together.
+- **One parser for browser and server.** The server imports `src/shared/parser.ts`; the browser gets the
+  same file compiled to `/shared/parser.js` (`npm run build:browser`). It stays a dependency-free module
+  with no Node or DOM APIs (`tsconfig.browser.json` has no Node types; the server config has no DOM).
+  Change it once, and the editor preview and the save-time validation change together.
+  `test/browser-build.test.ts` fails if the served JavaScript is not the current build.
+  `node --watch` does not rebuild browser code: restart `npm run dev` after editing it.
 - **The server re-validates everything.** `validateHomework()` in `src/services/homework.service.ts` runs on every
   save; the browser check is only a convenience. Schema `CHECK`/`UNIQUE` constraints are a second line of defence.
 - **Schema changes go through migrations.** Edit `prisma/schema.prisma`, run `npm run db:migration -- <name>`,

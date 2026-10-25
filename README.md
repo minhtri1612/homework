@@ -12,7 +12,8 @@ Website giao bài tập trắc nghiệm **một đáp án đúng** cho giáo vi�
 | Thành phần | Lựa chọn |
 |---|---|
 | Máy chủ | Node.js 24 + Express 5 |
-| Giao diện | Trang HTML dựng sẵn trên máy chủ (EJS) + một ít JavaScript thuần |
+| Ngôn ngữ | TypeScript — Node 24 chạy thẳng file `.ts` (tự bỏ phần kiểu), `tsc` chỉ dùng để kiểm tra kiểu |
+| Giao diện | Trang HTML dựng sẵn trên máy chủ (EJS) + một ít mã cho trình duyệt (TypeScript, dịch sang JavaScript bằng `tsc`) |
 | Cơ sở dữ liệu | SQLite — chạy máy cá nhân là một file (`data/local.db`), khi triển khai dùng Turso; truy vấn qua Prisma |
 | Kiểm tra dữ liệu form | Zod |
 | Kiểm thử | `node:test` có sẵn trong Node, không cần cài thêm |
@@ -49,8 +50,10 @@ Mở bằng VS Code trên Windows: cài tiện ích **WSL** cho VS Code, rồi t
 
 ```bash
 npm install      # cài thư viện (chạy lại mỗi khi package.json thay đổi)
-npm test         # chạy kiểm thử (trước đó tự kiểm tra kiểu TypeScript)
+npm test         # chạy kiểm thử (trước đó tự kiểm tra kiểu TypeScript và dịch mã trình duyệt)
 npm run typecheck # chỉ kiểm tra kiểu TypeScript (tsc), không chạy gì
+npm run build:browser # dịch mã trình duyệt (bộ đọc cú pháp, trang soạn bài) sang JavaScript trong dist/
+npm run build    # chuẩn bị để triển khai: tạo mã Prisma và dịch mã trình duyệt
 npm run parse -- examples/mau.txt   # thử bộ đọc cú pháp với một file văn bản
 npm run db:init  # tạo/cập nhật các bảng (chạy các migration chưa chạy; chạy lại bao nhiêu lần cũng được)
 npm run db:seed  # thêm dữ liệu mẫu: 1 giáo viên và 2 bộ bài tập
@@ -60,6 +63,10 @@ npm run db:generate            # tạo lại mã Prisma (npm install và npm tes
 npm run dev      # chạy website ở http://localhost:3000, tự khởi động lại khi sửa file (Ctrl+C để dừng)
 npm start        # chạy website (không tự khởi động lại) — dùng khi triển khai
 ```
+
+`npm run dev` tự khởi động lại khi sửa mã máy chủ. Mã chạy trên trình duyệt (`src/shared/parser.ts`,
+`src/public/js/*.ts`) phải được dịch lại: sau khi sửa các file này, dừng (Ctrl+C) rồi chạy lại
+`npm run dev`. `npm test` sẽ báo lỗi nếu trình duyệt đang nhận bản dịch cũ.
 
 ### 4. Cơ sở dữ liệu
 
@@ -238,7 +245,7 @@ nên chữ tiếng Việt gõ trên máy nào cũng so sánh đúng.
 ```
 src/
   shared/
-    parser.js     bộ đọc cú pháp — dùng chung cho trình duyệt và máy chủ
+    parser.ts     bộ đọc cú pháp — dùng chung cho trình duyệt (sau khi dịch) và máy chủ
   config/
     client.ts     kết nối tới cơ sở dữ liệu (file trên máy hoặc Turso), qua Prisma hoặc trực tiếp
     migrate.ts    tạo/cập nhật các bảng bằng các file trong prisma/migrations/
@@ -262,9 +269,10 @@ src/
     password.service.ts   mã hoá và kiểm tra mật khẩu
   generated/      mã Prisma tự sinh (npm run db:generate, không đưa lên git)
   views/          giao diện (EJS); partials/ là phần đầu và cuối dùng chung
-  public/         CSS, ảnh, JavaScript cho trình duyệt
-    js/editor.js  trang soạn bài tập (hai thẻ Cú pháp / Dạng thẻ)
-    js/copy.js    nút “Sao chép link”
+  public/         CSS và mã chạy trên trình duyệt
+    js/editor.ts  trang soạn bài tập (hai thẻ Cú pháp / Dạng thẻ)
+    js/copy.ts    nút “Sao chép link”
+  types/          khai báo kiểu thêm cho Express (req.teacher, req.prisma…)
   app.ts          ghép các phần thành website
   server.ts       khởi động website (npm run dev)
   load-env.ts     đọc file .env nếu có
@@ -276,4 +284,7 @@ test/             kiểm thử (npm test)
 scripts/          công cụ dòng lệnh (npm run parse, db:init, db:seed, db:reset, db:migration)
 examples/         văn bản mẫu
 data/             file cơ sở dữ liệu khi chạy máy cá nhân (không đưa lên git)
+dist/             mã JavaScript cho trình duyệt do npm run build:browser tạo ra (không đưa lên git)
+tsconfig.json     cài đặt kiểm tra kiểu TypeScript cho máy chủ, script và kiểm thử
+tsconfig.browser.json cài đặt dịch mã trình duyệt
 ```

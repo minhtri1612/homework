@@ -7,8 +7,11 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 4.6 parts 3–6 run back to back (user's instruction 2026-10-25): each part is tested
-and committed locally, **nothing after part 2 (4c5ecd2) is pushed** until the user reviews. Parts 3–5 done.
+**Where we stopped:** Step 4.6 (TypeScript) is finished. Parts 3–6 were done back to back (user's instruction
+2026-10-25), each tested and committed locally; **nothing after part 2 (4c5ecd2) is pushed** until the user
+reviews them. 145 tests pass.
+
+**Next: Step 6 (student flow)**, after the user approves Step 4.6 and the push.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -29,18 +32,21 @@ and committed locally, **nothing after part 2 (4c5ecd2) is pushed** until the us
   - [x] part 3: services on Prisma
   - [x] part 4: validation + controllers + routes
   - [x] part 5: scripts, docs, cleanup
-- [ ] **Step 4.6 — Convert to TypeScript** (parts 1–5 of 6 done, see below) ← **next**
+- [x] **Step 4.6 — Convert to TypeScript** (done 2026-10-25, see below)
 - [x] **Step 5 — Sharing**: link `/h/CODE` and a "nhập mã" box on the home page (commit 2258768)
   - [x] `/h/CODE` finds the homework (code typed in any letter case), 404 in Vietnamese otherwise
   - [x] code entry form on the home page
   - [x] teacher sees and can copy the full link (dashboard + editor)
-- [ ] **Step 6 — Student flow**: enter name, answer, submit, get the score
+- [ ] **Step 6 — Student flow**: enter name, answer, submit, get the score ← **next**
   - [ ] questions sent without the correct answers; question/answer shuffling
   - [ ] one attempt per name (`student_key`), deadline enforced
   - [ ] server-side grading on a 10-point scale, rounded to the nearest 0.25, saved in `submissions` / `submission_answers`
   - [ ] result page following the reveal mode (after submit / after deadline / never)
 - [ ] **Step 7 — Results for the teacher**: submissions list per homework, per-version view, CSV export
 - [ ] **Step 8 — Deploy**: Render (web service) + Turso (database), production settings
+  - Build command `npm install && npm run build` (Prisma client + browser JavaScript). `typescript` is a dev
+    dependency, so the build must install dev dependencies (do not set `NODE_ENV=production` for the build).
+    `npm start` also runs `build:browser` first (`prestart`).
 
 ---
 
@@ -489,7 +495,11 @@ Planned `tsconfig.json` settings:
     Typing `parse()` showed `title` is `string | null`; the three callers now pass `title ?? ''` (a missing
     title was already reported as "chưa có tiêu đề"). `node --watch` does not rebuild browser code: after
     editing it, restart `npm run dev` (or run `npm run build:browser`). 145 tests.
-- [ ] 6. **Docs.** README, CLAUDE.md (stack, commands), `.claude/docs/*`; tick this step.
+- [x] 6. **Docs.** README, CLAUDE.md (stack, commands), `.claude/docs/*`; tick this step.
+  - Done: README (Vietnamese: stack, commands, "restart `npm run dev` after editing browser code", folder tree),
+    CLAUDE.md (stack, commands, the one-parser rule with the build), `architecture.md` (folders, compiled files
+    table, request flow, server vs browser), `parser.md`, `testing.md`. Step 8 notes the build needs dev
+    dependencies.
 
 ### Risks
 

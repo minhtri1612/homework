@@ -8,7 +8,8 @@ src/
   app.ts            createApp({ prisma }): builds the Express app (tests call this with their own DB)
   load-env.ts       process.loadEnvFile() if .env exists; import first in every entry point
   vietnam-time.ts   Vietnam time (UTC+7) <-> UTC ISO; date formatting for views
-  shared/parser.js  syntax parser, used by browser AND server (see parser.md)
+  shared/parser.ts  syntax parser, used by browser (compiled) AND server (see parser.md)
+  types/express.d.ts types of req.prisma, req.teacher, req.sessionToken
   config/client.ts  createPrisma() (the app's Prisma client, libSQL adapter), openDb() (plain libSQL
                     client for migrations, db:reset and SQL in tests), isUniqueViolation()
   config/migrate.ts applyMigrations(), dropSchema() (see database.md)
@@ -23,7 +24,7 @@ src/
   generated/prisma/ output of prisma generate (gitignored)
   grading.ts        computeScore(correct, total) (see grading.md)
   views/            EJS templates; partials/head.ejs and partials/foot.ejs wrap every page
-  public/           static files: style.css, js/editor.js, js/copy.js
+  public/           style.css (served as-is) and js/editor.ts, js/copy.ts (browser code, compiled)
 prisma/             schema.prisma + migrations/ (the database schema; see database.md)
 prisma.config.js    settings for the Prisma CLI only
 scripts/            CLI tools behind npm scripts: db-migrate.ts (db:init), db-reset.ts, db-seed.ts,
@@ -31,22 +32,36 @@ scripts/            CLI tools behind npm scripts: db-migrate.ts (db:init), db-re
 test/               node:test files (see testing.md)
 examples/mau.txt    sample syntax text covering every format
 data/               local SQLite file (data/*.db is gitignored)
+dist/browser/       output of npm run build:browser (gitignored)
+tsconfig.json       type checking of src (except src/public), scripts, test; noEmit
+tsconfig.browser.json compiles the browser code (DOM types, no Node types)
 ```
 
-There is no build step. Files under `src/public/` and `src/shared/` are served as-is.
+The server has no build step: Node 24 runs the `.ts` files by stripping the types. Only the browser code
+is compiled:
+
+| Source | Output | URL |
+|---|---|---|
+| `src/shared/parser.ts` | `dist/browser/shared/parser.js` | `/shared/parser.js` |
+| `src/public/js/editor.ts` | `dist/browser/public/js/editor.js` | `/js/editor.js` |
+| `src/public/js/copy.ts` | `dist/browser/public/js/copy.js` | `/js/copy.js` |
+
+`editor.ts` imports the parser by its URL (`'/shared/parser.js'`); `paths` in `tsconfig.browser.json`
+points the type checker at `parser.ts`. `.ts` files are never served (404). `npm run build:browser`
+runs before `dev`, `start` and `test`; the server warns at startup if `dist/browser` is missing.
 
 ## Request flow (`src/app.ts`, in order)
 
-1. `express.static(src/public)`: `/style.css`, `/js/editor.js`
-2. `express.static(src/shared)` mounted at `/shared`: `/shared/parser.js` for the browser
-3. `express.urlencoded({ extended: false, limit: '1mb' })`: forms only, no JSON body parser.
+1. `express.static(dist/browser/public)`: `/js/editor.js`, `/js/copy.js`; `express.static(dist/browser/shared)`
+   at `/shared`: `/shared/parser.js`; then `express.static(src/public)` for `/style.css`, skipping `*.ts`
+2. `express.urlencoded({ extended: false, limit: '1mb' })`: forms only, no JSON body parser.
    1 MB because 200 long questions exceed the 100 KB default.
-4. Sets `req.prisma` (the client passed to `createApp`). There is no global Prisma client: middleware and
+3. Sets `req.prisma` (the client passed to `createApp`). There is no global Prisma client: middleware and
    controllers use `req.prisma` and pass it to the services, so each test has its own database.
-5. `loadTeacher`: reads cookie `sid`, sets `req.teacher` / `res.locals.teacher` (or null)
-6. `sameOriginPosts`: rejects POSTs whose `Origin` host differs from `Host` (403)
-7. `webRoutes()` (`routes/web.ts`)
-8. `notFound` renders `error.ejs`; `serverError` logs and renders a generic Vietnamese 500.
+4. `loadTeacher`: reads cookie `sid`, sets `req.teacher` / `res.locals.teacher` (or null)
+5. `sameOriginPosts`: rejects POSTs whose `Origin` host differs from `Host` (403)
+6. `webRoutes()` (`routes/web.ts`)
+7. `notFound` renders `error.ejs`; `serverError` logs and renders a generic Vietnamese 500.
    Express 5 forwards rejected promises from async handlers here, so controllers do not need try/catch
    for unexpected errors.
 
@@ -105,12 +120,14 @@ server re-validates with the editor's messages. Security rules for new routes: `
 ## Server vs browser code
 
 - Server only: everything in `src/` except `src/public/` and `src/shared/`.
-- Browser only: `src/public/js/editor.js`, `src/public/js/copy.js` (ES modules, `<script type="module">`).
-  `copy.js` un-hides the copy buttons and falls back to selecting the text when `navigator.clipboard`
+- Browser only: `src/public/js/editor.ts`, `src/public/js/copy.ts`, compiled to ES modules loaded with
+  `<script type="module">`. Element lookups are cast to their real types (`as HTMLInputElement`), which
+  the checker cannot verify against the EJS views. `copy.ts` un-hides the copy buttons and falls back to selecting the text when `navigator.clipboard`
   is unavailable (plain http other than localhost).
-- Both: `src/shared/parser.js`. It must not import Node modules or use DOM APIs.
+- Both: `src/shared/parser.ts`. It must not import Node modules or use DOM APIs: the browser config has
+  no Node types and the server config has no DOM types, so either mistake fails `npm run typecheck`.
 
-## Editor data flow (`views/editor.ejs` + `public/js/editor.js` + `controllers/homework.controller.ts`)
+## Editor data flow (`views/editor.ejs` + `public/js/editor.ts` + `controllers/homework.controller.ts`)
 
 1. Server renders the form and embeds the questions (without ids) as JSON in
    `<script type="application/json" id="initial-questions">`, escaped with `scriptJson()`.
@@ -129,5 +146,5 @@ server re-validates with the editor's messages. Security rules for new routes: `
    `shuffleQuestions` (`'1'` when checked). The editor opens on the card tab when there are questions
    or errors, otherwise on the syntax tab (`data-start-tab`).
 
-The editor needs JavaScript (a `<noscript>` notice says so). There is no test that runs `editor.js`
-in a browser.
+The editor needs JavaScript (a `<noscript>` notice says so). There is no test that runs `editor.ts`
+in a browser (`test/browser-build.test.ts` only checks that the served build is current).
