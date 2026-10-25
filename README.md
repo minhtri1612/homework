@@ -104,7 +104,7 @@ Các bảng (chi tiết trong `prisma/schema.prisma` và `prisma/migrations/`):
 | `answers` | đáp án, đúng một đáp án đúng mỗi câu |
 | `submissions` | bài nộp của học sinh: tên, điểm, số câu đúng |
 | `submission_answers` | đáp án học sinh chọn cho từng câu (trống nếu bỏ qua) |
-| `attempts` | giờ học sinh bấm “Bắt đầu làm bài” (chỉ với bài có thời gian làm bài) |
+| `attempts` | giờ học sinh bấm “Bắt đầu làm bài”, số lần và thời gian rời trang (chỉ với bài có thời gian làm bài) |
 
 Vì sao có **phiên bản**: nếu giáo viên sửa câu hỏi sau khi đã có học sinh nộp bài, câu hỏi mới được lưu
 thành phiên bản mới, còn bài đã nộp vẫn giữ đúng những câu học sinh đã làm.
@@ -165,6 +165,15 @@ Bấm **kết quả** cạnh bài tập ở trang **Bài tập của tôi** (ho�
   để bảng tính không chạy nó như công thức.
 - **Xoá bài nộp** (nút *Xoá* ở mỗi dòng, có trang xác nhận): ví dụ học sinh gõ sai tên hoặc được làm lại.
   Sau khi xoá, tên đó nộp lại được.
+- **Rời trang** (chỉ với bài có thời gian làm bài): mỗi lần học sinh chuyển sang tab, ứng dụng hoặc cửa sổ
+  khác trong lúc làm bài, trang báo về máy chủ ngay. Bảng bài nộp có thêm cột **Rời trang**, ví dụ
+  “⚠ Rời trang 4 lần, tổng 3 phút 20 giây”; file CSV có thêm hai cột *Rời trang (lần)* và
+  *Thời gian rời trang (giây)*. Học sinh được báo trước ở trang bắt đầu, và thấy dòng nhắc mỗi khi quay lại.
+  Đây là **dấu hiệu để để ý, không phải bằng chứng**: cuộc gọi đến, màn hình tự khoá hay tải lại trang
+  cũng được tính, còn tra cứu trên một máy khác hoặc chia đôi màn hình thì không phát hiện được.
+- **Đã bắt đầu nhưng chưa nộp**: học sinh đã bấm *Bắt đầu làm bài* mà chưa nộp, với trạng thái
+  (*đang làm, còn N phút* / *hết giờ, chưa nộp*) và số lần rời trang. Nút **Cho làm lại** (có trang xác
+  nhận) xoá giờ bắt đầu của em đó để em bắt đầu lại với đồng hồ mới.
 
 ## Xoá bài tập
 

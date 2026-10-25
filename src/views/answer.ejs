@@ -27,7 +27,9 @@
 
   <div class="savebar">
     <% if (secondsLeft !== null) { %>
-      <span id="timer" class="timer" data-seconds-left="<%= secondsLeft %>" role="timer">
+      <p id="away-notice" class="notice danger away-notice" role="alert" hidden></p>
+      <span id="timer" class="timer" data-seconds-left="<%= secondsLeft %>" data-leave-count="<%= leaveCount %>"
+            data-away-url="/h/<%= homework.shareCode %>/away" role="timer">
         Còn <%= Math.floor(secondsLeft / 60) %> phút
       </span>
     <% } %>

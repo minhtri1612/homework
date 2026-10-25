@@ -90,7 +90,7 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
 | `homework_versions` | `homework_id`, `number` ≥ 1, UNIQUE (`homework_id`, `number`); highest number = current |
 | `questions` | `version_id`, `position` (1-based, UNIQUE per version), `text` (may be `''`), `shuffle_answers` |
 | `answers` | `question_id`, `position` (1 = A), `text` (non-blank), `is_correct`; partial UNIQUE index `answers_one_correct` = at most one correct per question; UNIQUE (`id`, `question_id`) as an FK target |
-| `attempts` | PK (`homework_id`, `student_key`), `started_at`: when a student pressed start on a homework with a time limit; ON DELETE CASCADE with the homework; deleted with that student's submission |
+| `attempts` | PK (`homework_id`, `student_key`), `student_name` (NULL before Step 10), `started_at`: when a student pressed start on a homework with a time limit; `leave_count`, `away_seconds` (≥ 0, migration `20261025092358_attempt_leaves`, written by hand as `ADD COLUMN`s instead of Prisma's RedefineTables); ON DELETE CASCADE with the homework; deleted with that student's submission or by "Cho làm lại" |
 | `submissions` | `homework_id`, `version_id`, `student_name`, `student_key`, `started_at` (from `attempts`, NULL without a time limit), `submitted_at`, `correct_count`, `total_count` ≥ `correct_count`, `score` REAL 0–10; UNIQUE (`homework_id`, `student_key`) |
 | `submission_answers` | PK (`submission_id`, `question_id`), `answer_id` NULL = left blank; composite FK (`answer_id`, `question_id`) → `answers(id, question_id)` so the chosen answer must belong to that question |
 

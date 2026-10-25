@@ -1,8 +1,9 @@
 // Answer page: asks before submitting with questions left blank, prevents
 // submitting twice, keeps the chosen answers in this browser until the page is
-// submitted (a reload or a phone reopening the tab does not lose them), and
-// counts down the time limit, submitting by itself when time is up. Without
-// JavaScript the form still works.
+// submitted (a reload or a phone reopening the tab does not lose them), and,
+// with a time limit, counts down, submits by itself when time is up and tells
+// the server each time the student leaves the page. Without JavaScript the
+// form still works.
 export {}; // a module (loaded with type="module"), not a script sharing the page's globals
 
 const form = document.getElementById('answer-form') as HTMLFormElement;
@@ -11,6 +12,7 @@ const timer = document.getElementById('timer');
 const questions = [...document.querySelectorAll<HTMLFieldSetElement>('[data-question]')];
 const draftKey = `answers:${form.dataset.draftKey}`;
 let submitting = false;
+let asking = false; // our own confirm() dialog takes the focus: not leaving the page
 
 function unanswered(): number {
   return questions.filter((question) => !question.querySelector('input[type="radio"]:checked')).length;
@@ -51,6 +53,7 @@ function clearDraft() {
 }
 
 function startSubmitting() {
+  comeBack(true); // time ran out while away: report the time away first
   submitting = true;
   clearDraft();
   (form.querySelector('button[type="submit"]') as HTMLButtonElement).disabled = true;
@@ -63,10 +66,11 @@ form.addEventListener('change', () => {
 
 form.addEventListener('submit', (event) => {
   const left = unanswered();
-  if (submitting || (left > 0 && !confirm(`Còn ${left} câu chưa chọn đáp án, các câu đó sẽ bị tính là sai. Vẫn nộp bài?`))) {
-    event.preventDefault();
-    return;
-  }
+  if (submitting) return event.preventDefault();
+  asking = true;
+  const sure = left === 0 || confirm(`Còn ${left} câu chưa chọn đáp án, các câu đó sẽ bị tính là sai. Vẫn nộp bài?`);
+  asking = false;
+  if (!sure) return event.preventDefault();
   startSubmitting();
 });
 
@@ -85,6 +89,50 @@ function clock(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
   return h ? `${h}:${two(m)}:${two(s)}` : `${m}:${two(s)}`;
+}
+
+// Leaving the page: another tab, another app, the home screen, or (on a
+// computer) another window. Reported to the server at once, so the teacher
+// sees it even if the student never submits; the time away when they return.
+// This is a hint for the teacher, not proof: a second device goes unseen.
+const awayUrl = timer?.dataset.awayUrl;
+const awayNotice = document.getElementById('away-notice');
+let leaveCount = Number(timer?.dataset.leaveCount ?? 0);
+let awaySince: number | null = null;
+
+const studentName = (form.querySelector('input[name="name"]') as HTMLInputElement).value;
+
+function report(fields: Record<string, string>) {
+  const body = new URLSearchParams({ name: studentName, ...fields });
+  // sendBeacon still goes out while the page is being hidden or closed.
+  if (!navigator.sendBeacon?.(awayUrl!, body)) fetch(awayUrl!, { method: 'POST', body, keepalive: true }).catch(() => {});
+}
+
+function goAway() {
+  if (!awayUrl || submitting || asking || awaySince !== null) return;
+  awaySince = Date.now();
+  leaveCount++;
+  report({ event: 'leave' });
+}
+
+/** submittingNow: time ran out while away, so report now instead of on return. */
+function comeBack(submittingNow = false) {
+  if (awaySince === null) return;
+  if (!submittingNow && (document.visibilityState !== 'visible' || !document.hasFocus())) return;
+  const seconds = Math.round((Date.now() - awaySince) / 1000);
+  awaySince = null;
+  report({ event: 'back', seconds: String(seconds) });
+  if (awayNotice && !submitting) {
+    awayNotice.textContent = `Em đã rời trang làm bài ${leaveCount} lần. Thầy cô sẽ thấy số lần và thời gian em rời trang.`;
+    awayNotice.hidden = false;
+  }
+}
+
+if (awayUrl) {
+  // Reloading or closing the tab also hides the page: counted as leaving (it is, while the clock runs).
+  document.addEventListener('visibilitychange', () => (document.visibilityState === 'hidden' ? goAway() : comeBack()));
+  window.addEventListener('blur', goAway);
+  window.addEventListener('focus', () => comeBack());
 }
 
 // The server sends the seconds left, not the end time, so a wrong clock on

@@ -35,7 +35,8 @@
     <p class="muted">Mỗi tên chỉ được nộp bài một lần. Ghi đầy đủ họ tên để thầy cô nhận ra em.</p>
     <% if (homework.timeLimitMinutes) { %>
       <p class="notice">Đồng hồ <strong><%= homework.timeLimitMinutes %> phút</strong> bắt đầu chạy khi em bấm “Bắt đầu làm bài”
-        và không dừng lại, kể cả khi tải lại trang hay đổi máy. Hết giờ, bài làm sẽ tự động được nộp.</p>
+        và không dừng lại, kể cả khi tải lại trang hay đổi máy. Hết giờ, bài làm sẽ tự động được nộp.
+        Trong lúc làm bài, nếu em chuyển sang trang hoặc ứng dụng khác, thầy cô sẽ thấy số lần và thời gian em rời trang.</p>
     <% } %>
     <button type="submit">Bắt đầu làm bài</button>
   </form>

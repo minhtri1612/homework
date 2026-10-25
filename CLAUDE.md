@@ -10,7 +10,8 @@ register, then write questions either as pasted text in a small syntax (`==` mar
 or as editable cards, and share the homework by link (`/h/CODE`) or 6-character code. Students (no
 account) open it, enter a name, answer and submit; the server grades on a 10-point scale and shows the
 result by a private link, revealing the answers according to the homework's reveal mode. A homework can
-have a time limit: the server records when the student starts and the page submits by itself when time is up. Teachers see the results (per version,
+have a time limit: the server records when the student starts and the page submits by itself when time is up;
+the teacher sees how often each student left the answer page and who started without submitting. Teachers see the results (per version,
 per question), download them as CSV, and can delete a submission or a whole homework after a
 confirmation. Deploying (Step 8) is next (see `PLAN.md`).
 

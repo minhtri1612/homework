@@ -18,8 +18,10 @@ import {
   postDeleteSubmission,
   getDeleteHomeworkPage,
   postDeleteHomework,
+  getResetAttemptPage,
+  postResetAttempt,
 } from '../controllers/results.controller.ts';
-import { getJoin, getSharedHomework, postStart, getAnswerPage, postSubmit, getResultPage } from '../controllers/share.controller.ts';
+import { getJoin, getSharedHomework, postStart, getAnswerPage, postAway, postSubmit, getResultPage } from '../controllers/share.controller.ts';
 
 export function webRoutes() {
   const router = Router();
@@ -44,6 +46,8 @@ export function webRoutes() {
   router.get('/teacher/homeworks/:id/results.csv', getResultsCsv);
   router.get('/teacher/homeworks/:id/submissions/:submissionId/delete', getDeleteSubmissionPage);
   router.post('/teacher/homeworks/:id/submissions/:submissionId/delete', postDeleteSubmission);
+  router.get('/teacher/homeworks/:id/attempts/:studentKey/reset', getResetAttemptPage);
+  router.post('/teacher/homeworks/:id/attempts/:studentKey/reset', postResetAttempt);
   router.get('/teacher/homeworks/:id/delete', getDeleteHomeworkPage);
   router.post('/teacher/homeworks/:id/delete', postDeleteHomework);
 
@@ -52,6 +56,7 @@ export function webRoutes() {
   router.get('/h/:code', getSharedHomework);
   router.post('/h/:code/start', postStart);
   router.get('/h/:code/answer', getAnswerPage);
+  router.post('/h/:code/away', postAway);
   router.post('/h/:code/submit', postSubmit);
   router.get('/h/:code/result/:token', getResultPage);
 

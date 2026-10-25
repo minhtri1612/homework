@@ -10,6 +10,7 @@ import {
   hasSubmitted,
   isClosed,
   nameTakenMessage,
+  recordAway,
   secondsLeft,
   startAttempt,
   submitAnswers,
@@ -18,7 +19,7 @@ import {
 import { readCookie } from '../middleware/auth.ts';
 import { formatScore } from '../grading.ts';
 import { joinSchema, shareCodeParam } from '../validation/share.schema.ts';
-import { nameSchema, submitSchema } from '../validation/student.schema.ts';
+import { awaySchema, nameSchema, submitSchema } from '../validation/student.schema.ts';
 
 const RESULT_COOKIE_DAYS = 365;
 
@@ -146,19 +147,31 @@ export async function getAnswerPage(req: Request, res: Response) {
   }
 
   let left: number | null = null;
+  let leaveCount = 0;
   if (homework.timeLimitMinutes !== null) {
-    const startedAt = await findAttempt(req.prisma, homework.id, name);
+    const attempt = await findAttempt(req.prisma, homework.id, name);
     // Not started yet (an old link, or the time limit was added since): the
     // start page, with the name filled in, explains the time limit first.
-    if (startedAt === null) return renderShare(req, res, code, { nameInput });
-    left = secondsLeft(homework, startedAt)!;
+    if (attempt === null) return renderShare(req, res, code, { nameInput });
+    left = secondsLeft(homework, attempt.startedAt)!;
+    leaveCount = attempt.leaveCount;
     if (left <= 0) {
       const notice = `Đã hết giờ làm bài (${homework.timeLimitMinutes} phút), bài làm không được ghi nhận.`;
       return renderShare(req, res, code, { status: 403, nameInput, notice });
     }
   }
 
-  res.render('answer', { title: homework.title, homework, name, secondsLeft: left });
+  res.render('answer', { title: homework.title, homework, name, secondsLeft: left, leaveCount });
+}
+
+/** The answer page reporting that the student left it or came back. Nothing to show: 204. */
+export async function postAway(req: Request, res: Response) {
+  const code = codeOf(req, res);
+  if (!code) return;
+  const form = awaySchema.safeParse(req.body ?? {});
+  if (!form.success) return res.sendStatus(400);
+  await recordAway(req.prisma, { shareCode: code, ...form.data });
+  res.sendStatus(204);
 }
 
 const SUBMIT_STATUS: Record<SubmissionError['code'], number> = {

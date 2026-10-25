@@ -87,11 +87,13 @@ All listed in `routes/web.ts`; controllers in `src/controllers/`.
 | POST | `/teacher/homeworks/:id` | `homework.postUpdateHomework` | update → 302 back to edit page |
 | GET | `/teacher/homeworks/:id/results?version=N` | `results.getResultsPage` | submissions (oldest first), average; version tabs when > 1 version; per-question stats for the selected version (the only one is selected automatically); unknown version 404 |
 | GET | `/teacher/homeworks/:id/results.csv?version=N` | `results.getResultsCsv` | CSV attachment `ket-qua-CODE[-vN].csv` (see `grading.md`) |
+| GET/POST | `/teacher/homeworks/:id/attempts/:studentKey/reset` | `results.getResetAttemptPage` / `postResetAttempt` | started but not submitted: confirmation page, then delete the attempt → 303 results `?notice=attempt-reset`; unknown or submitted → 404 |
 | GET/POST | `/teacher/homeworks/:id/submissions/:submissionId/delete` | `results.getDeleteSubmissionPage` / `postDeleteSubmission` | confirmation page, then delete → 303 results `?notice=submission-deleted`; the name can submit again |
 | GET/POST | `/teacher/homeworks/:id/delete` | `results.getDeleteHomeworkPage` / `postDeleteHomework` | confirmation page (checkbox required when there are submissions, checked in the delete transaction), then delete → 303 `/teacher?notice=homework-deleted` |
 | GET | `/join?code=…` | `share.getJoin` | home-page code box (GET form) → 302 `/h/CODE`; bad/empty code → 400 home with error |
 | GET | `/h/:code` | `share.getSharedHomework` | student start page (name form); non-canonical code (lower case…) → 302 to `/h/CODE`; unknown → 404 |
 | POST | `/h/:code/start` | `share.postStart` | homework with a time limit: records the start once (`attempts`) → 303 to the answer page; bad name 400, name used 409, closed 403 |
+| POST | `/h/:code/away` | `share.postAway` | `navigator.sendBeacon` from the answer page: `event=leave` or `back&seconds=N` → `recordAway()`; 204, bad fields 400 |
 | GET | `/h/:code/answer?name=…` | `share.getAnswerPage` | questions without correct answers (+ seconds left with a time limit); bad name 400, name already used 409, closed or time up 403; time limit but not started → the start page |
 | POST | `/h/:code/submit` | `share.postSubmit` | grade + save → 303 to the result link, sets cookie `result_<CODE>`; closed / time up (60 s grace) 403, name used / questions changed 409, bad data 400 |
 | GET | `/h/:code/result/:token` | `share.getResultPage` | score, and the answers when the reveal mode allows; unknown token 404 |

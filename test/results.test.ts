@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { startApp, sessionCookie, type TestApp } from './helpers.ts';
 import { createTeacher } from '../src/services/teacher.service.ts';
 import { createHomework, getHomework, updateHomework, type QuestionInput } from '../src/services/homework.service.ts';
-import { submitAnswers } from '../src/services/submission.service.ts';
+import { recordAway, startAttempt, submitAnswers } from '../src/services/submission.service.ts';
 import { submissionsCsv } from '../src/services/results.service.ts';
 
 let app: TestApp;
@@ -142,7 +142,7 @@ describe('CSV export', () => {
   });
 
   test('cells are quoted when needed; formulas are neutralised', () => {
-    const row = { id: 1, score: 7.25, correctCount: 1, totalCount: 2, versionNumber: 1, submittedAt: '2026-11-01T10:00:00.000Z' };
+    const row = { id: 1, score: 7.25, correctCount: 1, totalCount: 2, versionNumber: 1, submittedAt: '2026-11-01T10:00:00.000Z', away: null };
     const csv = submissionsCsv([
       { ...row, studentName: 'Lê, Văn "Tí"' },
       { ...row, studentName: '=HYPERLINK("http://x")' },
@@ -258,5 +258,92 @@ describe('deleting a homework', () => {
     assert.ok(editor.includes(`href="/teacher/homeworks/${id}/delete"`));
     const dashboard = await (await app.get('/teacher', cookie)).text();
     assert.ok(dashboard.includes(`href="/teacher/homeworks/${id}/results"`));
+  });
+});
+
+describe('leaving the page (time limit)', () => {
+  async function timedHomework() {
+    const { id, shareCode } = await createHomework(app.prisma, { teacherId, title: 'Có giờ', questions: QUESTIONS, timeLimitMinutes: 40 });
+    return { id, shareCode };
+  }
+
+  test('the answer page reports leaving and coming back; the teacher sees it per submission and in the CSV', async () => {
+    const { id, shareCode } = await timedHomework();
+    await startAttempt(app.prisma, id, 'Trần Bình');
+    for (const seconds of [5, 15]) {
+      assert.equal((await app.post(`/h/${shareCode}/away`, { name: 'trần  bình', event: 'leave' })).status, 204);
+      assert.equal((await app.post(`/h/${shareCode}/away`, { name: 'Trần Bình', event: 'back', seconds: String(seconds) })).status, 204);
+    }
+    await startAttempt(app.prisma, id, 'An');
+    await submit(id, shareCode, 'Trần Bình', [0, 1, 0]);
+    await submit(id, shareCode, 'An', [0, 1, 0]);
+
+    const html = await (await app.get(`/teacher/homeworks/${id}/results`, cookie)).text();
+    assert.match(html, /<th>Rời trang<\/th>/);
+    assert.match(html, /⚠ Rời trang 2 lần, tổng 20 giây/);
+    assert.equal(html.match(/⚠ Rời trang/g)!.length, 1, 'nothing for An, who never left');
+
+    const csv = await (await app.get(`/teacher/homeworks/${id}/results.csv`, cookie)).text();
+    const lines = csv.slice(1).split('\r\n');
+    assert.match(lines[0]!, /,Rời trang \(lần\),Thời gian rời trang \(giây\)$/);
+    assert.match(lines[1]!, /^1,Trần Bình,.*,2,20$/);
+    assert.match(lines[2]!, /^2,An,.*,0,0$/);
+  });
+
+  test('the answer page starts with the count so far, and the share page warns before starting', async () => {
+    const { id, shareCode } = await timedHomework();
+    assert.match(await (await app.get(`/h/${shareCode}`)).text(), /thầy cô sẽ thấy số lần và thời gian em rời trang/);
+    await startAttempt(app.prisma, id, 'Cường');
+    await recordAway(app.prisma, { shareCode, name: 'Cường', event: 'leave', seconds: 0 });
+    const html = await (await app.get(`/h/${shareCode}/answer?name=C%C6%B0%E1%BB%9Dng`)).text();
+    assert.match(html, /data-leave-count="1"/);
+    assert.match(html, new RegExp(`data-away-url="/h/${shareCode}/away"`));
+  });
+
+  test('ignored without a time limit or before starting; bad reports are 400; time away is capped', async () => {
+    const plain = await newHomework();
+    assert.equal((await app.post(`/h/${plain.shareCode}/away`, { name: 'Dũng', event: 'leave' })).status, 204);
+    assert.equal(await count('SELECT count(*) AS n FROM attempts WHERE homework_id = ?', [plain.id]), 0);
+    assert.doesNotMatch(await (await app.get(`/teacher/homeworks/${plain.id}/results`, cookie)).text(), /Rời trang/);
+
+    const { id, shareCode } = await timedHomework();
+    assert.equal((await app.post(`/h/${shareCode}/away`, { name: 'Dũng', event: 'leave' })).status, 204);
+    assert.equal(await count('SELECT count(*) AS n FROM attempts WHERE homework_id = ?', [id]), 0, 'not started: nothing created');
+    const bad: Record<string, string>[] = [{ name: 'Dũng', event: 'other' }, { name: '', event: 'leave' }, { name: 'Dũng', event: 'back', seconds: '-3' }];
+    for (const fields of bad) {
+      assert.equal((await app.post(`/h/${shareCode}/away`, fields)).status, 400, JSON.stringify(fields));
+    }
+    await startAttempt(app.prisma, id, 'Dũng');
+    await recordAway(app.prisma, { shareCode, name: 'Dũng', event: 'back', seconds: 9_999_999 });
+    assert.equal(await count('SELECT away_seconds AS n FROM attempts WHERE homework_id = ?', [id]), 600 * 60);
+  });
+
+  test('started but not submitted: listed with status and warnings; "Cho làm lại" asks first, then resets', async () => {
+    const { id, shareCode } = await timedHomework();
+    await startAttempt(app.prisma, id, 'Em Đang Làm');
+    await startAttempt(app.prisma, id, 'Em Hết Giờ', new Date(Date.now() - 50 * 60_000));
+    await recordAway(app.prisma, { shareCode, name: 'Em Hết Giờ', event: 'leave', seconds: 0 });
+    await startAttempt(app.prisma, id, 'Em Đã Nộp');
+    await submit(id, shareCode, 'Em Đã Nộp', [0, 1, 0]);
+
+    const html = await (await app.get(`/teacher/homeworks/${id}/results`, cookie)).text();
+    assert.match(html, /Đã bắt đầu nhưng chưa nộp \(2\)/);
+    assert.match(html, /Em Hết Giờ<\/td>[\s\S]*?Hết giờ, chưa nộp[\s\S]*?⚠ Rời trang 1 lần, tổng 0 giây/);
+    assert.match(html, /Em Đang Làm<\/td>[\s\S]*?Đang làm, còn (39|40) phút/);
+
+    const url = `/teacher/homeworks/${id}/attempts/${encodeURIComponent('em hết giờ')}/reset`;
+    assert.ok(html.includes(`href="${url}"`));
+    assert.equal((await app.get(url, otherCookie)).status, 404, "another teacher's homework");
+    assert.equal((await app.post(url, {}, { cookie: otherCookie })).status, 404);
+    const submittedUrl = `/teacher/homeworks/${id}/attempts/${encodeURIComponent('em đã nộp')}/reset`;
+    assert.equal((await app.get(submittedUrl, cookie)).status, 404, 'a submitted student is reset by deleting the submission');
+
+    assert.match(await (await app.get(url, cookie)).text(), /Cho học sinh làm lại\?[\s\S]*Em Hết Giờ/);
+    assert.equal(await count('SELECT count(*) AS n FROM attempts WHERE homework_id = ?', [id]), 3, 'nothing changes on GET');
+    const response = await app.post(url, {}, { cookie });
+    assert.equal(response.status, 303);
+    assert.equal(response.headers.get('location'), `/teacher/homeworks/${id}/results?notice=attempt-reset`);
+    assert.equal(await count("SELECT count(*) AS n FROM attempts WHERE homework_id = ? AND student_key = 'em hết giờ'", [id]), 0);
+    assert.match(await (await app.get(response.headers.get('location')!, cookie)).text(), /Đã cho làm lại/);
   });
 });

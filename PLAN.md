@@ -63,6 +63,16 @@ service step by step with Claude (push to GitHub first, when the user says so). 
   - Tests: 12 in `test/student.test.ts` "time limit" (+1 validation); 203 in total. Checked that removing the
     late check or the time-left check makes the matching tests fail.
   - [x] the user checked the countdown and auto-submit in a browser (no browser in the tests)
+- [x] **Step 10 — Leaving the page** (asked for by the user 2026-10-25; details in `.claude/docs/grading.md`)
+  - [x] only with a time limit; migration `20261025092358_attempt_leaves` (`attempts.student_name`,
+    `leave_count`, `away_seconds`)
+  - [x] the answer page reports leaving / coming back at once (`POST /h/CODE/away`, sendBeacon) and reminds
+    the student; the share page warns before starting
+  - [x] teacher: "Rời trang" column and CSV columns, "Đã bắt đầu nhưng chưa nộp" with status, "Cho làm lại"
+    with a confirmation page
+  - Tests: 4 in `test/results.test.ts` "leaving the page"; 207 in total. Checked that not counting a leave
+    or listing submitted students as unfinished makes the matching tests fail.
+  - [x] the user checked it in a browser and approved it (no browser in the tests)
 
 ---
 

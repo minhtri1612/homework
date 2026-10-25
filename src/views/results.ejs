@@ -27,7 +27,7 @@
   <div class="table-wrap">
     <table class="results">
       <thead>
-        <tr><th>STT</th><th>Họ tên</th><th>Điểm</th><th>Đúng</th><% if (versions.length > 1) { %><th>Phiên bản</th><% } %><th>Nộp lúc</th><th><span class="visually-hidden">Xoá</span></th></tr>
+        <tr><th>STT</th><th>Họ tên</th><th>Điểm</th><th>Đúng</th><% if (versions.length > 1) { %><th>Phiên bản</th><% } %><th>Nộp lúc</th><% if (showAway) { %><th>Rời trang</th><% } %><th><span class="visually-hidden">Xoá</span></th></tr>
       </thead>
       <tbody>
         <% submissions.forEach((s, i) => { %>
@@ -38,9 +38,38 @@
             <td class="num"><%= s.correctCount %>/<%= s.totalCount %></td>
             <% if (versions.length > 1) { %><td class="num"><%= s.versionNumber %></td><% } %>
             <td><%= formatDateTime(s.submittedAt) %></td>
+            <% if (showAway) { %><td><% if (s.awayText) { %><span class="away-warning">⚠ <%= s.awayText %></span><% } %></td><% } %>
             <td><a class="danger-link" href="/teacher/homeworks/<%= homework.id %>/submissions/<%= s.id %>/delete" aria-label="Xoá bài nộp của <%= s.studentName %>">Xoá</a></td>
           </tr>
         <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<% if (showAway || unfinished.length) { %>
+  <p class="muted">“Rời trang”: số lần học sinh chuyển sang trang, ứng dụng hoặc cửa sổ khác trong lúc làm bài (tải lại trang
+    cũng tính). Đây là dấu hiệu để thầy cô để ý, không phải bằng chứng gian lận: điện thoại có cuộc gọi đến hay tự khoá màn
+    hình cũng được tính, còn tra cứu trên một máy khác thì không thấy được.</p>
+<% } %>
+
+<% if (unfinished.length) { %>
+  <h2>Đã bắt đầu nhưng chưa nộp (<%= unfinished.length %>)</h2>
+  <div class="table-wrap">
+    <table class="results">
+      <thead>
+        <tr><th>Họ tên</th><th>Bắt đầu lúc</th><th>Trạng thái</th><th>Rời trang</th><th><span class="visually-hidden">Cho làm lại</span></th></tr>
+      </thead>
+      <tbody>
+        <% for (const a of unfinished) { %>
+          <tr>
+            <td><%= a.studentName %></td>
+            <td><%= formatDateTime(a.startedAt) %></td>
+            <td><%= a.status %></td>
+            <td><% if (a.awayText) { %><span class="away-warning">⚠ <%= a.awayText %></span><% } %></td>
+            <td><a href="<%= a.resetUrl %>" aria-label="Cho <%= a.studentName %> làm lại">Cho làm lại</a></td>
+          </tr>
+        <% } %>
       </tbody>
     </table>
   </div>

@@ -200,6 +200,8 @@ button:disabled { opacity: 0.4; cursor: default; }
 .answer-form { display: flex; flex-direction: column; gap: 12px; }
 .timer { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .timer.low { color: var(--error); }
+.away-notice { flex-basis: 100%; margin: 0; }
+.away-warning { color: var(--error); }
 .answer-form .question legend { padding: 0; margin-bottom: 8px; font-weight: 400; }
 .question-text-view { white-space: pre-line; }
 .choice { display: flex; align-items: flex-start; gap: 10px; padding: 10px 4px; min-height: 44px; cursor: pointer; }

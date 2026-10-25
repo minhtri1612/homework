@@ -5,6 +5,7 @@ import type { Prisma, PrismaClient } from '../generated/prisma/client.ts';
 import { isUniqueViolation } from '../config/client.ts';
 import { computeScore } from '../grading.ts';
 import { seededShuffle } from './shuffle.service.ts';
+import { LIMITS } from './homework.service.ts';
 
 // See homework.service.ts: the default 5 s is too short for big saves over Turso.
 const WRITE_TIMEOUT = { timeout: 30_000 };
@@ -71,20 +72,41 @@ export async function startAttempt(prisma: PrismaClient, homeworkId: number, nam
   const key = { homeworkId, studentKey: studentKey(name) };
   const attempt = await prisma.attempt.upsert({
     where: { homeworkId_studentKey: key },
-    create: { ...key, startedAt: now.toISOString() },
+    create: { ...key, studentName: name, startedAt: now.toISOString() },
     update: {},
     select: { startedAt: true },
   });
   return attempt.startedAt;
 }
 
-/** When this student started, or null if they have not pressed "Bắt đầu làm bài". */
-export async function findAttempt(prisma: PrismaClient, homeworkId: number, name: string): Promise<string | null> {
-  const attempt = await prisma.attempt.findUnique({
+/**
+ * This student's attempt: when they started and how often they left the
+ * page, or null if they have not pressed "Bắt đầu làm bài".
+ */
+export async function findAttempt(prisma: PrismaClient, homeworkId: number, name: string) {
+  return prisma.attempt.findUnique({
     where: { homeworkId_studentKey: { homeworkId, studentKey: studentKey(name) } },
-    select: { startedAt: true },
+    select: { startedAt: true, leaveCount: true },
   });
-  return attempt?.startedAt ?? null;
+}
+
+/**
+ * What the answer page reports when the student switches to another tab or
+ * app ("leave") and comes back after `seconds` ("back"). One statement, as it
+ * runs on every switch. Ignored without an attempt (no time limit, or not
+ * started); the seconds are capped at the time limit.
+ */
+export async function recordAway(
+  prisma: PrismaClient,
+  { shareCode, name, event, seconds }: { shareCode: string; name: string; event: 'leave' | 'back'; seconds: number },
+): Promise<void> {
+  const where = { studentKey: studentKey(name), homework: { shareCode, timeLimitMinutes: { not: null } } };
+  if (event === 'leave') {
+    await prisma.attempt.updateMany({ where, data: { leaveCount: { increment: 1 } } });
+  } else {
+    const capped = Math.min(seconds, LIMITS.timeLimitMinutes * 60);
+    await prisma.attempt.updateMany({ where, data: { awaySeconds: { increment: capped } } });
+  }
 }
 
 interface OrderSource {

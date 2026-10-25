@@ -123,11 +123,15 @@ model SubmissionAnswer {
 
 // When a student started a homework that has a time limit: one row per name,
 // written when they press "Bắt đầu làm bài", so reloading does not restart the clock.
+// The answer page also reports here each time the student leaves it (Step 10).
 model Attempt {
-  homeworkId Int      @map("homework_id")
-  homework   Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
-  studentKey String   @map("student_key")
-  startedAt  String   @map("started_at")
+  homeworkId  Int      @map("homework_id")
+  homework    Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  studentKey  String   @map("student_key")
+  studentName String?  @map("student_name")              // NULL for attempts started before Step 10
+  startedAt   String   @map("started_at")
+  leaveCount  Int      @default(0) @map("leave_count")   // times the page was left (other tab/app); CHECK >= 0
+  awaySeconds Int      @default(0) @map("away_seconds")  // total time away; CHECK >= 0
   @@id([homeworkId, studentKey])
   @@map("attempts")
 }

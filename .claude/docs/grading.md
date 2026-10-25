@@ -77,7 +77,31 @@ are the teacher's order; shuffling is meant to be presentation only.
 - **No attempt but a limit** (the teacher added the limit while the student was answering): accepted.
 - `submissions.started_at` is now filled from the attempt (NULL without a limit). Deleting a submission
   (`deleteSubmission`) also deletes the attempt, so the student can redo it with a fresh clock. A student
-  whose time ran out without a submission cannot be reset by the teacher (no UI for attempts).
+  who started but has no submission is reset with "Cho làm lại" (Step 10).
+
+## Leaving the page (Step 10, asked for by the user 2026-10-25)
+
+Only for homeworks with a time limit (Claude's recommendation; the user did not pick, a homework without
+a limit is usually done at home where switching apps is normal). Nothing is recorded without an attempt.
+- **Browser** (`answer.ts`): leaving = `visibilitychange` to hidden (other tab/app, home screen, screen off,
+  reload, closing the tab) or window `blur` (another window on a computer); our own `confirm()` and the
+  submit navigation are ignored. On leaving it sends `event=leave` at once with `navigator.sendBeacon`
+  (fallback `fetch keepalive`) to `POST /h/CODE/away`, so it counts even if the student never comes back;
+  on return (visible and focused) `event=back&seconds=N`, and shows "Em đã rời trang làm bài N lần…". An
+  auto-submit while away reports the seconds first. `data-leave-count` starts the count from the server's.
+- **Server** `recordAway()`: one `updateMany` on the attempt (`leave_count + 1`, or `away_seconds + N`
+  capped at 600 min), matched by share code + `student_key` + a time limit; unknown/not started → nothing,
+  still 204. `awaySchema`: name, `event` ∈ leave/back, seconds 0–9 999 999; else 400.
+- **Not proof**: a second device, split screen or a student turning it off goes unseen; a phone call or
+  screen lock counts. Anyone who knows a student's name and the code could send fake reports for them
+  (only adds warnings; accepted risk, no per-attempt secret).
+- **Teacher** (`results.ejs`): a "Rời trang" column when any submission has an attempt ("⚠ Rời trang 4 lần,
+  tổng 3 phút 20 giây"; empty when 0), CSV columns `Rời trang (lần)` and `Thời gian rời trang (giây)` only
+  then, an explanation paragraph, and "Đã bắt đầu nhưng chưa nộp (N)" (`listUnfinished`: attempts without a
+  submission, with "Đang làm, còn N phút" / "Hết giờ, chưa nộp"). "Cho làm lại" →
+  `/teacher/homeworks/:id/attempts/:studentKey/reset` (confirmation page, then `resetAttempt` deletes the
+  attempt; a student who submitted is a 404 there: delete the submission instead).
+- `attempts.student_name` (Step 10) is shown in that list; NULL for attempts from before, shown as the key.
 
 ## Step 6 decisions (2026-10-25)
 

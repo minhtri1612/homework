@@ -43,3 +43,13 @@ export const submitSchema = z
   });
 
 export type SubmitForm = z.infer<typeof submitSchema>;
+
+/**
+ * What the answer page sends (navigator.sendBeacon) when the student leaves
+ * it, and when they come back with the seconds they were away.
+ */
+export const awaySchema = z.object({
+  name: studentName,
+  event: z.enum(['leave', 'back']),
+  seconds: formText.pipe(z.string().regex(/^\d{1,7}$/)).transform(Number).optional(),
+}).transform(({ seconds, ...rest }) => ({ ...rest, seconds: seconds ?? 0 }));

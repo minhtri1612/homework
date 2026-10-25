@@ -21,24 +21,77 @@ export interface SubmissionRow {
   totalCount: number;
   versionNumber: number;
   submittedAt: string;
+  /** How often the student left the answer page; null without a time limit (nothing is recorded then). */
+  away: Away | null;
+}
+
+export interface Away {
+  leaveCount: number;
+  awaySeconds: number;
 }
 
 /** A homework's submissions, oldest first; only those of one version when versionId is given. */
 export async function listSubmissions(prisma: PrismaClient, homeworkId: number, versionId: number | null = null): Promise<SubmissionRow[]> {
-  const submissions = await prisma.submission.findMany({
-    where: { homeworkId, ...(versionId !== null && { versionId }) },
-    orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
-    select: {
-      id: true,
-      studentName: true,
-      score: true,
-      correctCount: true,
-      totalCount: true,
-      submittedAt: true,
-      version: { select: { number: true } },
-    },
+  const [submissions, attempts] = await Promise.all([
+    prisma.submission.findMany({
+      where: { homeworkId, ...(versionId !== null && { versionId }) },
+      orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        studentName: true,
+        studentKey: true,
+        score: true,
+        correctCount: true,
+        totalCount: true,
+        submittedAt: true,
+        version: { select: { number: true } },
+      },
+    }),
+    prisma.attempt.findMany({ where: { homeworkId }, select: { studentKey: true, leaveCount: true, awaySeconds: true } }),
+  ]);
+  const awayOf = new Map(attempts.map(({ studentKey, ...away }) => [studentKey, away]));
+  return submissions.map(({ version, studentKey, ...s }) => ({ ...s, versionNumber: version.number, away: awayOf.get(studentKey) ?? null }));
+}
+
+export interface UnfinishedRow extends Away {
+  studentKey: string;
+  studentName: string;
+  startedAt: string;
+}
+
+/**
+ * Students who pressed "Bắt đầu làm bài" but have no submission: still
+ * answering, or time ran out without a submission. Earliest start first.
+ */
+export async function listUnfinished(prisma: PrismaClient, homeworkId: number): Promise<UnfinishedRow[]> {
+  const [attempts, submitted] = await Promise.all([
+    prisma.attempt.findMany({
+      where: { homeworkId },
+      orderBy: { startedAt: 'asc' },
+      select: { studentKey: true, studentName: true, startedAt: true, leaveCount: true, awaySeconds: true },
+    }),
+    prisma.submission.findMany({ where: { homeworkId }, select: { studentKey: true } }),
+  ]);
+  const done = new Set(submitted.map((s) => s.studentKey));
+  return attempts
+    .filter((a) => !done.has(a.studentKey))
+    .map((a) => ({ ...a, studentName: a.studentName ?? a.studentKey }));
+}
+
+/**
+ * Lets a student who started but did not submit begin again with a fresh
+ * clock. False if there is no such unfinished attempt of this teacher's homework.
+ */
+export async function resetAttempt(
+  prisma: PrismaClient,
+  { homeworkId, teacherId, studentKey }: { homeworkId: number; teacherId: number; studentKey: string },
+): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const submitted = await tx.submission.findUnique({ where: { homeworkId_studentKey: { homeworkId, studentKey } }, select: { id: true } });
+    if (submitted) return false; // deleting the submission is the way to let them redo it
+    const { count } = await tx.attempt.deleteMany({ where: { homeworkId, studentKey, homework: { teacherId } } });
+    return count > 0;
   });
-  return submissions.map(({ version, ...s }) => ({ ...s, versionNumber: version.number }));
 }
 
 export interface QuestionStats {
@@ -96,7 +149,10 @@ function csvCell(value: string | number): string {
  * correctly. Times are Vietnam time.
  */
 export function submissionsCsv(rows: SubmissionRow[]): string {
+  // Leaving the page is only recorded with a time limit: the columns only appear then.
+  const withAway = rows.some((row) => row.away !== null);
   const header = ['STT', 'Họ tên', 'Điểm', 'Số câu đúng', 'Tổng số câu', 'Phiên bản', 'Nộp lúc (giờ Việt Nam)'];
+  if (withAway) header.push('Rời trang (lần)', 'Thời gian rời trang (giây)');
   const lines = rows.map((row, i) => [
     i + 1,
     row.studentName,
@@ -105,6 +161,7 @@ export function submissionsCsv(rows: SubmissionRow[]): string {
     row.totalCount,
     row.versionNumber,
     toVietnamInput(row.submittedAt).replace('T', ' '),
+    ...(withAway ? [row.away?.leaveCount ?? '', row.away?.awaySeconds ?? ''] : []),
   ]);
   return `﻿${[header, ...lines].map((line) => line.map(csvCell).join(',')).join('\r\n')}\r\n`;
 }
