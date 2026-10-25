@@ -1,0 +1,31 @@
+<%- include('partials/head') %>
+<h1><%= homework.title %></h1>
+<p>Học sinh: <strong><%= name %></strong>
+  <% if (homework.deadline) { %> · Hạn nộp: <%= formatDateTime(homework.deadline) %><% } %></p>
+<noscript><p class="notice">Câu nào chưa chọn đáp án sẽ bị tính là sai.</p></noscript>
+
+<form method="post" action="/h/<%= homework.shareCode %>/submit" id="answer-form" class="answer-form">
+  <input type="hidden" name="name" value="<%= name %>">
+  <input type="hidden" name="versionId" value="<%= homework.versionId %>">
+  <input type="hidden" name="questionIds" value="<%= homework.questions.map((q) => q.id).join(',') %>">
+
+  <% const letters = 'ABCDEFGH'; %>
+  <% homework.questions.forEach((question, i) => { %>
+    <fieldset class="card question" data-question>
+      <legend><strong>Câu <%= i + 1 %>.</strong> <span class="question-text-view"><%= question.text %></span></legend>
+      <% question.answers.forEach((answer, j) => { %>
+        <label class="choice">
+          <input type="radio" name="q<%= question.id %>" value="<%= answer.id %>">
+          <span class="choice-letter"><%= letters[j] %>.</span> <span><%= answer.text %></span>
+        </label>
+      <% }) %>
+    </fieldset>
+  <% }) %>
+
+  <div class="savebar">
+    <span id="answer-status" class="muted" aria-live="polite"></span>
+    <button type="submit">Nộp bài</button>
+  </div>
+</form>
+<script type="module" src="/js/answer.js"></script>
+<%- include('partials/foot') %>

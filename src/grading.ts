@@ -9,3 +9,10 @@
 export function computeScore(correct: number, total: number): number {
   return Math.round((correct * 40) / total) / 4;
 }
+
+const SCORE = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 });
+
+/** 7.25 → "7,25" (Vietnamese decimal comma). */
+export function formatScore(score: number): string {
+  return SCORE.format(score);
+}

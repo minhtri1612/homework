@@ -45,6 +45,7 @@ is compiled:
 | `src/shared/parser.ts` | `dist/browser/shared/parser.js` | `/shared/parser.js` |
 | `src/public/js/editor.ts` | `dist/browser/public/js/editor.js` | `/js/editor.js` |
 | `src/public/js/copy.ts` | `dist/browser/public/js/copy.js` | `/js/copy.js` |
+| `src/public/js/answer.ts` | `dist/browser/public/js/answer.js` | `/js/answer.js` |
 
 `editor.ts` imports the parser by its URL (`'/shared/parser.js'`); `paths` in `tsconfig.browser.json`
 points the type checker at `parser.ts`. `.ts` files are never served (404). `npm run build:browser`
@@ -84,7 +85,10 @@ All listed in `routes/web.ts`; controllers in `src/controllers/`.
 | GET | `/teacher/homeworks/:id/edit` | `homework.getEditHomeworkPage` | `?saved=1` / `?saved=new` / `?saved=vN` show a notice |
 | POST | `/teacher/homeworks/:id` | `homework.postUpdateHomework` | update → 302 back to edit page |
 | GET | `/join?code=…` | `share.getJoin` | home-page code box (GET form) → 302 `/h/CODE`; bad/empty code → 400 home with error |
-| GET | `/h/:code` | `share.getSharedHomework` | student page; non-canonical code (lower case…) → 302 to `/h/CODE`; unknown → 404 |
+| GET | `/h/:code` | `share.getSharedHomework` | student start page (name form); non-canonical code (lower case…) → 302 to `/h/CODE`; unknown → 404 |
+| GET | `/h/:code/answer?name=…` | `share.getAnswerPage` | questions without correct answers; bad name 400, name already used 409, closed 403 |
+| POST | `/h/:code/submit` | `share.postSubmit` | grade + save → 303 to the result link, sets cookie `result_<CODE>`; closed 403, name used / questions changed 409, bad data 400 |
+| GET | `/h/:code/result/:token` | `share.getResultPage` | score, and the answers when the reveal mode allows; unknown token 404 |
 
 Everything under `/teacher` goes through `requireTeacher` (302 to `/login`) and `setSiteUrl`. Routes with
 `:id` use `ownHomework()` (`homework.controller.ts`), which returns a 404 page when the id is not a
@@ -97,14 +101,17 @@ it comes from the request's `Host` header (no configured public URL yet).
 Student routes need no login. Share codes go through `joinSchema` / `shareCodeParam`
 (`validation/share.schema.ts`), which use `normalizeShareCode()` (any case, spaces, dashes, or a pasted
 `.../h/CODE` link). `/h/:code` uses `findSharedHomework()`, which returns no
-questions or answers; for now the page shows title, teacher, question count, deadline / "Đã hết hạn
-nộp bài", and a "(sắp có)" notice where answering will go.
+questions or answers: title, teacher, question count, deadline or "Đã hết hạn nộp bài", the name form,
+and this browser's last result link (cookie). Sub-routes with a lower-case code redirect (GET) to the
+upper-case address, keeping the rest of the URL. The answer page uses `getQuestionsForStudent()`, which
+builds each answer as `{ id, text }` only. Grading, reveal and the result link: `grading.md`.
 
-Not built yet: answering and submitting (Step 6), results/CSV (Step 7), deleting a homework.
+Not built yet: results/CSV for the teacher (Step 7), deleting a homework.
 
 ## Views (`src/views/`)
 
-`home` (code box + teacher links), `register`, `login`, `dashboard`, `editor`, `share` (student page),
+`home` (code box + teacher links), `register`, `login`, `dashboard`, `editor`, `share` (student start page),
+`answer` (questions, loads `/js/answer.js`), `result` (score and review, loads `/js/copy.js`),
 `error`, plus `partials/head` (topbar, logout form), `partials/foot` and `partials/share-link` (readonly
 link box + copy button + "Xem trang học sinh"; pages using it also load `/js/copy.js`). Every page passes `title`. Use `<%= %>` (escaped) for all data; `<%- %>`
 is only used for `include` and for `initialJson`, which is pre-escaped by `scriptJson()`.

@@ -34,6 +34,7 @@ for (const [url, file] of [
   ['/shared/parser.js', 'shared/parser.js'],
   ['/js/editor.js', 'public/js/editor.js'],
   ['/js/copy.js', 'public/js/copy.js'],
+  ['/js/answer.js', 'public/js/answer.js'],
 ]) {
   test(`${url} is the current build of its TypeScript source (npm run build:browser)`, async () => {
     const response = await app.get(url!);

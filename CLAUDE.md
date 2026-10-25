@@ -8,8 +8,9 @@ file before touching that area.
 Website for Vietnamese teachers to set single-correct-answer multiple-choice homework. Teachers
 register, then write questions either as pasted text in a small syntax (`==` marks the correct answer)
 or as editable cards, and share the homework by link (`/h/CODE`) or 6-character code. Students (no
-account) open it; answering and server-side grading on a 10-point scale are Step 6, not built yet
-(see `PLAN.md`).
+account) open it, enter a name, answer and submit; the server grades on a 10-point scale and shows the
+result by a private link, revealing the answers according to the homework's reveal mode. Results for the
+teacher (Step 7) are not built yet (see `PLAN.md`).
 
 ## Tech Stack
 
@@ -67,7 +68,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - `parse()` never drops a line: problems become errors/warnings with line numbers. `serialize()` writes
   cards back as text that `parse()` reads back to the same questions.
 
-**Grading** (`computeScore()` in `src/grading.ts`; the student flow that uses it is Step 6; see `.claude/docs/grading.md`):
+**Grading** (`computeScore()` in `src/grading.ts`, used by `submitAnswers()`; see `.claude/docs/grading.md`):
 `score = Math.round(correct * 40 / total) / 4`, i.e. `correct / total × 10` rounded to the **nearest**
 0.25 (7.1 → 7, 7.13 → 7.25; an exact tie such as 7.125 goes up). Stored in `submissions.score` with
 `correct_count` and `total_count`; a blank answer is `answer_id NULL` and counts as wrong.
@@ -75,8 +76,8 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 ## Key Constraints
 
 - **Correct answers never reach a student's browser before submission.** `getHomework()` returns
-  `answers[].correct` for the teacher and grading only. Student pages must strip it; grading happens
-  on the server.
+  `answers[].correct` for the teacher and grading only. Student pages use `getQuestionsForStudent()` (no
+  correct flag) and `getResult()` (correct answers only when `canReveal()`); grading happens on the server.
 - **One parser for browser and server.** The server imports `src/shared/parser.ts`; the browser gets the
   same file compiled to `/shared/parser.js` (`npm run build:browser`). It stays a dependency-free module
   with no Node or DOM APIs (`tsconfig.browser.json` has no Node types; the server config has no DOM).
@@ -114,7 +115,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - [.claude/docs/parser.md](.claude/docs/parser.md): syntax rules, splitting heuristics, title rule, error codes, normalisation, serialize round-trip
 - [.claude/docs/database.md](.claude/docs/database.md): tables, constraints, homework versioning, validation limits, libSQL local vs Turso, scripts
 - [.claude/docs/auth.md](.claude/docs/auth.md): teacher registration/login, sessions and cookies, CSRF/Origin check, ownership, escaping
-- [.claude/docs/grading.md](.claude/docs/grading.md): what the schema fixes for scoring, reveal modes and shuffling; open decisions for Step 6
+- [.claude/docs/grading.md](.claude/docs/grading.md): score formula, Step 6 decisions (blank answers, names, shuffle, deadline, reveal, result link), submitting
 - [.claude/docs/testing.md](.claude/docs/testing.md): `node:test` layout, `startApp()` helper, how to add a test, known gaps
 - `PLAN.md`: the 8-step plan and its current status
 - `README.md`: user-facing setup and syntax guide (Vietnamese)

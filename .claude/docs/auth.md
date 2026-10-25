@@ -40,6 +40,18 @@ match. Comparison uses `timingSafeEqual`.
   session. `req.sessionToken` holds the raw token.
 - `POST /logout` deletes the session row, then clears the cookie. Old copies of the cookie stop working.
 
+## Students
+
+Students have no account. What protects their data:
+- The answer page never contains which answer is correct (`getQuestionsForStudent()` drops it; tested).
+- The private result link carries 24 random bytes; the database stores only its SHA-256, like session
+  tokens. The link is checked against the homework in the URL (another code → 404). Result pages have
+  no external links, so the code does not leak through `Referer`.
+- Cookie `result_<CODE>`: HttpOnly, SameSite=Lax, `Path=/h/<CODE>`, Secure in production.
+- Knowing a classmate's name only tells you that they submitted (needed for "one attempt per name"),
+  not their result.
+- `POST /h/:code/submit` goes through `sameOriginPosts` like every POST.
+
 ## Rules for new routes
 
 - **Teacher pages**: mount under `/teacher` so `requireTeacher` applies (302 to `/login`).

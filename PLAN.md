@@ -7,11 +7,10 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 4.6 (TypeScript) is finished. Parts 3–6 were done back to back (user's instruction
-2026-10-25), each tested and committed locally; **nothing after part 2 (4c5ecd2) is pushed** until the user
-reviews them. 145 tests pass.
+**Where we stopped:** Step 4.6 is pushed (773442f). Step 6 (student flow) is done, **not committed yet, waiting
+for review**. 167 tests pass.
 
-**Next: Step 6 (student flow)**, after the user approves Step 4.6 and the push.
+**Next: Step 7 (results for the teacher)**, after the user approves Step 6.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -37,12 +36,15 @@ reviews them. 145 tests pass.
   - [x] `/h/CODE` finds the homework (code typed in any letter case), 404 in Vietnamese otherwise
   - [x] code entry form on the home page
   - [x] teacher sees and can copy the full link (dashboard + editor)
-- [ ] **Step 6 — Student flow**: enter name, answer, submit, get the score ← **next**
-  - [ ] questions sent without the correct answers; question/answer shuffling
-  - [ ] one attempt per name (`student_key`), deadline enforced
-  - [ ] server-side grading on a 10-point scale, rounded to the nearest 0.25, saved in `submissions` / `submission_answers`
-  - [ ] result page following the reveal mode (after submit / after deadline / never)
-- [ ] **Step 7 — Results for the teacher**: submissions list per homework, per-version view, CSV export
+- [x] **Step 6 — Student flow**: enter name, answer, submit, get the score (decisions 2026-10-25 in `.claude/docs/grading.md`)
+  - [x] questions sent without the correct answers; question/answer shuffling (stable per student, derived from the name)
+  - [x] one attempt per name (`student_key`), deadline enforced (late submissions refused)
+  - [x] server-side grading on a 10-point scale, rounded to the nearest 0.25, saved in `submissions` / `submission_answers`
+  - [x] result page following the reveal mode (after submit / after deadline / never), private result link
+    (`result_token_hash`, migration `20261025034647_submission_result_token`) and a cookie per homework
+  - Tests: `test/student.test.ts` (21) + `/js/answer.js` in the build check; 167 in total. Checked that breaking the reveal check or the deadline check makes the
+    matching tests fail.
+- [ ] **Step 7 — Results for the teacher**: submissions list per homework, per-version view, CSV export ← **next**
 - [ ] **Step 8 — Deploy**: Render (web service) + Turso (database), production settings
   - Build command `npm install && npm run build` (Prisma client + browser JavaScript). `typescript` is a dev
     dependency, so the build must install dev dependencies (do not set `NODE_ENV=production` for the build).

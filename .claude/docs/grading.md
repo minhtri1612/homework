@@ -1,8 +1,8 @@
 # Grading, answer reveal and shuffling
 
-**Status: not implemented.** The student flow and grading are Step 6 of `PLAN.md`. This file lists
-what the user, the schema, the code and the README already decide, and the open decisions. Do not treat
-the open decisions as settled; ask the user or record the decision here during Step 6.
+**Status: implemented in Step 6** (`src/services/submission.service.ts`, `src/services/shuffle.service.ts`,
+`src/controllers/share.controller.ts`, tests in `test/student.test.ts`). The decisions below were made by the
+user on 2026-10-25; change them only after asking.
 
 ## Score formula (decided by the user, 2026-10-25)
 
@@ -56,11 +56,38 @@ are the teacher's order; shuffling is meant to be presentation only.
 
 **Deadline**: `homeworks.deadline` UTC ISO or NULL (none). Teachers enter Vietnam time.
 
-## Open decisions for Step 6 (nothing in the repo settles these)
+## Step 6 decisions (2026-10-25)
 
-- Whether a fully blank submission is allowed.
-- How shuffle order is generated and kept stable (per student? stored? `started_at` exists but
-  nothing writes it).
-- Whether submitting after the deadline is refused or only marked late.
-- What the student sees per question for each reveal mode (own answer, correct answer, score only).
-- How the name is normalised beyond the `student_key` comment (NFC? Vietnamese diacritics kept?).
+- **Blank answers** are allowed, also a fully blank submission; each blank question counts as wrong and is
+  stored as `answer_id NULL`. The answer page (`answer.ts`) asks for confirmation when questions are blank.
+- **Name**: `formLine` (NFC, whitespace collapsed, trimmed), 1–100 chars, diacritics kept.
+  `student_key` = `name.toLocaleLowerCase('vi')`: "Lê Văn An", " lê  văn an " are the same student.
+- **Shuffle order** is derived, not stored: `seededShuffle()` (SHA-256 of the seed → mulberry32 →
+  Fisher–Yates) with seed `homeworkId:versionId:studentKey` for the questions (when `shuffle_questions`)
+  and `…:questionId` for each question's answers (when `shuffle_answers`). The same student sees the same
+  order on reload, other students another one, and the result page repeats it. `started_at` stays unused.
+- **Deadline**: after it, `/h/CODE` shows no name form, `/h/CODE/answer` is 403, and a submission that
+  arrives late is refused (403, "Đã hết hạn nộp bài, bài làm không được ghi nhận"). The check runs inside
+  the save transaction.
+- **Result page** (`/h/CODE/result/<code>`): score (Vietnamese decimal comma, "7,25 / 10 điểm"), correct
+  count, time. When `canReveal()`: every question in the student's order with their choice ("em chọn"),
+  the correct answer ("đáp án đúng") and ✔ Đúng / ✖ Sai / ✖ Bỏ trống. `never`: score only.
+  `after_deadline` before the deadline: a notice with the deadline. `getResult()` does not even load the
+  correct answers into its result unless they may be shown.
+- **Private result link**: 24 random bytes (base64url) in the URL; only the SHA-256 hex is stored
+  (`submissions.result_token_hash`, unique, nullable for rows tests insert directly). A cookie
+  `result_<CODE>` (HttpOnly, SameSite=Lax, `Path=/h/<CODE>`, one year) keeps the last link of this
+  browser, so `/h/CODE` offers "… đã nộp bài. Xem kết quả" while still letting the next student start
+  (shared school computers).
+
+## Submitting (`submitAnswers`)
+
+One write transaction, so it cannot interleave with `updateHomework`:
+1. Homework by share code; refuse if closed.
+2. The version the student saw (hidden `versionId`, must belong to the homework) and its questions.
+   The hidden `questionIds` must equal that version's questions: if the teacher replaced the questions in
+   place (possible while nobody had submitted), the ids differ and the student is asked to redo it (409).
+   A page from an **older** version that still exists is accepted and graded on that version.
+3. Each chosen answer must belong to its question (else 400; only hand-made requests do that).
+4. `computeScore(correct, total)`; insert the submission with all `submission_answers` rows.
+A second submission with the same `student_key` fails on the UNIQUE constraint (409, "đã nộp bài này rồi").

@@ -156,8 +156,30 @@ Mỗi bài tập có một **mã 6 ký tự** (ví dụ `ABC234`), không dùng 
 - Hoặc đọc / viết mã lên bảng: học sinh mở trang chủ, gõ mã vào ô **nhập mã bài tập** rồi bấm **Mở bài tập**.
   Gõ chữ thường, có dấu cách hay dấu gạch (`abc 234`, `ABC-234`) đều được; dán cả link vào ô cũng được.
 - Trang của học sinh hiện tiêu đề, tên giáo viên, số câu hỏi và hạn nộp (giờ Việt Nam), hoặc báo
-  **đã hết hạn nộp bài**. Trang này không chứa câu hỏi hay đáp án. Phần làm bài và nộp bài _(sắp có)_.
+  **đã hết hạn nộp bài**.
 - Sửa bài tập không làm đổi mã hay link.
+
+## Học sinh làm bài
+
+1. Mở link (hoặc nhập mã), gõ **họ và tên**, bấm **Bắt đầu làm bài**. Học sinh không cần tài khoản.
+2. Chọn một đáp án cho mỗi câu rồi bấm **Nộp bài**. Câu bỏ trống bị tính là sai; trang sẽ hỏi lại nếu
+   còn câu chưa chọn. Trang làm bài không chứa đáp án đúng.
+3. Máy chủ chấm điểm theo thang 10, làm tròn đến 0,25 điểm gần nhất (ví dụ 7,1 → 7; 7,13 → 7,25).
+4. Trang **kết quả** có một link riêng: học sinh lưu lại để xem sau. Trên cùng máy đó, mở lại link bài tập
+   cũng thấy “… đã nộp bài. Xem kết quả”, và học sinh khác vẫn làm bài được (máy dùng chung ở trường).
+
+Quy tắc:
+
+- **Mỗi tên chỉ nộp một lần** (không phân biệt chữ hoa chữ thường và dấu cách thừa). Hai bạn trùng tên
+  thì ghi thêm họ hoặc tên lớp.
+- **Hết hạn nộp** thì không làm bài được nữa, bài gửi sau hạn không được ghi nhận.
+- **Xáo trộn**: nếu giáo viên bật, mỗi học sinh thấy thứ tự câu hỏi / đáp án khác nhau, và tải lại trang
+  vẫn giữ nguyên thứ tự của mình.
+- **Xem đáp án** theo cài đặt của bài: *ngay sau khi nộp* (mỗi câu hiện đáp án em chọn và đáp án đúng),
+  *sau hạn nộp* (trước hạn chỉ thấy điểm), hoặc *không cho xem* (chỉ thấy điểm).
+- Nếu giáo viên sửa câu hỏi đúng lúc học sinh đang làm bài (khi chưa ai nộp), bài làm đó không chấm được
+  và trang sẽ báo học sinh làm lại.
+- Giáo viên xem danh sách bài nộp ở bước sau _(sắp có)_.
 
 ## Cú pháp nhập câu hỏi
 
@@ -259,19 +281,22 @@ src/
     home.controller.ts     trang chủ
     auth.controller.ts     đăng ký, đăng nhập, đăng xuất
     homework.controller.ts trang của giáo viên: danh sách và soạn bài tập
-    share.controller.ts    trang của học sinh: mở bài tập bằng mã (/h/MÃ, ô nhập mã)
+    share.controller.ts    trang của học sinh: mở bài bằng mã, làm bài, nộp bài, kết quả
   validation/     kiểm tra và làm sạch dữ liệu từ form (Zod), thông báo lỗi tiếng Việt
   services/
     teacher.service.ts    lưu giáo viên
     homework.service.ts   lưu và đọc bộ bài tập (kiểm tra lại câu hỏi trước khi lưu)
     session.service.ts    phiên đăng nhập
     share-code.service.ts tạo và đọc mã chia sẻ
+    submission.service.ts học sinh làm bài, chấm điểm, trang kết quả
+    shuffle.service.ts    xáo trộn cố định theo từng học sinh
     password.service.ts   mã hoá và kiểm tra mật khẩu
   generated/      mã Prisma tự sinh (npm run db:generate, không đưa lên git)
   views/          giao diện (EJS); partials/ là phần đầu và cuối dùng chung
   public/         CSS và mã chạy trên trình duyệt
     js/editor.ts  trang soạn bài tập (hai thẻ Cú pháp / Dạng thẻ)
     js/copy.ts    nút “Sao chép link”
+    js/answer.ts  trang làm bài (hỏi lại khi còn câu bỏ trống)
   types/          khai báo kiểu thêm cho Express (req.teacher, req.prisma…)
   app.ts          ghép các phần thành website
   server.ts       khởi động website (npm run dev)

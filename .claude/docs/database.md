@@ -90,9 +90,10 @@ All child FKs use `ON DELETE CASCADE`: deleting a homework removes its versions,
 submissions. The database enforces "at most one correct answer"; "exactly one" and "2–6 answers"
 are enforced by `validateQuestion()` before saving.
 
-`submissions` and `submission_answers` are only written by tests so far (raw SQL). Student
-submission code is Step 6. `student_key` is documented in the schema as "name lower-cased with spaces
-collapsed: one attempt per name"; no code computes it yet.
+`submissions` and `submission_answers` are written by `submitAnswers()` (`submission.service.ts`, one
+transaction; see `grading.md`). `student_key` = the cleaned name lower-cased (`studentKey()`).
+`submissions.result_token_hash` (migration `20261025034647_submission_result_token`, nullable + UNIQUE) is
+the SHA-256 of the private result link code. Some tests still insert submissions with raw SQL and no token.
 
 ## Share codes
 

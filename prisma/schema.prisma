@@ -100,6 +100,7 @@ model Submission {
   correctCount Int                @map("correct_count")   // CHECK (correct_count >= 0)
   totalCount   Int                @map("total_count")     // CHECK (total_count >= correct_count)
   score        Float                                      // CHECK (score BETWEEN 0 AND 10)
+  resultTokenHash String?         @unique @map("result_token_hash") // SHA-256 hex of the private result link code; NULL only in tests
   answers      SubmissionAnswer[]
   @@unique([homeworkId, studentKey])
   @@map("submissions")

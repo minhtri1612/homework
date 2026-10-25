@@ -16,6 +16,7 @@ Run the whole file instead.
 |---|---|---|
 | `test/browser-build.test.ts` | served `/shared/parser.js`, `/js/editor.js`, `/js/copy.js` equal a fresh `tsc` build of their `.ts` sources; `.ts` sources are not served | compiles into a temp folder + real HTTP |
 | `test/imports.test.ts` | every relative import in `src`, `scripts`, `test` names a file that exists (the type checker accepts `./x.js` for `x.ts`; Node does not) | reads the files |
+| `test/student.test.ts` | name form, answer page without correct answers, per-student shuffle, grading and storage, one attempt per name, deadline, questions changed while answering, old version, result page per reveal mode, result link and cookie, escaping | real HTTP via `startApp()` |
 | `test/validation.test.ts` | Zod schemas: register messages and cleaning, editor form coercion, homework id, share code | pure functions |
 | `test/grading.test.ts` | `computeScore`: nearest 0.25, ties up, 0 and 10 | pure function |
 | `test/parser.test.ts` | all syntax styles, splitting, title, errors, normalisation, `validateQuestion`, `serialize` round-trip | pure functions |
@@ -73,7 +74,8 @@ Conventions seen in the existing tests:
   state via services (`getHomework(prisma, id)`) or `db.execute`.
 - For security-relevant features add a negative test (other teacher → 404, foreign Origin → 403,
   HTML in input is escaped, correct answers absent from student HTML).
-- Submissions are inserted with raw SQL (`addSubmission` in `editor.test.ts`) until Step 6 adds real code.
+- `student.test.ts` submits through the real form (`answerAndSubmit`). Older tests still insert submissions
+  with raw SQL (`addSubmission` in `editor.test.ts`), which is fine for setting up state.
   Raw inserts must set `submitted_at` / `created_at` / `updated_at` (no DB defaults).
 - Prisma errors carry a `code` (`P2002` unique, `P2003` foreign key) instead of SQLite's message text:
   assert with `{ code: 'P2002' }`.

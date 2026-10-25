@@ -10,9 +10,23 @@
   <% } %>
   <p class="muted">Mã bài tập: <code><%= homework.shareCode %></code></p>
 </section>
+<% if (notice) { %>
+  <p class="notice danger" role="alert"><%= notice %></p>
+<% } %>
+<% if (previous) { %>
+  <p class="notice success">Trên máy này, <strong><%= previous.name %></strong> đã nộp bài. <a href="<%= previous.url %>">Xem kết quả</a></p>
+<% } %>
 <% if (closed) { %>
   <p class="notice danger" role="status">Đã hết hạn nộp bài.</p>
 <% } else { %>
-  <p class="notice">Phần làm bài đang được xây dựng (sắp có).</p>
+  <form method="get" action="/h/<%= homework.shareCode %>/answer" class="card form">
+    <label>Họ và tên của em
+      <input name="name" value="<%= nameInput %>" autocomplete="name" required maxlength="100" autofocus
+             <% if (nameError) { %>aria-invalid="true" aria-describedby="name-error"<% } %>>
+    </label>
+    <% if (nameError) { %><p class="error" id="name-error"><%= nameError %></p><% } %>
+    <p class="muted">Mỗi tên chỉ được nộp bài một lần. Ghi đầy đủ họ tên để thầy cô nhận ra em.</p>
+    <button type="submit">Bắt đầu làm bài</button>
+  </form>
 <% } %>
 <%- include('partials/foot') %>

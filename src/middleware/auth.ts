@@ -14,7 +14,7 @@ export function sessionCookieOptions(): CookieOptions {
   };
 }
 
-function readCookie(req: Request, name: string): string | null {
+export function readCookie(req: Request, name: string): string | null {
   for (const part of (req.headers.cookie ?? '').split(';')) {
     const [key, ...value] = part.trim().split('=');
     if (key === name) {

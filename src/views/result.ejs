@@ -1,0 +1,45 @@
+<%- include('partials/head') %>
+<h1><%= result.title %></h1>
+<section class="card result-score">
+  <p>Học sinh: <strong><%= result.studentName %></strong></p>
+  <p class="score"><strong><%= score %></strong> / 10 điểm</p>
+  <p>Đúng <%= result.correctCount %> / <%= result.totalCount %> câu.</p>
+  <p class="muted">Nộp lúc <%= formatDateTime(result.submittedAt) %> (giờ Việt Nam).</p>
+</section>
+
+<section class="card share">
+  <p>Lưu lại link này để xem lại kết quả sau:</p>
+  <div class="share-link">
+    <input value="<%= resultUrl %>" readonly aria-label="Link xem lại kết quả">
+    <button type="button" class="small secondary" data-copy hidden>Sao chép link</button>
+  </div>
+</section>
+
+<% if (result.questions) { %>
+  <h2>Đáp án</h2>
+  <% const letters = 'ABCDEFGH'; %>
+  <ol class="review">
+    <% result.questions.forEach((question, i) => { %>
+      <% const right = question.answers.some((a) => a.correct && a.id === question.chosenId); %>
+      <li class="card question <%= right ? 'right' : 'wrong' %>">
+        <p><strong>Câu <%= i + 1 %>.</strong> <span class="question-text-view"><%= question.text %></span>
+          <span class="verdict"><%= right ? '✔ Đúng' : question.chosenId === null ? '✖ Bỏ trống' : '✖ Sai' %></span></p>
+        <ul class="review-answers">
+          <% question.answers.forEach((answer, j) => { %>
+            <li class="<%= answer.correct ? 'is-correct' : '' %> <%= answer.id === question.chosenId ? 'is-chosen' : '' %>">
+              <%= letters[j] %>. <%= answer.text %>
+              <% if (answer.id === question.chosenId) { %><span class="tag">em chọn</span><% } %>
+              <% if (answer.correct) { %><span class="tag">đáp án đúng</span><% } %>
+            </li>
+          <% }) %>
+        </ul>
+      </li>
+    <% }) %>
+  </ol>
+<% } else if (revealLater) { %>
+  <p class="notice">Đáp án sẽ hiện ở trang này sau hạn nộp (<%= formatDateTime(result.deadline) %>, giờ Việt Nam).</p>
+<% } else { %>
+  <p class="notice">Thầy cô không cho xem đáp án của bài này, chỉ xem điểm.</p>
+<% } %>
+<script type="module" src="/js/copy.js"></script>
+<%- include('partials/foot') %>

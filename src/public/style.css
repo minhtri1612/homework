@@ -194,3 +194,24 @@ button:disabled { opacity: 0.4; cursor: default; }
 
 .help { margin-top: 24px; }
 .help summary { cursor: pointer; font-weight: 600; }
+
+/* Student pages: answering and the result. */
+.answer-form { display: flex; flex-direction: column; gap: 12px; }
+.answer-form .question legend { padding: 0; margin-bottom: 8px; font-weight: 400; }
+.question-text-view { white-space: pre-line; }
+.choice { display: flex; align-items: flex-start; gap: 10px; padding: 10px 4px; min-height: 44px; cursor: pointer; }
+.choice input { margin-top: 2px; flex: none; }
+.choice-letter { font-weight: 700; }
+.result-score .score { font-size: 1.6rem; margin: 4px 0; }
+.review { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.review .question p { margin: 0; }
+.review .question.right { border-left: 6px solid var(--correct); }
+.review .question.wrong { border-left: 6px solid var(--error); }
+.verdict { display: block; margin-top: 4px; font-weight: 600; }
+.right .verdict { color: var(--correct); }
+.wrong .verdict { color: var(--error); }
+.review-answers { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.review-answers li { padding: 6px 8px; border-radius: 6px; }
+.review-answers .is-correct { background: var(--success-bg); font-weight: 600; }
+.review-answers .is-chosen:not(.is-correct) { background: var(--danger-bg); }
+.tag { font-size: 0.85rem; font-weight: 400; color: var(--muted); margin-left: 6px; }
