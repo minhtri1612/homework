@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { requireTeacher } from '../middleware/auth.ts';
 import { getHomePage } from '../controllers/home.controller.ts';
+import { getGradePage, getSectionPage } from '../controllers/browse.controller.ts';
 import { getRegisterPage, postRegister, getLoginPage, postLogin, postLogout } from '../controllers/auth.controller.ts';
 import {
   setSiteUrl,
@@ -10,6 +11,7 @@ import {
   postCreateHomework,
   getEditHomeworkPage,
   postUpdateHomework,
+  postMoveHomework,
 } from '../controllers/homework.controller.ts';
 import {
   getResultsPage,
@@ -28,6 +30,10 @@ export function webRoutes() {
 
   router.get('/', getHomePage);
 
+  // Browsing by grade (public)
+  router.get('/lop/:grade', getGradePage);
+  router.get('/lop/:grade/:section', getSectionPage);
+
   // Teacher accounts
   router.get('/register', getRegisterPage);
   router.post('/register', postRegister);
@@ -42,6 +48,7 @@ export function webRoutes() {
   router.post('/teacher/homeworks', postCreateHomework);
   router.get('/teacher/homeworks/:id/edit', getEditHomeworkPage);
   router.post('/teacher/homeworks/:id', postUpdateHomework);
+  router.post('/teacher/homeworks/:id/grade', postMoveHomework);
   router.get('/teacher/homeworks/:id/results', getResultsPage);
   router.get('/teacher/homeworks/:id/results.csv', getResultsCsv);
   router.get('/teacher/homeworks/:id/submissions/:submissionId/delete', getDeleteSubmissionPage);

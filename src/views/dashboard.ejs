@@ -2,22 +2,51 @@
 <h1>Bài tập của tôi</h1>
 <% if (notice) { %><p class="notice success" role="status"><%= notice %></p><% } %>
 <p><a class="button" href="/teacher/homeworks/new">+ Tạo bài tập mới</a></p>
+<% const gradeList = grades.map((g) => g.grade); %>
 <% if (homeworks.length === 0) { %>
   <p class="card muted">Chưa có bài tập nào. Bấm “Tạo bài tập mới” để bắt đầu.</p>
-<% } else { %>
-  <ul class="list">
-    <% for (const homework of homeworks) { %>
-      <li class="card">
-        <a class="title" href="/teacher/homeworks/<%= homework.id %>/edit"><%= homework.title %></a>
-        <span class="muted">
-          <%= homework.questionCount %> câu · <%= homework.submissionCount %> bài nộp
-          (<a href="/teacher/homeworks/<%= homework.id %>/results">kết quả</a>) ·
-          mã <code><%= homework.shareCode %></code> · tạo ngày <%= formatDate(homework.createdAt) %>
-        </span>
-        <%- include('partials/share-link', { url: `${siteUrl}/h/${homework.shareCode}` }) %>
-      </li>
-    <% } %>
-  </ul>
-  <script type="module" src="/js/copy.js"></script>
 <% } %>
+
+<% if (unplaced.length) { %>
+  <section id="chua-xep-lop" class="unplaced">
+    <h2>Chưa xếp lớp <span class="muted">(<%= unplaced.length %>)</span></h2>
+    <p class="muted">Các bài này không hiện trong trang của lớp nào; học sinh chỉ mở được bằng link hoặc mã.
+      Chọn lớp để bài hiện trong mục “Bài tập” của lớp đó.</p>
+    <ul class="list">
+      <% for (const homework of unplaced) { %>
+        <%- include('partials/homework-card', { homework, grades: gradeList }) %>
+      <% } %>
+    </ul>
+  </section>
+<% } %>
+
+<h2>Theo lớp</h2>
+<div class="grade-groups">
+  <% for (const { grade, homeworks: gradeHomeworks } of grades) { %>
+    <details id="lop-<%= grade %>" class="card grade-group" <%= gradeHomeworks.length ? 'open' : '' %>>
+      <summary>Lớp <%= grade %> <span class="muted">· <%= gradeHomeworks.length %> bài tập</span></summary>
+      <% for (const section of sections) { %>
+        <h3><%= section.name %></h3>
+        <% if (section.kind === 'homework') { %>
+          <% if (gradeHomeworks.length) { %>
+            <ul class="list">
+              <% for (const homework of gradeHomeworks) { %>
+                <%- include('partials/homework-card', { homework, grades: gradeList }) %>
+              <% } %>
+            </ul>
+          <% } else { %>
+            <p class="muted">Chưa có bài tập.</p>
+          <% } %>
+          <p class="section-links">
+            <a href="/teacher/homeworks/new?grade=<%= grade %>">+ Tạo bài tập cho Lớp <%= grade %></a> ·
+            <a href="/lop/<%= grade %>/<%= section.slug %>">Xem trang học sinh</a>
+          </p>
+        <% } else { %>
+          <p class="muted">Nội dung đang được soạn.</p>
+        <% } %>
+      <% } %>
+    </details>
+  <% } %>
+</div>
+<% if (homeworks.length) { %><script type="module" src="/js/copy.js"></script><% } %>
 <%- include('partials/foot') %>

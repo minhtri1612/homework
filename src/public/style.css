@@ -51,7 +51,7 @@ code { font-size: 0.95em; letter-spacing: 0.05em; }
 
 .form { display: flex; flex-direction: column; gap: 12px; }
 .form label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
-input {
+input, select {
   font: inherit;
   padding: 12px;
   border: 1px solid var(--border);
@@ -111,6 +111,21 @@ h2 { font-size: 1.2rem; margin: 24px 0 8px; }
 .share p { margin: 0; }
 .share-link { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .share-link input { flex: 1 1 220px; min-width: 0; font-size: 0.95rem; }
+
+/* ---- Browsing by grade ---- */
+.tiles { list-style: none; padding: 0; margin: 0 0 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.tile { display: flex; align-items: center; justify-content: center; min-height: 72px; font-weight: 700; font-size: 1.1rem; text-decoration: none; text-align: center; }
+.tile:hover, .tile:focus-visible { border-color: var(--primary); }
+.breadcrumb { display: flex; flex-wrap: wrap; gap: 6px; color: var(--muted); margin: 0 0 4px; }
+.empty { text-align: center; padding: 24px 16px; }
+.closed { color: var(--error); }
+.grade-groups { display: flex; flex-direction: column; gap: 12px; }
+.grade-group summary { cursor: pointer; font-weight: 700; font-size: 1.1rem; min-height: 32px; }
+.grade-group h3 { font-size: 1rem; margin: 16px 0 8px; }
+.section-links { margin: 8px 0 0; }
+.move { display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap; }
+.move label { display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; color: var(--muted); }
+.move select { min-height: 40px; padding: 6px 8px; }
 
 /* ---- Editor ---- */
 .editor { display: flex; flex-direction: column; gap: 16px; }

@@ -4,6 +4,7 @@ Website giao bài tập trắc nghiệm **một đáp án đúng** cho giáo vi�
 
 - Giáo viên tạo bộ bài tập, nhập câu hỏi bằng **cú pháp** (dán văn bản) hoặc **dạng thẻ**, rồi chia sẻ bằng link hoặc mã.
 - Học sinh mở bài, nhập tên, chọn đáp án, nộp bài và được chấm điểm tự động theo thang 10.
+- Nội dung được xếp theo **lớp** (Lớp 6 → Lớp 12), mỗi lớp có ba mục: **Từ vựng**, **Ngữ pháp**, **Bài tập**.
 
 > Dự án đang được xây dựng từng bước. Các phần chưa làm được đánh dấu _(sắp có)_.
 
@@ -143,10 +144,10 @@ Sau khi đăng nhập, bấm **+ Tạo bài tập mới**. Bấm vào tên một
 - Chuyển qua lại giữa hai thẻ thoải mái: nội dung luôn được giữ, thẻ nào đang mở cũng lưu được.
 - Cài đặt: khi nào học sinh được xem đáp án đúng (ngay sau khi nộp — mặc định / sau hạn nộp / không cho xem),
   hạn nộp theo **giờ Việt Nam**, xáo trộn thứ tự câu hỏi, và **thời gian làm bài** (số phút từ 1 đến 600,
-  để trống nếu không giới hạn).
+  để trống nếu không giới hạn), và **lớp** (Lớp 6 → Lớp 12, hoặc “Chưa xếp lớp”; xem mục “Lớp và mục”).
 - Máy chủ kiểm tra lại mọi thứ khi lưu, nên dù trình duyệt có lỗi cũng không lưu được bài tập sai.
 - **Sửa bài tập đã có học sinh nộp**: nếu đổi câu hỏi, bài tập được lưu thành **phiên bản mới**; bài đã nộp vẫn
-  giữ câu hỏi và điểm cũ. Chỉ đổi tiêu đề, hạn nộp hay cài đặt thì không tạo phiên bản mới.
+  giữ câu hỏi và điểm cũ. Chỉ đổi tiêu đề, hạn nộp, lớp hay cài đặt thì không tạo phiên bản mới.
 
 Giới hạn: tối đa 200 câu, mỗi câu hỏi 2000 ký tự, mỗi đáp án 500 ký tự.
 
@@ -180,6 +181,25 @@ Bấm **kết quả** cạnh bài tập ở trang **Bài tập của tôi** (ho�
 Ở cuối trang sửa bài tập có **Xoá bài tập này…**. Trang xác nhận cho biết số phiên bản và số bài nộp;
 nếu đã có bài nộp thì phải đánh dấu ô *“Tôi hiểu rằng … bài nộp của học sinh cũng bị xoá”*. Xoá là
 **vĩnh viễn**: câu hỏi, các phiên bản và bài nộp đều mất, link và mã bài tập ngừng hoạt động.
+
+## Lớp và mục
+
+Trang chủ có các ô **Lớp 6** … **Lớp 12**. Mỗi lớp có ba mục:
+
+- **Từ vựng** và **Ngữ pháp**: chưa có nội dung; trang hiện “Nội dung đang được soạn, quay lại sau nhé.”
+- **Bài tập**: các bài tập trắc nghiệm của lớp đó, của **mọi giáo viên**, bài mới nhất ở trên, kèm tên giáo viên,
+  số câu, thời gian làm bài và hạn nộp. Bấm vào tên bài để làm như khi mở bằng link.
+
+Ai cũng xem được các trang này, không cần đăng nhập. **Bài tập đã chọn lớp thì ai cũng thấy** trong mục
+“Bài tập” của lớp đó. Bài **“Chưa xếp lớp”** không hiện ở lớp nào; học sinh chỉ mở được bằng link hoặc mã.
+
+Trang **Bài tập của tôi** của giáo viên xếp bài tập theo cùng cấu trúc:
+
+- Ô **Chưa xếp lớp** ở trên cùng (chỉ hiện khi có bài chưa chọn lớp). Các bài tạo trước khi có lớp nằm ở đây.
+- Mỗi lớp là một mục mở ra / thu lại được, gồm Từ vựng, Ngữ pháp và Bài tập; lớp có bài tập thì tự mở sẵn.
+  Liên kết **+ Tạo bài tập cho Lớp …** mở trang soạn bài với lớp đó đã được chọn.
+- Mỗi bài tập có ô **Chuyển đến** + nút **Chuyển** để đổi lớp (hoặc đưa về “Chưa xếp lớp”). Đổi lớp không làm
+  đổi mã, link, phiên bản hay các bài đã nộp.
 
 ## Chia sẻ bài tập
 
@@ -321,6 +341,9 @@ Website chạy trên **Render** (gói miễn phí), dữ liệu nằm ở **Turs
 - Gói miễn phí **ngủ sau 15 phút** không ai vào; lần mở đầu tiên sau đó chờ khoảng 1 phút. Trước giờ học
   hãy mở trang trước một chút.
 - Sao lưu: Turso giữ lịch sử 1 ngày để khôi phục. Sau mỗi bài tập nên tải bảng điểm CSV về máy.
+- **Trước khi đẩy code có migration mới** (thư mục mới trong `prisma/migrations/`), sao lưu cơ sở dữ liệu thật
+  ra ngoài thư mục dự án: `turso db shell homework .dump > ~/homework-backup-$(date +%Y%m%d).sql`.
+  Website tự áp dụng migration khi khởi động trên Render; xem nhật ký (Logs) sau khi triển khai.
 - Trước khi triển khai lần đầu (hoặc khi đổi cơ sở dữ liệu), ghi địa chỉ và token của một cơ sở dữ liệu
   **thử** vào `.env` rồi chạy `npm run smoke`.
 
@@ -342,8 +365,9 @@ src/
     same-origin.ts chặn form gửi từ trang web khác
   controllers/    đọc yêu cầu, gọi kiểm tra dữ liệu và services, trả về trang
     home.controller.ts     trang chủ
+    browse.controller.ts   trang lớp và trang mục (Từ vựng, Ngữ pháp, Bài tập) cho học sinh
     auth.controller.ts     đăng ký, đăng nhập, đăng xuất
-    homework.controller.ts trang của giáo viên: danh sách và soạn bài tập
+    homework.controller.ts trang của giáo viên: danh sách theo lớp, chuyển lớp, soạn bài tập
     results.controller.ts  trang kết quả, tải CSV, xoá bài nộp và bài tập
     share.controller.ts    trang của học sinh: mở bài bằng mã, làm bài, nộp bài, kết quả
   validation/     kiểm tra và làm sạch dữ liệu từ form (Zod), thông báo lỗi tiếng Việt
@@ -366,6 +390,7 @@ src/
   app.ts          ghép các phần thành website
   server.ts       khởi động website (npm run dev)
   load-env.ts     đọc file .env nếu có
+  catalog.ts      danh sách lớp (6–12) và các mục của mỗi lớp
   grading.ts      tính điểm thang 10 (làm tròn đến 0,25)
   vietnam-time.ts đổi giờ Việt Nam ↔ giờ UTC lưu trong cơ sở dữ liệu
 prisma/           các bảng của cơ sở dữ liệu (schema.prisma) và các migration

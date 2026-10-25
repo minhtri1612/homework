@@ -1,0 +1,21 @@
+<%# One of the teacher's homeworks on the dashboard: homework, grades %>
+<li class="card">
+  <a class="title" href="/teacher/homeworks/<%= homework.id %>/edit"><%= homework.title %></a>
+  <span class="muted">
+    <%= homework.questionCount %> câu · <%= homework.submissionCount %> bài nộp
+    (<a href="/teacher/homeworks/<%= homework.id %>/results">kết quả</a>) ·
+    mã <code><%= homework.shareCode %></code> · tạo ngày <%= formatDate(homework.createdAt) %>
+  </span>
+  <%- include('share-link', { url: `${siteUrl}/h/${homework.shareCode}` }) %>
+  <form method="post" action="/teacher/homeworks/<%= homework.id %>/grade" class="move">
+    <label>Chuyển đến
+      <select name="grade">
+        <option value="" <%= homework.grade === null ? 'selected' : '' %>>Chưa xếp lớp</option>
+        <% for (const grade of grades) { %>
+          <option value="<%= grade %>" <%= homework.grade === grade ? 'selected' : '' %>>Lớp <%= grade %></option>
+        <% } %>
+      </select>
+    </label>
+    <button type="submit" class="small secondary">Chuyển</button>
+  </form>
+</li>

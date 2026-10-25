@@ -86,7 +86,7 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
 |---|---|
 | `teachers` | `email` UNIQUE `COLLATE NOCASE` (also lower-cased in code), `name`, `password_hash` (scrypt string) |
 | `sessions` | `id` = SHA-256 hex of the cookie token, `teacher_id` (cascade), `expires_at` |
-| `homeworks` | `teacher_id`, `title` (non-blank), `share_code` UNIQUE, `reveal_mode` ∈ `never`/`after_submit`/`after_deadline` (default `after_submit`), `deadline` (NULL = none), `shuffle_questions`, `time_limit_minutes` (NULL = none, CHECK 1–600, hand-written in migration `20261025090235_homework_time_limit`), `created_at`, `updated_at`; CHECK: `after_deadline` requires a deadline |
+| `homeworks` | `teacher_id`, `title` (non-blank), `share_code` UNIQUE, `reveal_mode` ∈ `never`/`after_submit`/`after_deadline` (default `after_submit`), `deadline` (NULL = none), `shuffle_questions`, `time_limit_minutes` (NULL = none, CHECK 1–600, hand-written in migration `20261025090235_homework_time_limit`), `grade` (NULL = "Chưa xếp lớp", CHECK 6–12 hand-written, index `homeworks_grade`; add-only migration `20261025100428_homework_grade`), `created_at`, `updated_at`; CHECK: `after_deadline` requires a deadline |
 | `homework_versions` | `homework_id`, `number` ≥ 1, UNIQUE (`homework_id`, `number`); highest number = current |
 | `questions` | `version_id`, `position` (1-based, UNIQUE per version), `text` (may be `''`), `shuffle_answers` |
 | `answers` | `question_id`, `position` (1 = A), `text` (non-blank), `is_correct`; partial UNIQUE index `answers_one_correct` = at most one correct per question; UNIQUE (`id`, `question_id`) as an FK target |

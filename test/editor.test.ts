@@ -227,6 +227,67 @@ describe('edit', () => {
   });
 });
 
+describe('grade', () => {
+  const selected = (html: string) => html.match(/<option value="(\d*)" selected>/)?.[1];
+
+  test('new homework: "Chưa xếp lớp" by default, ?grade=N pre-selects a real grade only', async () => {
+    assert.equal(selected(await (await get('/teacher/homeworks/new', cookie)).text()), '');
+    assert.equal(selected(await (await get('/teacher/homeworks/new?grade=12', cookie)).text()), '12');
+    for (const bad of ['5', '13', 'abc', '012', '1e1']) {
+      assert.equal(selected(await (await get(`/teacher/homeworks/new?grade=${bad}`, cookie)).text()), '', bad);
+    }
+  });
+
+  test('saved with the homework and shown selected on the edit page', async () => {
+    const id = await createViaForm({ grade: '12' });
+    assert.equal((await getHomework(prisma, id))!.grade, 12);
+    const html = await (await get(`/teacher/homeworks/${id}/edit`, cookie)).text();
+    assert.equal(selected(html), '12');
+    assert.match(html, /Chưa xếp lớp/);
+  });
+
+  test('no grade field or an empty one = "Chưa xếp lớp"', async () => {
+    assert.equal((await getHomework(prisma, await createViaForm()))!.grade, null);
+    assert.equal((await getHomework(prisma, await createViaForm({ grade: '' })))!.grade, null);
+  });
+
+  test('a grade outside 6–12: 400 with the message, nothing saved', async () => {
+    for (const bad of ['5', '13', 'Lớp 7']) {
+      const before = (await db.execute('SELECT count(*) AS n FROM homeworks')).rows[0].n;
+      const response = await post('/teacher/homeworks', editorFields({ grade: bad, title: 'Sai lớp' }), { cookie });
+      assert.equal(response.status, 400, bad);
+      const html = await response.text();
+      assert.match(html, /Hãy chọn lớp từ 6 đến 12/);
+      assert.match(html, /value="Sai lớp"/);
+      assert.equal((await db.execute('SELECT count(*) AS n FROM homeworks')).rows[0].n, before);
+    }
+  });
+
+  test('with submissions: moving to another grade or back keeps the version and the submissions', async () => {
+    const id = await createViaForm({ grade: '10' });
+    await addSubmission(id);
+    let response = await post(`/teacher/homeworks/${id}`, editorFields({ grade: '11' }), { cookie });
+    assert.equal(response.headers.get('location'), `/teacher/homeworks/${id}/edit?saved=1`);
+    let homework = (await getHomework(prisma, id))!;
+    assert.equal(homework.grade, 11);
+    assert.equal(homework.version.number, 1);
+    assert.equal(homework.version.submissionCount, 1);
+
+    response = await post(`/teacher/homeworks/${id}`, editorFields({ grade: '' }), { cookie });
+    assert.equal(response.status, 302);
+    homework = (await getHomework(prisma, id))!;
+    assert.equal(homework.grade, null);
+    assert.equal(homework.version.number, 1);
+  });
+
+  test('an invalid grade on edit keeps the saved grade', async () => {
+    const id = await createViaForm({ grade: '9' });
+    const response = await post(`/teacher/homeworks/${id}`, editorFields({ grade: '99' }), { cookie });
+    assert.equal(response.status, 400);
+    assert.equal((await getHomework(prisma, id))!.grade, 9);
+  });
+});
+
 describe('syntax text to saved homework', () => {
   test('what the parser produces can be saved as-is', async () => {
     const { title, questions } = parse('BÀI TẬP\n\n1. A. cat   B. dog   ==C. pencil\n\nCâu 2: Q?\n==x\ny');

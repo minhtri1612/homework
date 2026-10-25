@@ -17,11 +17,12 @@ src/
   routes/status.ts  notFound (404) and serverError (500)
   middleware/       auth.ts (cookie, loadTeacher, requireTeacher), same-origin.ts (sameOriginPosts)
   controllers/      read req, call validation + services, render/redirect; no database queries
-                    home, auth, homework (dashboard + editor), share (/join, /h/:code)
+                    home, auth, homework (dashboard + editor + move), browse (/lop/...), share (/join, /h/:code)
   validation/       Zod schemas: shape and coercion of form input, Vietnamese messages
                     form.ts (formText, formLine, fieldErrors), auth, homework, share
   services/         data access + business rules on Prisma: teacher, session, homework, share-code, password
   generated/prisma/ output of prisma generate (gitignored)
+  catalog.ts        GRADES (6–12) and SECTIONS (slug, name, kind) of each grade: the only place the structure is defined
   grading.ts        computeScore(correct, total) (see grading.md)
   views/            EJS templates; partials/head.ejs and partials/foot.ejs wrap every page
   public/           style.css (served as-is) and js/editor.ts, js/copy.ts (browser code, compiled)
@@ -76,15 +77,18 @@ All listed in `routes/web.ts`; controllers in `src/controllers/`.
 | Method | Path | Controller | Notes |
 |---|---|---|---|
 | GET | `/healthz` | `status.healthz` (in `app.ts`) | `ok` when the database answers, 503 otherwise (Render health check) |
-| GET | `/` | `home.getHomePage` | home; links differ when logged in |
+| GET | `/` | `home.getHomePage` | home: code box + grade tiles (`renderHome()`, also used by `/join` errors); links differ when logged in |
+| GET | `/lop/:grade` | `browse.getGradePage` | the grade's section tiles; `gradeParam` accepts only `6`…`12` exactly, else 404 |
+| GET | `/lop/:grade/:section` | `browse.getSectionPage` | `sectionParam` (`tu-vung`, `ngu-phap`, `bai-tap`) else 404. Kind `homework`: `listGradeHomeworks()` (every teacher, newest first, no questions/answers); kind `coming-soon`: "Nội dung đang được soạn, quay lại sau nhé." |
 | GET/POST | `/register` | `auth.getRegisterPage` / `postRegister` | logged-in users are redirected to `/teacher` |
 | GET/POST | `/login` | `auth.getLoginPage` / `postLogin` | |
 | POST | `/logout` | `auth.postLogout` | deletes the session row, clears the cookie |
-| GET | `/teacher` | `homework.getDashboardPage` | dashboard (`listHomeworks`) |
-| GET | `/teacher/homeworks/new` | `homework.getNewHomeworkPage` | empty editor |
+| GET | `/teacher` | `homework.getDashboardPage` | dashboard (`listHomeworks`): "Chưa xếp lớp" box (`#chua-xep-lop`, only when not empty), then one `<details id="lop-N">` per grade (open when it has homeworks) with the sections; `?notice=homework-deleted` / `homework-moved` |
+| GET | `/teacher/homeworks/new` | `homework.getNewHomeworkPage` | empty editor; `?grade=N` (exactly `6`…`12`) pre-selects the grade |
 | POST | `/teacher/homeworks` | `homework.postCreateHomework` | create → 302 `/teacher/homeworks/:id/edit?saved=new` |
 | GET | `/teacher/homeworks/:id/edit` | `homework.getEditHomeworkPage` | `?saved=1` / `?saved=new` / `?saved=vN` show a notice |
 | POST | `/teacher/homeworks/:id` | `homework.postUpdateHomework` | update → 302 back to edit page |
+| POST | `/teacher/homeworks/:id/grade` | `homework.postMoveHomework` | dashboard "Chuyển đến": `moveSchema` + `setHomeworkGrade()` (in place, no version) → 303 `/teacher?notice=homework-moved#lop-N` (or `#chua-xep-lop`); bad grade 400 |
 | GET | `/teacher/homeworks/:id/results?version=N` | `results.getResultsPage` | submissions (oldest first), average; version tabs when > 1 version; per-question stats for the selected version (the only one is selected automatically); unknown version 404 |
 | GET | `/teacher/homeworks/:id/results.csv?version=N` | `results.getResultsCsv` | CSV attachment `ket-qua-CODE[-vN].csv` (see `grading.md`) |
 | GET/POST | `/teacher/homeworks/:id/attempts/:studentKey/reset` | `results.getResetAttemptPage` / `postResetAttempt` | started but not submitted: confirmation page, then delete the attempt → 303 results `?notice=attempt-reset`; unknown or submitted → 404 |
@@ -114,15 +118,17 @@ and this browser's last result link (cookie). Sub-routes with a lower-case code 
 upper-case address, keeping the rest of the URL. The answer page uses `getQuestionsForStudent()`, which
 builds each answer as `{ id, text }` only. Grading, reveal and the result link: `grading.md`.
 
-Not built yet: deploying (Step 8).
+Not built yet: content for Từ vựng / Ngữ pháp (change the section's `kind` in `catalog.ts`, add a model,
+a service and a view; the routes stay).
 
 ## Views (`src/views/`)
 
-`home` (code box + teacher links), `register`, `login`, `dashboard`, `editor`, `share` (student start page),
+`home` (code box + grade tiles + teacher links), `grade` (section tiles), `section` (by `section.kind`),
+`register`, `login`, `dashboard` (grades → sections, cards from `partials/homework-card` with the move form), `editor`, `share` (student start page),
 `answer` (questions, loads `/js/answer.js`), `result` (score and review, loads `/js/copy.js`),
 `results` (teacher: table + per-question stats), `confirm-delete` (shared by both deletes: `lines`, `action`,
 `cancel`, `button`, optional `check` label, `error`),
-`error`, plus `partials/head` (topbar, logout form), `partials/foot` and `partials/share-link` (readonly
+`error`, plus `partials/head` (topbar, logout form), `partials/foot`, `partials/breadcrumb` (`links`) and `partials/share-link` (readonly
 link box + copy button + "Xem trang học sinh"; pages using it also load `/js/copy.js`). Every page passes `title`. Use `<%= %>` (escaped) for all data; `<%- %>`
 is only used for `include` and for `initialJson`, which is pre-escaped by `scriptJson()`.
 

@@ -1,0 +1,9 @@
+<%- include('partials/head') %>
+<%- include('partials/breadcrumb', { links: [{ href: '/', label: 'Trang chủ' }, { label: `Lớp ${grade}` }] }) %>
+<h1>Lớp <%= grade %></h1>
+<ul class="tiles">
+  <% for (const section of sections) { %>
+    <li><a class="tile card" href="/lop/<%= grade %>/<%= section.slug %>"><%= section.name %></a></li>
+  <% } %>
+</ul>
+<%- include('partials/foot') %>

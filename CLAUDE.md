@@ -13,7 +13,10 @@ result by a private link, revealing the answers according to the homework's reve
 have a time limit: the server records when the student starts and the page submits by itself when time is up;
 the teacher sees how often each student left the answer page and who started without submitting. Teachers see the results (per version,
 per question), download them as CSV, and can delete a submission or a whole homework after a
-confirmation. Deploying (Step 8) is next (see `PLAN.md`).
+confirmation. Everything is organised by grade (Lớp 6–12), each with three sections: Từ vựng and Ngữ pháp
+(placeholders, no content yet) and Bài tập (the homeworks of that grade). Students browse publicly
+(`/lop/12/bai-tap`); the teacher's dashboard uses the same structure plus a "Chưa xếp lớp" box. The site is
+live on Render + Turso (see `PLAN.md`).
 
 ## Tech Stack
 
@@ -96,6 +99,10 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
   applied migration. Details: `.claude/docs/database.md`.
 - **Time limits are enforced by the server** (`attempts.started_at`, `secondsLeft()`, 60 s `SUBMIT_GRACE_MS`
   for the limit and the deadline); the countdown in `answer.ts` is only a convenience. See `grading.md`.
+- **Grades and sections are defined once in `src/catalog.ts`.** A homework with a `grade` is listed publicly
+  in that grade's Bài tập (all teachers together); `grade` NULL ("Chưa xếp lớp") is reachable by link/code only.
+  The grade is a setting: changing it never creates a version. Public lists use `listGradeHomeworks()`
+  (no questions or answers).
 - **Single server process assumed** for the share-code and new-version checks (see `database.md`).
 - **Editing questions after submissions creates a new version** (`updateHomework`). Old submissions
   keep pointing at the old version's question/answer rows. Never update or delete rows of a version

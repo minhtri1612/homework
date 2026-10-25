@@ -37,6 +37,15 @@
              placeholder="Ví dụ: Bài tập Tiếng Việt – Tuần 8">
     </label>
 
+    <label>Lớp <span class="muted">(bài tập có lớp sẽ hiện trong mục “Bài tập” của lớp đó cho mọi người xem)</span>
+      <select name="grade">
+        <option value="" <%= homework.gradeInput === '' ? 'selected' : '' %>>Chưa xếp lớp</option>
+        <% for (const grade of grades) { %>
+          <option value="<%= grade %>" <%= homework.gradeInput === String(grade) ? 'selected' : '' %>>Lớp <%= grade %></option>
+        <% } %>
+      </select>
+    </label>
+
     <fieldset>
       <legend>Khi nào học sinh được xem đáp án đúng?</legend>
       <% for (const [value, label] of [

@@ -1,4 +1,4 @@
-# Kế hoạch xây dựng (8 bước)
+# Kế hoạch xây dựng
 
 > Rebuilt on 2026-10-25 from the git history, README and session notes: the
 > original plan was only in a chat that was lost. Steps 0–4 match the commits;
@@ -7,9 +7,10 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 8 code changes are done and committed locally (see "Step 8 — Deploy", "Done so far");
-the smoke test passed against the throwaway Turso database `homework-check`. Next: the user creates the Render
-service step by step with Claude (push to GitHub first, when the user says so). 190 tests pass.
+**Where we stopped:** Steps 0–10 are done and the site is live on Render + Turso (Step 8). **Step 11 — Grades
+and sections**: parts 1–3 and the docs are done locally (not committed); 236 tests pass. Next: the user reviews,
+backs up the Turso database, then says when to commit and push (the push deploys the migration). Every push to `main`
+redeploys the live site, so push only when the user says so.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -51,8 +52,8 @@ service step by step with Claude (push to GitHub first, when the user says so). 
     with submissions needs a ticked box, checked in the delete transaction
   - Tests: `test/results.test.ts` (15). Checked that removing the formula protection or the confirmation
     check makes the matching tests fail.
-- [ ] **Step 8 — Deploy**: Render (web service) + Turso (database), production settings ← **next**
-  (planned 2026-10-25, see "Step 8 — Deploy" below; nothing deployed until the user confirms)
+- [x] **Step 8 — Deploy**: Render (web service) + Turso (database), production settings; the site is live
+  (see "Step 8 — Deploy" below)
 - [x] **Step 9 — Time limit** (asked for by the user 2026-10-25; decisions in `.claude/docs/grading.md`)
   - [x] teacher sets minutes per homework (1–600, empty = none); migration `20261025090235_homework_time_limit`
     (`homeworks.time_limit_minutes` + table `attempts`)
@@ -73,6 +74,23 @@ service step by step with Claude (push to GitHub first, when the user says so). 
   - Tests: 4 in `test/results.test.ts` "leaving the page"; 207 in total. Checked that not counting a leave
     or listing submitted students as unfinished makes the matching tests fail.
   - [x] the user checked it in a browser and approved it (no browser in the tests)
+- [ ] **Step 11 — Grades and sections** (asked for by the user 2026-10-25; plan in "Step 11" below; parts 1–3 done, deploy left)
+  - [x] part 1: `homeworks.grade` (add-only migration `20261025100428_homework_grade`), `src/catalog.ts`,
+    "Lớp" in the editor (`?grade=N` pre-selects). Tests: +10 (217 in total). Checked that removing the grade
+    check or not saving the grade makes the matching tests fail. Reviewed by the user.
+  - [x] part 2: public browsing: home → grade → section (Bài tập lists homeworks; Từ vựng / Ngữ pháp empty state).
+    `/lop/:grade`, `/lop/:grade/:section` (`browse.controller.ts`, `browse.schema.ts`, `listGradeHomeworks()`),
+    views `grade`, `section`, `partials/breadcrumb`. Tests: `test/browse.test.ts` (11, 228 in total). Checked
+    that dropping the grade filter makes the matching tests fail. Reviewed by the user.
+  - [x] part 3: teacher dashboard grouped by grade → section, "Chưa xếp lớp" box, quick move
+    (`POST /teacher/homeworks/:id/grade`, `setHomeworkGrade()`, `moveSchema`, `partials/homework-card`).
+    Tests: `test/dashboard.test.ts` (8, 236 in total). Checked that putting every homework in every grade or
+    skipping the grade check makes the matching tests fail.
+  - [ ] part 4: deploy
+    - [x] docs: README "Lớp và mục" + backup note in "Triển khai", `CLAUDE.md`, `.claude/docs/{architecture,database,testing}.md`
+    - [ ] user: back up Turso (`turso db shell homework .dump > ~/homework-backup-YYYYMMDD.sql`)
+    - [ ] commit, push when the user says so; check the Render log ("applied migration …") and the live site
+    - [ ] user: move the existing homeworks out of "Chưa xếp lớp"
 
 ---
 
@@ -565,8 +583,9 @@ Facts checked on 2026-10-25 (official pages):
       30 s timeout); fixed with batch inserts (`createManyAndReturn` / `createMany`), now ~1.7 s.
 - [x] Production settings check, `/healthz`, invite code, `.env.example`, docs (README "Triển khai").
 - [x] Checked: `.env` gitignored, never committed; no token, Turso URL or JWT in any commit.
-- [ ] `turso db destroy homework-check`, empty `.env`; token for `homework`.
-- [ ] Render service, environment variables, first deploy, check on the real site.
+- [x] Token for `homework`. (Not recorded whether `homework-check` was destroyed and `.env` emptied: check
+      with `turso db list`.)
+- [x] Render service, environment variables, first deploy, check on the real site (the site is live).
 
 ### Accounts (user)
 1. GitHub: already have it (repo `minhtri1612/homework`, public).
@@ -611,7 +630,121 @@ Facts checked on 2026-10-25 (official pages):
 - Rotating a leaked token: `turso db tokens invalidate homework` (this invalidates **every** token of the
   databases in the same group), create a new one, update it in Render (and in `.env` if used).
 
-### Open questions for the user
-- Registration: open to anyone (as now), or protected by an invite code set in Render?
-- Service name (it becomes `<name>.onrender.com`), e.g. `baitap-tracnghiem`.
+### Open questions for the user (answered)
+- Registration: protected by an invite code (`INVITE_CODE` in Render).
+- Service name: `homework-minhtri`.
 
+## Step 11 — Grades and sections (plan confirmed by the user 2026-10-25)
+
+The user's scope, kept deliberately small:
+- Grades Lớp 6 → Lớp 12. Each grade has three sections: **Từ vựng**, **Ngữ pháp**, **Bài tập**.
+- **Bài tập** = today's homework, unchanged (answer, submit, grade, results). The teacher only picks the grade.
+- **Từ vựng / Ngữ pháp**: pages and navigation only, with the empty state "Nội dung đang được soạn, quay lại
+  sau nhé." No editor, no content format, no tables yet.
+- Students browse publicly (home → grade → section) and still only type their name.
+- The dashboard shows the same grade → section structure; homeworks without a grade sit in "Chưa xếp lớp".
+- Existing homeworks, `/h/CODE` links and submissions keep working. Migration: add-only, one nullable column.
+
+### Decisions taken in this plan (tell Claude if you want them different)
+1. **A grade makes a homework public.** Homeworks with a grade are listed on `/lop/N/bai-tap` for anyone.
+   Homeworks in "Chưa xếp lớp" are not listed anywhere, but their `/h/CODE` link works as today. Listing shows
+   title, teacher's name, number of questions, time limit, deadline / "Đã hết hạn nộp bài"; never questions.
+2. **All teachers' homeworks of a grade are listed together** (with the teacher's name); each teacher still
+   sees and edits only their own on the dashboard (ownership checks unchanged).
+3. **Order in a section:** newest first. No manual ordering yet.
+4. **The grade is a setting**, like the title: changing it updates the homework in place, never creates a
+   new version, and keeps the submissions.
+5. **Addresses:** `/lop/12` (grade page), `/lop/12/tu-vung`, `/lop/12/ngu-phap`, `/lop/12/bai-tap`.
+   Anything else (`/lop/5`, `/lop/13`, `/lop/012`, `/lop/12/abc`) → the usual Vietnamese 404.
+6. The home page keeps the code box ("nhập mã bài tập") above the grade cards.
+
+### Data model (part 1)
+
+`prisma/schema.prisma`, model `Homework`:
+```prisma
+  grade Int?   // 6–12, NULL = "Chưa xếp lớp"; CHECK BETWEEN 6 AND 12 (hand-written)
+  @@index([grade], map: "homeworks_grade")
+```
+Migration `<timestamp>_homework_grade/migration.sql`, generated by `npm run db:migration -- homework_grade`,
+then checked by hand. It must be exactly these two statements, with **no `RedefineTables`**:
+```sql
+ALTER TABLE "homeworks" ADD COLUMN "grade" INTEGER
+    CHECK ("grade" BETWEEN 6 AND 12); -- hand-written: Prisma has no CHECK
+CREATE INDEX "homeworks_grade" ON "homeworks"("grade");
+```
+Why it is safe on the live Turso database:
+- `ADD COLUMN` with NULL keeps every existing row as it is (grade NULL = "Chưa xếp lớp"); no row is copied
+  or rewritten, the other tables are untouched, the CHECK passes for NULL.
+- The old code still works with the new schema (it never reads `grade`), so if the deploy fails Render's
+  `/healthz` check and keeps the old version running, nothing breaks.
+- It is applied by `applyMigrations()` at startup, in one transaction, like the earlier migrations.
+- Before pushing, the user makes a backup (part 4). Afterwards `migrate diff --from-migrations` must report
+  an empty migration (no drift).
+
+`src/catalog.ts`: the one place the structure is described, so filling in Từ vựng / Ngữ pháp later means
+changing one entry and adding a page, not touching routes:
+```ts
+export const GRADES = [6, 7, 8, 9, 10, 11, 12] as const;
+export const SECTIONS = [
+  { slug: 'tu-vung',  name: 'Từ vựng',  kind: 'coming-soon' },
+  { slug: 'ngu-phap', name: 'Ngữ pháp', kind: 'coming-soon' },
+  { slug: 'bai-tap',  name: 'Bài tập',  kind: 'homework' },
+] as const;
+```
+
+Service and validation:
+- `validateHomework()` checks `grade` is NULL or an integer 6–12 (message: "Hãy chọn lớp từ 6 đến 12, hoặc
+  “Chưa xếp lớp”."). `createHomework` / `updateHomework` / `getHomework` / `listHomeworks` carry `grade`.
+- `editorSchema`: field `grade` (`''` → null, otherwise a plain integer string, else an invalid value that
+  `validateHomework` reports).
+- Editor: a "Lớp" dropdown in the settings (Chưa xếp lớp, Lớp 6 … Lớp 12). `/teacher/homeworks/new?grade=12`
+  pre-selects the grade (used by the dashboard's "+ Tạo bài tập" buttons).
+
+### Routes and pages (parts 2 and 3)
+
+| Method | Path | Controller | Notes |
+|---|---|---|---|
+| GET | `/` | `home.getHomePage` | + seven grade cards ("Lớp 6" … "Lớp 12") under the code box |
+| GET | `/lop/:grade` | `browse.getGradePage` | three section cards; breadcrumb Trang chủ › Lớp N |
+| GET | `/lop/:grade/:section` | `browse.getSectionPage` | `bai-tap`: list from `listGradeHomeworks()`, empty → "Chưa có bài tập nào cho lớp này."; `tu-vung` / `ngu-phap`: the empty state |
+| GET | `/teacher` | `homework.getDashboardPage` | "Chưa xếp lớp" box first (only when not empty), then one `<details>` per grade (open when it has homeworks) with the three sections; Bài tập shows today's homework cards |
+| POST | `/teacher/homeworks/:id/grade` | `homework.postMoveHomework` | quick "Chuyển đến" dropdown on each dashboard card; `ownHomework()` 404, Origin check, Zod; 303 `/teacher?notice=homework-moved` |
+
+- New: `src/controllers/browse.controller.ts`, `src/validation/browse.schema.ts` (`gradeParam`, `sectionParam`:
+  plain integers only, like `homeworkIdParam`), `src/views/grade.ejs`, `src/views/section.ejs` (one view, by
+  `section.kind`), `partials/breadcrumb.ejs`, a few CSS rules (grid of cards, reusing `.card` / `.button`).
+- New service function `listGradeHomeworks(prisma, grade)` in `homework.service.ts`: one query, selects only
+  public fields (no questions, no answers, no share-link cookies), newest first.
+- `setHomeworkGrade(prisma, teacherId, id, grade)`: updates in place, filtered by `teacher_id`, touches
+  `updated_at`, never creates a version.
+- No browser JavaScript is added (the move form is a plain form with a submit button), so the browser build
+  does not change.
+
+### Tests
+- part 1 (`test/migrate.test.ts`, `test/db.test.ts`, `test/editor.test.ts`, `test/validation.test.ts`):
+  a homework created before the migration gets grade NULL and keeps its submissions; the CHECK rejects 5 and
+  13; the editor saves, shows and changes the grade; a bad grade → 400 with the message and input kept;
+  changing only the grade after submissions does **not** create a version; `?grade=` pre-selects.
+- part 2 (new `test/browse.test.ts`): home links to the 7 grades; grade page links to 3 sections; bad
+  grade/section → 404; Từ vựng / Ngữ pháp show the empty state; Bài tập lists only that grade's homeworks
+  (other grades and "Chưa xếp lớp" absent), from several teachers, newest first; no answer text and no
+  correct flag in the HTML; titles escaped; `/h/CODE` of an unplaced homework still works.
+- part 3 (`test/editor.test.ts` or new `test/dashboard.test.ts`): grouping and "Chưa xếp lớp" box; move works;
+  another teacher's homework → 404; foreign Origin → 403; bad grade → 400; move keeps submissions and version.
+- Each part: `npm test` green. As in earlier steps, break the key check once (e.g. drop the grade filter) to
+  see the matching test fail.
+
+### Part 4: docs and deploying
+- `README.md` (Vietnamese): "Lớp và mục" section; `CLAUDE.md` overview; `.claude/docs/architecture.md`
+  (routes, views), `database.md` (column, index), `testing.md` (new file).
+- Before the push (user, with Claude): back up the live database outside the repo, e.g.
+  `turso db shell homework .dump > ~/homework-backup-YYYYMMDD.sql` (Turso also keeps 1 day of point-in-time
+  restore). Optionally run `npm run smoke` against a throwaway Turso database.
+- Push only when the user says so; then watch the Render deploy log for "applied migration …" and check
+  `/`, `/lop/12/bai-tap`, an old `/h/CODE` link and the dashboard on the live site.
+- Then the user moves the existing homeworks (e.g. "Bài tập tiếng Anh 12-COMPARISONS" → Lớp 12) from the
+  "Chưa xếp lớp" box.
+
+### Later (not in Step 11)
+Content for Từ vựng / Ngữ pháp (format, editor, tables): change the section's `kind` in `src/catalog.ts`,
+add a model + migration and a view; the routes and navigation stay.

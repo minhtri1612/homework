@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from '../generated/prisma/client.ts';
 import { validateQuestion } from '../shared/parser.ts';
 import { generateShareCode } from './share-code.service.ts';
+import { GRADES, isGrade } from '../catalog.ts';
 
 const REVEAL_MODES = ['never', 'after_submit', 'after_deadline'];
 
@@ -43,6 +44,8 @@ export interface HomeworkInput {
   shuffleQuestions?: boolean;
   /** Minutes a student has once they start; null for no limit. NaN when the teacher typed something that is not a number. */
   timeLimitMinutes?: number | null;
+  /** Lớp 6–12, or null for "Chưa xếp lớp". NaN when the form sent something that is not a number. */
+  grade?: number | null;
 }
 
 export const LIMITS = { title: 200, questions: 200, questionText: 2000, answerText: 500, timeLimitMinutes: 600 };
@@ -61,6 +64,7 @@ export function validateHomework({
   revealMode = 'after_submit',
   deadline = null,
   timeLimitMinutes = null,
+  grade = null,
 }: HomeworkInput): HomeworkError[] {
   const errors: HomeworkError[] = [];
   if (!String(title ?? '').trim()) errors.push({ code: 'NO_TITLE', message: 'Bài tập chưa có tiêu đề.' });
@@ -98,7 +102,13 @@ export function validateHomework({
       message: `Thời gian làm bài phải là số phút từ 1 đến ${LIMITS.timeLimitMinutes}, hoặc để trống nếu không giới hạn.`,
     });
   }
+  errors.push(...gradeErrors(grade));
   return errors;
+}
+
+function gradeErrors(grade: number | null): HomeworkError[] {
+  if (grade === null || isGrade(grade)) return [];
+  return [{ code: 'BAD_GRADE', message: `Hãy chọn lớp từ ${GRADES[0]} đến ${GRADES.at(-1)}, hoặc “Chưa xếp lớp”.` }];
 }
 
 export class HomeworkValidationError extends Error {
@@ -125,9 +135,10 @@ export async function createHomework(
     deadline = null,
     shuffleQuestions = false,
     timeLimitMinutes = null,
+    grade = null,
   }: HomeworkInput & { teacherId: number },
 ): Promise<{ id: number; shareCode: string; versionId: number }> {
-  const errors = validateHomework({ title, questions, revealMode, deadline, timeLimitMinutes });
+  const errors = validateHomework({ title, questions, revealMode, deadline, timeLimitMinutes, grade });
   if (errors.length) throw new HomeworkValidationError(errors);
 
   const now = new Date().toISOString();
@@ -140,7 +151,7 @@ export async function createHomework(
     } while (await tx.homework.findUnique({ where: { shareCode }, select: { id: true } }));
 
     const homework = await tx.homework.create({
-      data: { ...settingsData({ title, revealMode, deadline, shuffleQuestions, timeLimitMinutes }), teacherId, shareCode, createdAt: now, updatedAt: now },
+      data: { ...settingsData({ title, revealMode, deadline, shuffleQuestions, timeLimitMinutes, grade }), teacherId, shareCode, createdAt: now, updatedAt: now },
       select: { id: true },
     });
     const versionId = await insertVersion(tx, homework.id, 1, questions, now);
@@ -166,9 +177,10 @@ export async function updateHomework(
     deadline = null,
     shuffleQuestions = false,
     timeLimitMinutes = null,
+    grade = null,
   }: HomeworkInput & { id: number; teacherId: number },
 ): Promise<{ version: number; newVersion: boolean } | null> {
-  const errors = validateHomework({ title, questions, revealMode, deadline, timeLimitMinutes });
+  const errors = validateHomework({ title, questions, revealMode, deadline, timeLimitMinutes, grade });
   if (errors.length) throw new HomeworkValidationError(errors);
 
   const now = new Date().toISOString();
@@ -182,7 +194,7 @@ export async function updateHomework(
 
     await tx.homework.update({
       where: { id },
-      data: { ...settingsData({ title, revealMode, deadline, shuffleQuestions, timeLimitMinutes }), updatedAt: now },
+      data: { ...settingsData({ title, revealMode, deadline, shuffleQuestions, timeLimitMinutes, grade }), updatedAt: now },
     });
 
     if (sameQuestions(await loadQuestions(tx, version.id), questions)) {
@@ -198,13 +210,14 @@ export async function updateHomework(
   }, WRITE_TIMEOUT);
 }
 
-function settingsData({ title, revealMode, deadline, shuffleQuestions, timeLimitMinutes }: Required<Omit<HomeworkInput, 'questions'>>) {
+function settingsData({ title, revealMode, deadline, shuffleQuestions, timeLimitMinutes, grade }: Required<Omit<HomeworkInput, 'questions'>>) {
   return {
     title: title.normalize('NFC').trim(),
     revealMode,
     deadline: deadline === null ? null : new Date(deadline).toISOString(),
     shuffleQuestions: Boolean(shuffleQuestions),
     timeLimitMinutes,
+    grade,
   };
 }
 
@@ -287,6 +300,7 @@ export async function getHomework(prisma: PrismaClient, id: number) {
     deadline: homework.deadline,
     shuffleQuestions: homework.shuffleQuestions,
     timeLimitMinutes: homework.timeLimitMinutes,
+    grade: homework.grade,
     createdAt: homework.createdAt,
     updatedAt: homework.updatedAt,
     version: { id: version.id, number: version.number, submissionCount: version._count.submissions },
@@ -365,6 +379,7 @@ export async function listHomeworks(prisma: PrismaClient, teacherId: number) {
       id: true,
       title: true,
       shareCode: true,
+      grade: true,
       createdAt: true,
       _count: { select: { submissions: true } },
       ...LATEST_QUESTION_COUNT,
@@ -374,8 +389,48 @@ export async function listHomeworks(prisma: PrismaClient, teacherId: number) {
     id: homework.id,
     title: homework.title,
     shareCode: homework.shareCode,
+    grade: homework.grade,
     createdAt: homework.createdAt,
     questionCount: questionCount(homework),
     submissionCount: homework._count.submissions,
   }));
+}
+
+/**
+ * Homeworks of one grade from every teacher, newest first, for the public
+ * "Bài tập" section. Safe to show to anyone: no questions, no answers.
+ */
+export async function listGradeHomeworks(prisma: PrismaClient, grade: number) {
+  const homeworks = await prisma.homework.findMany({
+    where: { grade },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: {
+      title: true,
+      shareCode: true,
+      deadline: true,
+      timeLimitMinutes: true,
+      teacher: { select: { name: true } },
+      ...LATEST_QUESTION_COUNT,
+    },
+  });
+  return homeworks.map((homework) => ({
+    title: homework.title,
+    shareCode: homework.shareCode,
+    deadline: homework.deadline,
+    timeLimitMinutes: homework.timeLimitMinutes,
+    teacherName: homework.teacher.name,
+    questionCount: questionCount(homework),
+  }));
+}
+
+/**
+ * Moves a homework the teacher owns to another grade (null = "Chưa xếp lớp").
+ * A setting like the title: updated in place, never a new version. Returns
+ * false when the homework is not this teacher's (or does not exist).
+ */
+export async function setHomeworkGrade(prisma: PrismaClient, { id, teacherId, grade }: { id: number; teacherId: number; grade: number | null }) {
+  const errors = gradeErrors(grade);
+  if (errors.length) throw new HomeworkValidationError(errors);
+  const { count } = await prisma.homework.updateMany({ where: { id, teacherId }, data: { grade, updatedAt: new Date().toISOString() } });
+  return count > 0;
 }

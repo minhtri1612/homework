@@ -101,6 +101,34 @@ describe('applyMigrations', () => {
   });
 });
 
+describe('homework_grade migration (add-only, applied to the live database)', () => {
+  test('existing homeworks keep their data and submissions and get grade NULL', async () => {
+    const migrations = copyMigrations();
+    const gradeMigration = readMigrations(migrations).find((m) => m.name.endsWith('_homework_grade'))!;
+    rmSync(join(migrations, gradeMigration.name), { recursive: true });
+    const db = freshDb();
+    await applyMigrations(db, { dir: migrations });
+    await db.executeMultiple(`
+      INSERT INTO teachers (id, email, name, password_hash, created_at) VALUES (1, 'lan@example.com', 'Lan', 'x', 't');
+      INSERT INTO homeworks (id, teacher_id, title, share_code, created_at, updated_at) VALUES (1, 1, 'Bài cũ', 'OLDOLD', 't', 't');
+      INSERT INTO homework_versions (id, homework_id, number, created_at) VALUES (1, 1, 1, 't');
+      INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
+        VALUES (1, 1, 'An', 'an', 't', 1, 2, 5);
+    `);
+
+    assert.deepEqual(await applyMigrations(db), [gradeMigration.name]);
+    const row = (await db.execute('SELECT title, share_code, grade FROM homeworks WHERE id = 1')).rows[0];
+    assert.deepEqual({ ...row }, { title: 'Bài cũ', share_code: 'OLDOLD', grade: null });
+    assert.equal((await db.execute('SELECT count(*) AS n FROM submissions')).rows[0].n, 1);
+    db.close();
+  });
+
+  test('the migration only adds (no table is rebuilt)', () => {
+    const { sql } = readMigrations().find((m) => m.name.endsWith('_homework_grade'))!;
+    assert.doesNotMatch(sql, /RedefineTables|DROP TABLE|CREATE TABLE/);
+  });
+});
+
 describe('rules written by hand in the init migration', () => {
   let db: Client;
   before(async () => {
@@ -137,9 +165,17 @@ describe('rules written by hand in the init migration', () => {
        VALUES (1, 1, 'An', 'an', 't', 1, 2, 11)`,
       `INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
        VALUES (1, 1, ' ', 'x', 't', 1, 2, 5)`,
+      "INSERT INTO homeworks (teacher_id, title, share_code, grade, created_at, updated_at) VALUES (1, 'x', 'FFFFFF', 5, 't', 't')",
+      "INSERT INTO homeworks (teacher_id, title, share_code, grade, created_at, updated_at) VALUES (1, 'x', 'GGGGGG', 13, 't', 't')",
     ]) {
       await assert.rejects(db.execute(sql), /CHECK/, sql);
     }
+  });
+
+  test('grade 6–12 and NULL are accepted', async () => {
+    await db.execute("INSERT INTO homeworks (teacher_id, title, share_code, grade, created_at, updated_at) VALUES (1, 'x', 'HHHHHH', 6, 't', 't')");
+    await db.execute("INSERT INTO homeworks (teacher_id, title, share_code, grade, created_at, updated_at) VALUES (1, 'x', 'JJJJJJ', 12, 't', 't')");
+    await db.execute("INSERT INTO homeworks (teacher_id, title, share_code, grade, created_at, updated_at) VALUES (1, 'x', 'KKKKKK', NULL, 't', 't')");
   });
 
   test('at most one correct answer per question (partial unique index)', async () => {

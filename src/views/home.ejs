@@ -11,6 +11,13 @@
   <button type="submit">Mở bài tập</button>
 </form>
 
+<h2>Học theo lớp</h2>
+<ul class="tiles">
+  <% for (const grade of grades) { %>
+    <li><a class="tile card" href="/lop/<%= grade %>">Lớp <%= grade %></a></li>
+  <% } %>
+</ul>
+
 <h2>Giáo viên</h2>
 <% if (locals.teacher) { %>
   <p><a class="button" href="/teacher">Vào trang bài tập của tôi</a></p>

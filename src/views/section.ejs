@@ -1,0 +1,29 @@
+<%- include('partials/head') %>
+<%- include('partials/breadcrumb', { links: [
+  { href: '/', label: 'Trang chủ' },
+  { href: `/lop/${grade}`, label: `Lớp ${grade}` },
+  { label: section.name },
+] }) %>
+<h1><%= section.name %> · Lớp <%= grade %></h1>
+<% if (section.kind === 'homework') { %>
+  <% if (homeworks.length === 0) { %>
+    <p class="card empty muted">Chưa có bài tập nào cho lớp này.</p>
+  <% } else { %>
+    <ul class="list">
+      <% for (const homework of homeworks) { %>
+        <li class="card">
+          <a class="title" href="/h/<%= homework.shareCode %>"><%= homework.title %></a>
+          <span class="muted">
+            <%= homework.teacherName %> · <%= homework.questionCount %> câu
+            <% if (homework.timeLimitMinutes) { %> · <%= homework.timeLimitMinutes %> phút<% } %>
+            <% if (homework.closed) { %> · <span class="closed">Đã hết hạn nộp bài</span>
+            <% } else if (homework.deadline) { %> · hạn nộp <%= formatDateTime(homework.deadline) %><% } %>
+          </span>
+        </li>
+      <% } %>
+    </ul>
+  <% } %>
+<% } else { %>
+  <p class="card empty">Nội dung đang được soạn, quay lại sau nhé.</p>
+<% } %>
+<%- include('partials/foot') %>

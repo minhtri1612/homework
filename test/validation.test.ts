@@ -49,9 +49,19 @@ describe('editor form', () => {
       deadlineInput: '',
       timeLimitMinutes: null,
       timeLimitInput: '',
+      grade: null,
+      gradeInput: '',
       questions: [],
       unreadable: false,
     });
+  });
+
+  test('grade: empty = "Chưa xếp lớp", digits = number, anything else NaN for validateHomework()', () => {
+    assert.equal(editorSchema.parse({ grade: '12' }).grade, 12);
+    assert.equal(editorSchema.parse({ grade: ' ' }).grade, null);
+    for (const typed of ['12a', '-6', 'Lớp 6', '1e1', '6.5']) {
+      assert.ok(Number.isNaN(editorSchema.parse({ grade: typed }).grade), typed);
+    }
   });
 
   test('time limit: empty is none, digits are minutes, anything else is NaN for validation to report', () => {

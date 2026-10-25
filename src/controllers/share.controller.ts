@@ -17,6 +17,7 @@ import {
   SubmissionError,
 } from '../services/submission.service.ts';
 import { readCookie } from '../middleware/auth.ts';
+import { renderHome } from './home.controller.ts';
 import { formatScore } from '../grading.ts';
 import { joinSchema, shareCodeParam } from '../validation/share.schema.ts';
 import { awaySchema, nameSchema, submitSchema } from '../validation/student.schema.ts';
@@ -27,11 +28,7 @@ const RESULT_COOKIE_DAYS = 365;
 export function getJoin(req: Request, res: Response) {
   const result = joinSchema.safeParse(req.query);
   if (result.success) return res.redirect(`/h/${result.data.code}`);
-  res.status(400).render('home', {
-    title: 'Bài tập trắc nghiệm',
-    codeInput: String(req.query.code ?? ''),
-    codeError: result.error.issues[0]!.message,
-  });
+  renderHome(res, { status: 400, codeInput: String(req.query.code ?? ''), codeError: result.error.issues[0]!.message });
 }
 
 function notFound(res: Response) {

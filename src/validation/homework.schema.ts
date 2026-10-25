@@ -19,6 +19,13 @@ function minutes(text: string): number | null {
   return /^\d{1,6}$/.test(value) ? Number(value) : Number.NaN;
 }
 
+/** "" → null ("Chưa xếp lớp"), digits → that number, anything else → NaN, which validateHomework() reports. */
+function gradeValue(text: string): number | null {
+  const value = text.trim();
+  if (value === '') return null;
+  return /^\d{1,2}$/.test(value) ? Number(value) : Number.NaN;
+}
+
 const answer = objectOrEmpty(z.object({ text: formText, correct: isTrue }));
 
 const question = objectOrEmpty(
@@ -42,6 +49,7 @@ export const editorSchema = z
     deadline: formText,
     shuffleQuestions: z.unknown().optional().transform((value) => value === '1'),
     timeLimit: formText,
+    grade: formText,
     questions: z
       .unknown()
       .optional()
@@ -54,15 +62,20 @@ export const editorSchema = z
       })
       .pipe(z.union([z.null(), z.array(question), z.unknown().transform(() => [])])),
   })
-  .transform(({ deadline, timeLimit, questions, ...form }) => ({
+  .transform(({ deadline, timeLimit, grade, questions, ...form }) => ({
     ...form,
     deadline: fromVietnamInput(deadline),
     deadlineInput: deadline,
     timeLimitMinutes: minutes(timeLimit),
     timeLimitInput: timeLimit,
+    grade: gradeValue(grade),
+    gradeInput: grade,
     questions: questions ?? [],
     unreadable: questions === null,
   }));
+
+/** The dashboard's "Chuyển đến" form: the grade it moves the homework to. */
+export const moveSchema = z.object({ grade: formText }).transform(({ grade }) => ({ grade: gradeValue(grade) }));
 
 /** The :id in /teacher/homeworks/:id; null when it cannot be a homework id. */
 export const homeworkIdParam = z

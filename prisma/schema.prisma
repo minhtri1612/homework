@@ -40,6 +40,7 @@ model Homework {
   deadline         String?
   shuffleQuestions Boolean           @default(false) @map("shuffle_questions")
   timeLimitMinutes Int?              @map("time_limit_minutes") // NULL = no time limit; CHECK BETWEEN 1 AND 600
+  grade            Int?                                     // Lớp 6–12, NULL = "Chưa xếp lớp"; CHECK BETWEEN 6 AND 12
   createdAt        String            @map("created_at")
   updatedAt        String            @map("updated_at")
   versions         HomeworkVersion[]
@@ -47,6 +48,7 @@ model Homework {
   attempts         Attempt[]
   // CHECK (reveal_mode <> 'after_deadline' OR deadline IS NOT NULL)
   @@index([teacherId], map: "homeworks_teacher")
+  @@index([grade], map: "homeworks_grade")
   @@map("homeworks")
 }
 

@@ -1,0 +1,7 @@
+<%# links: [{ href, label }], the current page last without href %>
+<nav class="breadcrumb" aria-label="Đường dẫn">
+  <% links.forEach((link, i) => { %>
+    <% if (i > 0) { %><span aria-hidden="true">›</span><% } %>
+    <% if (link.href) { %><a href="<%= link.href %>"><%= link.label %></a><% } else { %><span aria-current="page"><%= link.label %></span><% } %>
+  <% }) %>
+</nav>

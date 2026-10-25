@@ -5,13 +5,15 @@ import {
   getHomework,
   createHomework,
   updateHomework,
+  setHomeworkGrade,
   HomeworkValidationError,
   type HomeworkError,
   type QuestionInput,
 } from '../services/homework.service.ts';
 import { currentTeacher } from '../middleware/auth.ts';
-import { editorSchema, homeworkIdParam } from '../validation/homework.schema.ts';
+import { editorSchema, homeworkIdParam, moveSchema } from '../validation/homework.schema.ts';
 import { toVietnamInput } from '../vietnam-time.ts';
+import { GRADES, SECTIONS } from '../catalog.ts';
 
 const SAVED_MESSAGES: Record<string, string> = {
   new: 'Đã tạo bài tập.',
@@ -36,6 +38,8 @@ interface EditorHomework {
   deadlineInput: string;
   shuffleQuestions: boolean;
   timeLimitInput: string;
+  /** '' for "Chưa xếp lớp", otherwise the grade number as text. */
+  gradeInput: string;
   questions: QuestionInput[];
 }
 
@@ -53,6 +57,7 @@ function renderEditor(res: Response, { status = 200, homework, errors = [], save
     heading: isNew ? 'Tạo bài tập mới' : 'Sửa bài tập',
     action: isNew ? '/teacher/homeworks' : `/teacher/homeworks/${homework.id}`,
     homework,
+    grades: GRADES,
     errors,
     saved,
     initialJson: scriptJson(homework.questions.map(({ text, shuffleAnswers, answers }) => ({
@@ -78,15 +83,45 @@ export async function ownHomework(req: Request, res: Response) {
   return null;
 }
 
+const DASHBOARD_NOTICES: Record<string, string> = {
+  'homework-deleted': 'Đã xoá bài tập.',
+  'homework-moved': 'Đã chuyển bài tập.',
+};
+
+/** The teacher's homeworks in the same grade → section structure students browse, plus "Chưa xếp lớp". */
 export async function getDashboardPage(req: Request, res: Response) {
   const homeworks = await listHomeworks(req.prisma, currentTeacher(req).id);
-  const notice = req.query.notice === 'homework-deleted' ? 'Đã xoá bài tập.' : null;
-  res.render('dashboard', { title: 'Bài tập của tôi', homeworks, notice });
+  const notice = typeof req.query.notice === 'string' ? (DASHBOARD_NOTICES[req.query.notice] ?? null) : null;
+  res.render('dashboard', {
+    title: 'Bài tập của tôi',
+    homeworks,
+    unplaced: homeworks.filter((homework) => homework.grade === null),
+    grades: GRADES.map((grade) => ({ grade, homeworks: homeworks.filter((homework) => homework.grade === grade) })),
+    sections: SECTIONS,
+    notice,
+  });
+}
+
+export async function postMoveHomework(req: Request, res: Response) {
+  const homework = await ownHomework(req, res);
+  if (!homework) return;
+  const { grade } = moveSchema.parse(req.body);
+  try {
+    if (!(await setHomeworkGrade(req.prisma, { id: homework.id, teacherId: currentTeacher(req).id, grade }))) {
+      return res.redirect(303, '/teacher'); // deleted in the meantime
+    }
+  } catch (error) {
+    if (!(error instanceof HomeworkValidationError)) throw error;
+    return res.status(400).render('error', { title: 'Chưa chuyển được', message: error.message });
+  }
+  res.redirect(303, `/teacher?notice=homework-moved#${grade === null ? 'chua-xep-lop' : `lop-${grade}`}`);
 }
 
 export function getNewHomeworkPage(req: Request, res: Response) {
+  // ?grade=12 (from the dashboard's grade sections) pre-selects that grade.
+  const gradeInput = GRADES.map(String).find((grade) => grade === req.query.grade) ?? '';
   renderEditor(res, {
-    homework: { title: '', revealMode: 'after_submit', deadlineInput: '', shuffleQuestions: false, timeLimitInput: '', questions: [] },
+    homework: { title: '', revealMode: 'after_submit', deadlineInput: '', shuffleQuestions: false, timeLimitInput: '', gradeInput, questions: [] },
   });
 }
 
@@ -115,6 +150,7 @@ export async function getEditHomeworkPage(req: Request, res: Response) {
       ...homework,
       deadlineInput: toVietnamInput(homework.deadline),
       timeLimitInput: homework.timeLimitMinutes === null ? '' : String(homework.timeLimitMinutes),
+      gradeInput: homework.grade === null ? '' : String(homework.grade),
     },
     saved,
   });

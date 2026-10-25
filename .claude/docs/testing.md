@@ -16,6 +16,8 @@ Run the whole file instead.
 |---|---|---|
 | `test/browser-build.test.ts` | served `/shared/parser.js`, `/js/editor.js`, `/js/copy.js` equal a fresh `tsc` build of their `.ts` sources; `.ts` sources are not served | compiles into a temp folder + real HTTP |
 | `test/imports.test.ts` | every relative import in `src`, `scripts`, `test` names a file that exists (the type checker accepts `./x.js` for `x.ts`; Node does not) | reads the files |
+| `test/browse.test.ts` | home grade tiles, grade and section pages, 404s, "being written" notice, public Bài tập list (grade filter, all teachers, newest first, "Chưa xếp lớp" absent, no question/answer text, escaping) | real HTTP via `startApp()` |
+| `test/dashboard.test.ts` | dashboard grade → section structure, "Chưa xếp lớp" box, move form; moving (in place, keeps version and submissions, bad grade 400, ownership 404, login, Origin 403) | real HTTP via `startApp()` |
 | `test/student.test.ts` | name form, answer page without correct answers, per-student shuffle, grading and storage, one attempt per name, deadline, questions changed while answering, old version, result page per reveal mode, result link and cookie, escaping | real HTTP via `startApp()` |
 | `test/results.test.ts` | results page (order, average, per-question stats, versions, escaping), CSV (BOM, header, CRLF, filter, quoting, formula injection), deleting a submission and a homework (confirmation, checkbox, ownership 404, Origin 403, cascade) | real HTTP via `startApp()`, submissions through `submitAnswers()` |
 | `test/deploy.test.ts` | invite code (form, missing/wrong/right, no echo, no email probing), production settings check, `/healthz` | real HTTP via `startApp({ inviteCode })`; `productionProblems()` as a pure function |
