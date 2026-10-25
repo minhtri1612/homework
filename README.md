@@ -49,7 +49,8 @@ Mở bằng VS Code trên Windows: cài tiện ích **WSL** cho VS Code, rồi t
 
 ```bash
 npm install      # cài thư viện (chạy lại mỗi khi package.json thay đổi)
-npm test         # chạy kiểm thử
+npm test         # chạy kiểm thử (trước đó tự kiểm tra kiểu TypeScript)
+npm run typecheck # chỉ kiểm tra kiểu TypeScript (tsc), không chạy gì
 npm run parse -- examples/mau.txt   # thử bộ đọc cú pháp với một file văn bản
 npm run db:init  # tạo/cập nhật các bảng (chạy các migration chưa chạy; chạy lại bao nhiêu lần cũng được)
 npm run db:seed  # thêm dữ liệu mẫu: 1 giáo viên và 2 bộ bài tập

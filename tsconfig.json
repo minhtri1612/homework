@@ -1,0 +1,26 @@
+{
+  // Type checking only (npm run typecheck): Node 24 runs the .ts files itself
+  // by stripping the types, so nothing is compiled. See PLAN.md Step 4.6.
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "es2024",
+    "rootDir": ".",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+
+    // During the conversion .js and .ts files import each other; the .js files are not checked.
+    "allowJs": true,
+    "checkJs": false,
+
+    // What Node's type stripping needs: only syntax that can simply be erased
+    // (no enum, namespace, parameter properties), type-only imports marked
+    // with "import type", and imports that name the real .ts file.
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "test", "scripts"],
+  "exclude": ["src/generated"]
+}

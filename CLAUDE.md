@@ -21,6 +21,9 @@ account) open it; answering and server-side grading on a 10-point scale are Step
 - `zod` `4.6.7`: form input schemas in `src/validation/` (shape and coercion only)
 - Layers: `routes/web.js` → `controllers/` → `services/` → Prisma; `req.prisma`, no global client
   (see `.claude/docs/architecture.md`)
+- TypeScript `7.0.2` (dev, with `@types/node` `24.19.2`, `@types/express` `5.0.6`): type checking only;
+  conversion of the `.js` files is in progress (PLAN.md Step 4.6). `src/types/express.d.ts` types
+  `req.prisma` / `req.teacher` / `req.sessionToken`
 - Tests: built-in `node:test` + `node:assert/strict` (no test dependencies)
 - Password hashing: `node:crypto` scrypt (no native modules)
 - No linter or formatter configured; `.editorconfig` sets UTF-8, LF, 2-space indent
@@ -34,7 +37,8 @@ first so the Node version matches `.nvmrc`.
 npm install                          # after any package.json change
 npm run dev                          # http://localhost:3000, restarts on file changes (node --watch)
 npm start                            # same without watch; PORT env var overrides 3000
-npm test                             # node --test "test/**/*.test.js"
+npm test                             # prisma generate + typecheck, then node --test "test/**/*.test.js"
+npm run typecheck                    # tsc -p . (noEmit; Node strips the types when running .ts)
 npm run db:init                      # apply pending migrations (idempotent)
 npm run db:seed                      # sample teacher giaovien@example.com / matkhau123 + 2 homeworks
 npm run db:reset                     # DROP all tables + _migrations, re-apply; refuses non-file: DATABASE_URL

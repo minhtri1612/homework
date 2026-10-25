@@ -7,10 +7,10 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 4.5 is finished: part 5 is done, **not committed yet, waiting for review** (part 4 is
-399f8e3, pushed). All 140 tests pass.
+**Where we stopped:** Step 4.5 is committed and pushed (55687f1). Step 4.6 part 1 (TypeScript tooling) is done,
+**not committed yet, waiting for review**. All 140 tests pass; `npm run typecheck` passes.
 
-**Next: Step 4.6 (TypeScript, with Node 24's built-in type stripping)**, after the user approves part 5.
+**Next: Step 4.6 part 2 (database layer and services in TypeScript)**, after the user approves part 1.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -31,7 +31,7 @@
   - [x] part 3: services on Prisma
   - [x] part 4: validation + controllers + routes
   - [x] part 5: scripts, docs, cleanup
-- [ ] **Step 4.6 — Convert to TypeScript** (planned; starts only after Step 4.5 is approved; see below) ← **next**
+- [ ] **Step 4.6 — Convert to TypeScript** (part 1 of 6 done, see below) ← **next**
 - [x] **Step 5 — Sharing**: link `/h/CODE` and a "nhập mã" box on the home page (commit 2258768)
   - [x] `/h/CODE` finds the homework (code typed in any letter case), 404 in Vietnamese otherwise
   - [x] code entry form on the home page
@@ -434,11 +434,16 @@ Planned `tsconfig.json` settings:
 
 ### Parts
 
-- [ ] 1. **Tooling, no code converted.**
+- [x] 1. **Tooling, no code converted.**
   - Add `typescript`, `@types/node`, `@types/express`, `tsconfig.json` and `npm run typecheck`.
   - `npm test` runs `typecheck` first.
   - `src/types/express.d.ts` declares `req.teacher` / `req.sessionToken`.
   - All files are still `.js`; tests pass.
+  - Done: `typescript@7.0.2` (the current stable, the Go rewrite; out since 2026-07-08, every planned option
+    checked in a throwaway project), `@types/node@24.19.2` (newest 24.x, matching Node 24),
+    `@types/express@5.0.6`, all exact dev dependencies. `pretest` = `prisma generate && npm run typecheck`.
+    `express.d.ts` also types `req.prisma` (added in Step 4.5 part 4). Checked with a temporary `.ts` file that
+    the checker reports a nullable `req.teacher` and a missing `await`; typecheck takes about 0.2 s.
 - [ ] 2. **Database layer and services.**
   - `src/config/*.ts`, `src/services/*.ts`, `src/validation/*.ts`, typed with the generated Prisma types and
     `z.infer`.

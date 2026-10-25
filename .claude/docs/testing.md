@@ -82,7 +82,7 @@ Conventions seen in the existing tests:
 - `src/public/js/editor.js` (tabs, cards, submit blocking) has no automated tests; check it manually
   in a browser with `npm run dev`.
 - No coverage tool configured.
-- `npm test` runs `prisma generate` first (`pretest`). Running `node --test` directly skips it: after a
+- `npm test` runs `prisma generate` and `npm run typecheck` first (`pretest`); a type error stops the run. Running `node --test` directly skips it: after a
   `schema.prisma` change, run `npm run db:generate` or you get confusing errors from the old client.
 - `scripts/db-new-migration.js` has no automated test (it calls the Prisma CLI); it was checked by hand
   with an added column and with a change that rebuilds a table.
