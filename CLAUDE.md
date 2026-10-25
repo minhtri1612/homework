@@ -30,13 +30,14 @@ npm install                          # after any package.json change
 npm run dev                          # http://localhost:3000, restarts on file changes (node --watch)
 npm start                            # same without watch; PORT env var overrides 3000
 npm test                             # node --test "test/**/*.test.js"
-npm run db:init                      # create missing tables (idempotent)
+npm run db:init                      # apply pending migrations (idempotent)
 npm run db:seed                      # sample teacher giaovien@example.com / matkhau123 + 2 homeworks
-npm run db:reset                     # DROP all tables and recreate; refuses non-file: DATABASE_URL
+npm run db:reset                     # DROP all tables + _migrations, re-apply; refuses non-file: DATABASE_URL
 npm run parse -- examples/mau.txt    # run the parser on a file (or pipe text on stdin)
 ```
 
-`npm run dev` / `npm start` also create missing tables on startup (`src/server.js`).
+`npm run dev` / `npm start` also apply pending migrations on startup (`src/server.js`). The schema lives in
+`prisma/migrations/*/migration.sql` (applied by `src/config/migrate.js`), not in a `schema.sql`.
 Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `file:data/local.db`.
 
 ## Core Logic Summary
@@ -50,7 +51,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - `parse()` never drops a line: problems become errors/warnings with line numbers. `serialize()` writes
   cards back as text that `parse()` reads back to the same questions.
 
-**Grading** (decided, implemented in Step 6; see `.claude/docs/grading.md`):
+**Grading** (`computeScore()` in `src/grading.js`; the student flow that uses it is Step 6; see `.claude/docs/grading.md`):
 `score = Math.round(correct * 40 / total) / 4`, i.e. `correct / total × 10` rounded to the **nearest**
 0.25 (7.1 → 7, 7.13 → 7.25; an exact tie such as 7.125 goes up). Stored in `submissions.score` with
 `correct_count` and `total_count`; a blank answer is `answer_id NULL` and counts as wrong.

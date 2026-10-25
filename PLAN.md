@@ -7,23 +7,15 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 4.5 part 1 is done and committed (8a0c0bc). Prisma schema, migration and
-`src/config/migrate.js` exist and are tested, but the app still runs on `src/db/schema.sql` + `initSchema`.
-All 123 tests pass (114 + 9 in `test/migrate.test.js`).
+**Where we stopped:** Step 4.5 part 2 is done, **not committed yet, waiting for review**. The app, `db:init`,
+`db:reset`, `db:seed` and the tests now build the database with `applyMigrations()`; `src/db/schema.sql` and
+`initSchema` are gone. All 126 tests pass (123 + 3 in `test/grading.test.js`).
 
-**Next: Step 4.5 part 2 (migrations replace `schema.sql`)**, then stop for review:
-1. `src/server.js`, `scripts/db-init.js` (`db:init`, `db:reset`) and `test/helpers.js` call `applyMigrations()`
-   instead of `initSchema()`; `dropSchema()` (used by `db:reset`) also drops `_migrations`.
-2. The raw-SQL code sets `created_at` / `updated_at` / `submitted_at` itself (the migration has no timestamp
-   defaults); tests that insert submissions directly add `submitted_at`.
-3. Delete `src/db/schema.sql` and `initSchema`; remove the "refactor in progress" note from
-   `.claude/docs/database.md`.
-4. Run `npm run db:reset && npm run db:seed` once: the existing `data/local.db` has no `_migrations` table.
-5. `npm test` green (123), tick part 2 here.
+**Next: Step 4.5 part 3 (services on Prisma)**, after the user approves part 2.
 
-**Open decisions:**
-- Step 4.6: run TypeScript with Node 24's built-in type stripping (recommended) or with `tsx`.
-- Grading ties: the formula rounds an exact tie (e.g. 7.125) **up**; you only specified 7.1 → 7, 7.13 → 7.25.
+**Decided 2026-10-25:**
+- Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
+- Grading ties round **up** (7.125 → 7.25). `computeScore()` in `src/grading.js` with tests; Step 6 uses it.
 
 - [x] **Step 0 — Project setup**: Node 24, `.nvmrc`, `.editorconfig`, `.gitignore`, README (commit 63a380b)
 - [x] **Step 1 — Parser**: `src/shared/parser.js` (3 syntax styles, title line, errors with line numbers,
@@ -34,10 +26,10 @@ All 123 tests pass (114 + 9 in `test/migrate.test.js`).
       dashboard, `test/auth.test.js` (commit 88873ad)
 - [x] **Step 4 — Homework editor**: syntax tab + card tab, settings (reveal mode, Vietnam-time deadline,
       shuffle), new version when questions change after submissions, `test/editor.test.js` (commit 4622932)
-- [ ] **Step 4.5 — Refactor to LaptopShop architecture** (confirmed 2026-10-25; part 1 of 5 done in 8a0c0bc, see below)
+- [ ] **Step 4.5 — Refactor to LaptopShop architecture** (confirmed 2026-10-25; parts 1–2 of 5 done, see below)
   - [x] part 1: Prisma schema + migrations alongside the app
-  - [ ] part 2: migrations replace `schema.sql` ← **next**
-  - [ ] part 3: services on Prisma
+  - [x] part 2: migrations replace `schema.sql`
+  - [ ] part 3: services on Prisma ← **next**
   - [ ] part 4: validation + controllers + routes
   - [ ] part 5: scripts, docs, cleanup
 - [ ] **Step 4.6 — Convert to TypeScript** (planned; starts only after Step 4.5 is approved; see below)
@@ -363,9 +355,13 @@ Step 8. Baseline: 114 tests (Step 5 committed as 2258768).
    Done: parity check showed only the expected differences (PK `NOT NULL`, `BOOLEAN` instead of `INTEGER`,
    timestamp defaults removed); `migrate diff` reports an empty migration; `test/migrate.test.js` adds 9 tests
    (123 total, all passing).
-- [ ] 2. **Migrations replace `schema.sql`.** `server.js`, `db:init`, `db:reset` and `test/helpers.js` use
+- [x] 2. **Migrations replace `schema.sql`.** `server.js`, `db:init`, `db:reset` and `test/helpers.js` use
    `applyMigrations()`. The raw-SQL code sets `created_at`/`updated_at`/`submitted_at` explicitly. Delete
    `schema.sql` and `initSchema`. Tests prove the new schema is equivalent.
+   Done: also `db:seed` and `test/db.test.js`; `dropSchema()` drops `_migrations`; teachers, sessions,
+   homeworks and versions get their timestamps from `new Date().toISOString()`; test inserts into
+   `submissions`/`homeworks` set them. The whole suite (126) runs on the migrated schema. Local DB was
+   reset and re-seeded; a second `db:init` applies nothing; `npm start` serves `/` (200).
 - [ ] 3. **Services on Prisma.** `src/config/client.js`, then `password`, `teacher`, `session`, `share-code` and
    `homework` services, each a port of today's function with the same inputs and outputs.
    - `createApp({ prisma })`; tests switch imports.
@@ -392,7 +388,7 @@ aliases (`config/*`, `services/*`, …). It runs with **ts-node + nodemon** in d
 `tsc` + `tsc-alias`, copying the views into `dist/`. Homework is ES modules on Node 24, so copying that exactly
 would mean switching to CommonJS and adding four tools.
 
-Recommendation (to confirm at the start of 4.6):
+Decided 2026-10-25: built-in type stripping (the `tsx` option below is not used).
 - **Run:** use Node 24's built-in type stripping to run `.ts` files: `node src/server.ts`, `node --watch`,
   `node --test`. The generated Prisma client already runs this way.
 - **Type checking:** `tsc --noEmit` (`npm run typecheck`) does the checking.

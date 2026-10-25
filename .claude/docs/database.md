@@ -1,6 +1,8 @@
 # Database
 
-Schema: `src/db/schema.sql` (the source of truth). Connection: `src/db/client.js`.
+Schema: `prisma/schema.prisma` + `prisma/migrations/*/migration.sql` (the SQL files are what runs; the
+init migration has hand-written CHECKs, `COLLATE NOCASE` and the partial index). Applier:
+`src/config/migrate.js`. Connection: `src/db/client.js`.
 Data access: `src/db/teachers.js`, `src/db/sessions.js`, `src/db/homeworks.js`. Tests: `test/db.test.js`.
 
 ## libSQL: local file vs Turso
@@ -10,26 +12,25 @@ Data access: `src/db/teachers.js`, `src/db/sessions.js`, `src/db/homeworks.js`. 
 - Local: no setup, `data/local.db` (gitignored). Production (Step 8, not done): Turso URL + token in
   `.env` / environment. Application code does not branch on which one it is; only `isLocal(url)` is
   used, by `db:reset`.
-- `initSchema(db)` runs `schema.sql` with `executeMultiple`. Every statement is `IF NOT EXISTS`, so it is
-  safe on startup (`src/server.js` calls it) and in `npm run db:init`.
-- `dropSchema(db)` drops tables children-first (`TABLES` list in `client.js`). If you add a table,
-  add it to that list in the right order.
-- **Refactor in progress (PLAN.md Step 4.5).** `prisma/schema.prisma`, `prisma/migrations/` and
-  `src/config/migrate.js` (`applyMigrations`, table `_migrations`) exist and are tested
-  (`test/migrate.test.js`), but the app still uses `schema.sql` + `initSchema` until part 2. Do not change
-  one schema without the other until then.
-- **No migrations.** `IF NOT EXISTS` does not alter existing tables. Changing a column on an existing
-  database means `npm run db:reset` locally; for a deployed database there is no mechanism yet.
-  Raise this before changing existing tables after Step 8.
+- `applyMigrations(db)` runs every migration not yet recorded in `_migrations` (name, checksum,
+  applied_at), each in its own write transaction. It fails if an applied `migration.sql` was edited
+  afterwards. Called by `src/server.js` on startup, `npm run db:init`, `db:seed` and the tests
+  (`test/helpers.js`, `test/db.test.js`). Never edit an applied migration; add a new one.
+- `dropSchema(db)` drops tables children-first, then `_migrations` (`TABLES` list in `client.js`), so
+  `db:reset` re-applies every migration. If you add a table, add it to that list in the right order.
+- **No timestamp defaults in the database.** `created_at`, `updated_at` and `submitted_at` have no
+  `DEFAULT`; the data-access code sets them (`new Date().toISOString()`). Raw-SQL inserts in tests must
+  set them too, or the insert fails with `NOT NULL`.
+- Step 4.5 parts 3–5 (Prisma Client services, Zod, controllers) are not done yet: the app still queries
+  with raw SQL through `@libsql/client`.
 - Foreign keys are enforced, including inside transactions (tested in `test/db.test.js`).
 - Multi-statement writes use `const tx = await db.transaction('write')` … `await tx.commit()` in
   `try`, `tx.close()` in `finally`. Without commit, close rolls back.
 
 ## Conventions
 
-- Times: UTC ISO 8601 text (`2026-10-24T16:45:00.000Z`); defaults use
-  `strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`. Convert Vietnam time with `src/vietnam-time.js`.
-- Booleans: INTEGER 0/1 with `CHECK (x IN (0, 1))`; data-access functions return JS booleans.
+- Times: UTC ISO 8601 text (`2026-10-24T16:45:00.000Z`), set in code with `new Date().toISOString()`. Convert Vietnam time with `src/vietnam-time.js`.
+- Booleans: `BOOLEAN` columns stored as 0/1 with `CHECK (x IN (0, 1))`; data-access functions return JS booleans.
 - Rows are mapped to camelCase objects in the data-access modules; routes never see raw rows.
 - Text is NFC-normalised and trimmed before insert (`clean()` in `homeworks.js`).
 

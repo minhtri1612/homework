@@ -14,6 +14,7 @@ Run the whole file instead.
 
 | File | Covers | How |
 |---|---|---|
+| `test/grading.test.js` | `computeScore`: nearest 0.25, ties up, 0 and 10 | pure function |
 | `test/parser.test.js` | all syntax styles, splitting, title, errors, normalisation, `validateQuestion`, `serialize` round-trip | pure functions |
 | `test/db.test.js` | schema idempotence, FKs, teachers, passwords, `createHomework`/`getHomework`, share codes, cascades, DB constraints | own temp DB file, calls data functions and raw SQL |
 | `test/auth.test.js` | pages, register, login/logout, sessions, Origin check, XSS escaping | real HTTP via `startApp()` |
@@ -23,7 +24,7 @@ Run the whole file instead.
 ## Test database
 
 Tests never use `data/local.db`. `startApp()` in `test/helpers.js`:
-- creates a temp folder (`mkdtempSync(tmpdir()/homework-test-*)`), opens `file:<dir>/test.db`, runs `initSchema`;
+- creates a temp folder (`mkdtempSync(tmpdir()/homework-test-*)`), opens `file:<dir>/test.db`, runs `applyMigrations`;
 - starts `createApp({ db })` on port 0 (random) and returns `{ db, base, get, post, close }`;
 - `get(path, cookie?)` and `post(path, fields, { cookie, origin })` use `fetch` with `redirect: 'manual'`,
   so assert on `status` and `location` yourself. `post` sends form-encoded fields and sets `Origin` to the

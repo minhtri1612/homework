@@ -103,9 +103,9 @@ describe('student page /h/CODE', () => {
   test('question count follows the latest version', async () => {
     const { id, shareCode } = await createHomework(db, { teacherId, title: 'Có phiên bản', questions: parse(TEXT).questions });
     await db.execute({
-      sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, correct_count, total_count, score)
-            VALUES (?, (SELECT id FROM homework_versions WHERE homework_id = ?), 'An', 'an', 0, 2, 0)`,
-      args: [id, id],
+      sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
+            VALUES (?, (SELECT id FROM homework_versions WHERE homework_id = ?), 'An', 'an', ?, 0, 2, 0)`,
+      args: [id, id, new Date().toISOString()],
     });
     const questions = [...parse(TEXT).questions, ...parse('Câu mới?\n==x\ny').questions];
     assert.deepEqual(await updateHomework(db, { id, teacherId, title: 'Có phiên bản', questions }), { version: 2, newVersion: true });

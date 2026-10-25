@@ -1,10 +1,11 @@
 // Starts the website: npm run dev (restarts when files change) or npm start.
 import './load-env.js';
-import { openDb, initSchema } from './db/client.js';
+import { openDb } from './db/client.js';
+import { applyMigrations } from './config/migrate.js';
 import { createApp } from './app.js';
 
 const db = openDb();
-await initSchema(db);
+await applyMigrations(db);
 
 const port = Number(process.env.PORT) || 3000;
 createApp({ db }).listen(port, () => {

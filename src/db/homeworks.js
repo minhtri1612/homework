@@ -82,6 +82,7 @@ export async function createHomework(db, { teacherId, title, questions, revealMo
   const errors = validateHomework({ title, questions, revealMode, deadline });
   if (errors.length) throw new HomeworkValidationError(errors);
 
+  const now = new Date().toISOString();
   const tx = await db.transaction('write');
   try {
     // The write transaction locks the database, so a code that is free here
@@ -92,12 +93,12 @@ export async function createHomework(db, { teacherId, title, questions, revealMo
     } while ((await tx.execute({ sql: 'SELECT 1 FROM homeworks WHERE share_code = ?', args: [shareCode] })).rows.length);
 
     const homework = await tx.execute({
-      sql: `INSERT INTO homeworks (title, reveal_mode, deadline, shuffle_questions, teacher_id, share_code)
-            VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
-      args: [...settingsArgs({ title, revealMode, deadline, shuffleQuestions }), teacherId, shareCode],
+      sql: `INSERT INTO homeworks (title, reveal_mode, deadline, shuffle_questions, teacher_id, share_code, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      args: [...settingsArgs({ title, revealMode, deadline, shuffleQuestions }), teacherId, shareCode, now, now],
     });
     const id = homework.rows[0].id;
-    const versionId = await insertVersion(tx, id, 1, questions);
+    const versionId = await insertVersion(tx, id, 1, questions, now);
     await tx.commit();
     return { id, shareCode, versionId };
   } finally {
@@ -116,6 +117,7 @@ export async function updateHomework(db, { id, teacherId, title, questions, reve
   const errors = validateHomework({ title, questions, revealMode, deadline });
   if (errors.length) throw new HomeworkValidationError(errors);
 
+  const now = new Date().toISOString();
   const tx = await db.transaction('write');
   try {
     const current = await tx.execute({
@@ -131,16 +133,15 @@ export async function updateHomework(db, { id, teacherId, title, questions, reve
 
     await tx.execute({
       sql: `UPDATE homeworks
-            SET title = ?, reveal_mode = ?, deadline = ?, shuffle_questions = ?,
-                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            SET title = ?, reveal_mode = ?, deadline = ?, shuffle_questions = ?, updated_at = ?
             WHERE id = ?`,
-      args: [...settingsArgs({ title, revealMode, deadline, shuffleQuestions }), id],
+      args: [...settingsArgs({ title, revealMode, deadline, shuffleQuestions }), now, id],
     });
 
     let result = { version: version.number, newVersion: false };
     if (!sameQuestions(await loadQuestions(tx, version.id), questions)) {
       if (version.submission_count > 0) {
-        await insertVersion(tx, id, version.number + 1, questions);
+        await insertVersion(tx, id, version.number + 1, questions, now);
         result = { version: version.number + 1, newVersion: true };
       } else {
         await tx.execute({ sql: 'DELETE FROM questions WHERE version_id = ?', args: [version.id] });
@@ -172,10 +173,10 @@ function sameQuestions(saved, questions) {
   return key(saved) === key(questions);
 }
 
-async function insertVersion(tx, homeworkId, number, questions) {
+async function insertVersion(tx, homeworkId, number, questions, createdAt) {
   const version = await tx.execute({
-    sql: 'INSERT INTO homework_versions (homework_id, number) VALUES (?, ?) RETURNING id',
-    args: [homeworkId, number],
+    sql: 'INSERT INTO homework_versions (homework_id, number, created_at) VALUES (?, ?, ?) RETURNING id',
+    args: [homeworkId, number, createdAt],
   });
   const versionId = version.rows[0].id;
   await insertQuestions(tx, versionId, questions);

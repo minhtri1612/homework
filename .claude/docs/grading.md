@@ -15,13 +15,15 @@ const score = Math.round((correct * 40) / total) / 4;
 - Examples: 7.1 → 7, 7.13 → 7.25, 10/10 → 10, 0/n → 0. 1 of 3 correct = 3.33… → 3.25; 2 of 3 = 6.66… → 6.75.
 - `correct * 40` is an integer, so there is only one floating-point division; do not compute
   `correct / total * 10` first and round afterwards, because of float error near the halfway points.
-- An exact tie (e.g. 7.125 = 57 of 80) goes **up** (`Math.round` behaviour). The user's rule names no
-  tie case; this follows from the formula.
+- An exact tie (e.g. 7.125 = 57 of 80) goes **up** (`Math.round` behaviour); confirmed by the user
+  2026-10-25.
+- Implemented as `computeScore(correct, total)` in `src/grading.js`, tested in `test/grading.test.js`.
+  Step 6 must use it rather than repeat the formula.
 - Blank answers count as wrong: `total` = number of questions in the submission's version.
 
 ## Already decided (schema / README / code)
 
-**Score columns** (`submissions` in `src/db/schema.sql`):
+**Score columns** (`submissions` in `prisma/migrations/20261025000000_init/migration.sql`):
 - `score` REAL, `CHECK (score BETWEEN 0 AND 10)`, schema comment "steps of 0.25".
 - `correct_count` ≥ 0, `total_count` ≥ `correct_count`. `total_count` is the number of questions in
   the submission's version (the editor tests insert it that way).

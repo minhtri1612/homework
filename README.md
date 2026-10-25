@@ -50,9 +50,9 @@ Mở bằng VS Code trên Windows: cài tiện ích **WSL** cho VS Code, rồi t
 npm install      # cài thư viện (chạy lại mỗi khi package.json thay đổi)
 npm test         # chạy kiểm thử
 npm run parse -- examples/mau.txt   # thử bộ đọc cú pháp với một file văn bản
-npm run db:init  # tạo các bảng trong cơ sở dữ liệu (chạy lại bao nhiêu lần cũng được)
+npm run db:init  # tạo/cập nhật các bảng (chạy các migration chưa chạy; chạy lại bao nhiêu lần cũng được)
 npm run db:seed  # thêm dữ liệu mẫu: 1 giáo viên và 2 bộ bài tập
-npm run db:reset # XOÁ HẾT dữ liệu rồi tạo lại bảng trống (chỉ với file trên máy)
+npm run db:reset # XOÁ HẾT dữ liệu rồi tạo lại bảng trống từ các migration (chỉ với file trên máy)
 npm run dev      # chạy website ở http://localhost:3000, tự khởi động lại khi sửa file (Ctrl+C để dừng)
 npm start        # chạy website (không tự khởi động lại) — dùng khi triển khai
 ```
@@ -80,7 +80,7 @@ Muốn dùng cơ sở dữ liệu khác (ví dụ Turso khi triển khai), chép
 
 Muốn xem dữ liệu bằng mắt: cài tiện ích **SQLite Viewer** cho VS Code rồi mở file `data/local.db`.
 
-Các bảng (chi tiết trong `src/db/schema.sql`):
+Các bảng (chi tiết trong `prisma/schema.prisma` và `prisma/migrations/`):
 
 | Bảng | Nội dung |
 |---|---|
@@ -220,8 +220,9 @@ nên chữ tiếng Việt gõ trên máy nào cũng so sánh đúng.
 src/
   shared/
     parser.js     bộ đọc cú pháp — dùng chung cho trình duyệt và máy chủ
+  config/
+    migrate.js    tạo/cập nhật các bảng bằng các file trong prisma/migrations/
   db/
-    schema.sql    các bảng của cơ sở dữ liệu
     client.js     mở kết nối (file trên máy hoặc Turso)
     teachers.js   lưu giáo viên
     homeworks.js  lưu và đọc bộ bài tập (kiểm tra lại câu hỏi trước khi lưu)
@@ -240,7 +241,9 @@ src/
   app.js          ghép các phần thành website
   server.js       khởi động website (npm run dev)
   load-env.js     đọc file .env nếu có
+  grading.js      tính điểm thang 10 (làm tròn đến 0,25)
   vietnam-time.js đổi giờ Việt Nam ↔ giờ UTC lưu trong cơ sở dữ liệu
+prisma/           các bảng của cơ sở dữ liệu (schema.prisma) và các migration
 test/             kiểm thử (npm test)
 scripts/          công cụ dòng lệnh (npm run parse, db:init, db:seed, db:reset)
 examples/         văn bản mẫu

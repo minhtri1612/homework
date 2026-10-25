@@ -4,16 +4,19 @@
 
 ```
 src/
-  server.js         entry point: load .env, open DB, initSchema(), listen on PORT (default 3000)
+  server.js         entry point: load .env, open DB, applyMigrations(), listen on PORT (default 3000)
   app.js            createApp({ db }): builds the Express app (tests call this with their own DB)
   load-env.js       process.loadEnvFile() if .env exists; import first in every entry point
   vietnam-time.js   Vietnam time (UTC+7) <-> UTC ISO; date formatting for views
   shared/parser.js  syntax parser, used by browser AND server (see parser.md)
-  db/               schema.sql + data access, one module per area (see database.md)
+  config/migrate.js applyMigrations(): runs prisma/migrations/*/migration.sql (see database.md)
+  db/               connection + data access, one module per area (see database.md)
+  grading.js        computeScore(correct, total) (see grading.md)
   auth/             password hashing, session cookie middleware, Origin check (see auth.md)
   routes/           Express routers: auth.js, teacher.js, student.js
   views/            EJS templates; partials/head.ejs and partials/foot.ejs wrap every page
   public/           static files: style.css, js/editor.js, js/copy.js
+prisma/             schema.prisma + migrations/ (the database schema)
 scripts/            CLI tools behind npm scripts: db-init.js, db-seed.js, parse.js
 test/               node:test files (see testing.md)
 examples/mau.txt    sample syntax text covering every format

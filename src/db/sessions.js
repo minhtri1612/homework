@@ -11,13 +11,14 @@ function hashToken(token) {
 /** Creates a session and returns { token, expiresAt } for the cookie. */
 export async function createSession(db, teacherId) {
   const token = randomBytes(32).toString('base64url');
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SESSION_DAYS * 24 * 60 * 60 * 1000);
   await db.batch(
     [
-      { sql: 'DELETE FROM sessions WHERE expires_at <= ?', args: [new Date().toISOString()] },
+      { sql: 'DELETE FROM sessions WHERE expires_at <= ?', args: [now.toISOString()] },
       {
-        sql: 'INSERT INTO sessions (id, teacher_id, expires_at) VALUES (?, ?, ?)',
-        args: [hashToken(token), teacherId, expiresAt.toISOString()],
+        sql: 'INSERT INTO sessions (id, teacher_id, created_at, expires_at) VALUES (?, ?, ?, ?)',
+        args: [hashToken(token), teacherId, now.toISOString(), expiresAt.toISOString()],
       },
     ],
     'write',

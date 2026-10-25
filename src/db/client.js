@@ -2,12 +2,10 @@
 // DATABASE_URL points at a hosted libSQL database (Turso) instead. The rest of
 // the code does not know or care which one it is talking to.
 import { createClient } from '@libsql/client';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 export const DEFAULT_URL = 'file:data/local.db';
-
-const SCHEMA = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8');
 
 // Children before parents, so dropping never breaks a foreign key.
 const TABLES = [
@@ -19,6 +17,7 @@ const TABLES = [
   'homeworks',
   'sessions',
   'teachers',
+  '_migrations',
 ];
 
 export function openDb({
@@ -33,12 +32,7 @@ export function isLocal(url) {
   return url.startsWith('file:');
 }
 
-/** Creates any missing tables and indexes. */
-export async function initSchema(db) {
-  await db.executeMultiple(SCHEMA);
-}
-
-/** Deletes all tables and their data. */
+/** Deletes all tables and their data, including the record of applied migrations. */
 export async function dropSchema(db) {
   await db.executeMultiple(TABLES.map((table) => `DROP TABLE IF EXISTS ${table};`).join('\n'));
 }

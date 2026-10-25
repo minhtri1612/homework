@@ -55,9 +55,9 @@ async function addSubmission(homeworkId) {
   const homework = await getHomework(db, homeworkId);
   const name = `Học sinh ${Math.random()}`;
   await db.execute({
-    sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, correct_count, total_count, score)
-          VALUES (?, ?, ?, ?, 0, ?, 0)`,
-    args: [homeworkId, homework.version.id, name, name.toLowerCase(), homework.questions.length],
+    sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
+          VALUES (?, ?, ?, ?, ?, 0, ?, 0)`,
+    args: [homeworkId, homework.version.id, name, name.toLowerCase(), new Date().toISOString(), homework.questions.length],
   });
   return homework.version.id;
 }

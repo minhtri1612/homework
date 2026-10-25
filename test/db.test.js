@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openDb, initSchema } from '../src/db/client.js';
+import { openDb } from '../src/db/client.js';
+import { applyMigrations } from '../src/config/migrate.js';
 import { createTeacher } from '../src/db/teachers.js';
 import { createHomework, getHomework, generateShareCode, HomeworkValidationError } from '../src/db/homeworks.js';
 import { hashPassword, verifyPassword } from '../src/auth/password.js';
@@ -17,7 +18,7 @@ let teacherId;
 before(async () => {
   dir = mkdtempSync(join(tmpdir(), 'homework-test-'));
   db = openDb({ url: `file:${join(dir, 'test.db')}` });
-  await initSchema(db);
+  await applyMigrations(db);
   teacherId = await createTeacher(db, { email: 'Co.Lan@Example.com ', name: 'Cô Lan', password: 'bí mật' });
 });
 
@@ -40,15 +41,15 @@ async function count(table) {
 
 describe('schema', () => {
   test('running it again changes nothing', async () => {
-    await initSchema(db);
+    await applyMigrations(db);
     assert.equal(await count('teachers'), 1);
   });
 
   test('foreign keys are enforced, also inside transactions', async () => {
-    await assert.rejects(db.execute('INSERT INTO homeworks (teacher_id, title, share_code) VALUES (999, ?, ?)', ['x', 'ZZZZZZ']), /FOREIGN KEY/);
+    await assert.rejects(db.execute("INSERT INTO homeworks (teacher_id, title, share_code, created_at, updated_at) VALUES (999, ?, ?, 't', 't')", ['x', 'ZZZZZZ']), /FOREIGN KEY/);
     const tx = await db.transaction('write');
     try {
-      await assert.rejects(tx.execute('INSERT INTO homeworks (teacher_id, title, share_code) VALUES (999, ?, ?)', ['x', 'ZZZZZZ']), /FOREIGN KEY/);
+      await assert.rejects(tx.execute("INSERT INTO homeworks (teacher_id, title, share_code, created_at, updated_at) VALUES (999, ?, ?, 't', 't')", ['x', 'ZZZZZZ']), /FOREIGN KEY/);
     } finally {
       tx.close();
     }
@@ -161,9 +162,9 @@ describe('database rules (a second line of defence behind the app)', () => {
 
   async function submit(name, choices) {
     const row = await db.execute({
-      sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, correct_count, total_count, score)
-            VALUES (?, ?, ?, ?, 0, 2, 0) RETURNING id`,
-      args: [homework.id, homework.version.id, name, name.toLowerCase()],
+      sql: `INSERT INTO submissions (homework_id, version_id, student_name, student_key, submitted_at, correct_count, total_count, score)
+            VALUES (?, ?, ?, ?, ?, 0, 2, 0) RETURNING id`,
+      args: [homework.id, homework.version.id, name, name.toLowerCase(), new Date().toISOString()],
     });
     const submissionId = row.rows[0].id;
     for (const [questionId, answerId] of choices) {

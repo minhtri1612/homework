@@ -2,7 +2,8 @@
 //   npm run db:seed
 // The questions go through the same parser teachers will use.
 import '../src/load-env.js';
-import { openDb, initSchema, DEFAULT_URL } from '../src/db/client.js';
+import { openDb, DEFAULT_URL } from '../src/db/client.js';
+import { applyMigrations } from '../src/config/migrate.js';
 import { createTeacher } from '../src/db/teachers.js';
 import { createHomework } from '../src/db/homeworks.js';
 import { parse } from '../src/shared/parser.js';
@@ -46,7 +47,7 @@ C. 25 cm`,
 ];
 
 const db = openDb();
-await initSchema(db);
+await applyMigrations(db);
 
 const existing = await db.execute({ sql: 'SELECT 1 FROM teachers WHERE email = ?', args: [TEACHER.email] });
 if (existing.rows.length) {

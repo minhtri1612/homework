@@ -3,13 +3,14 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openDb, initSchema } from '../src/db/client.js';
+import { openDb } from '../src/db/client.js';
+import { applyMigrations } from '../src/config/migrate.js';
 import { createApp } from '../src/app.js';
 
 export async function startApp() {
   const dir = mkdtempSync(join(tmpdir(), 'homework-test-'));
   const db = openDb({ url: `file:${join(dir, 'test.db')}` });
-  await initSchema(db);
+  await applyMigrations(db);
   const server = createApp({ db }).listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   const base = `http://localhost:${server.address().port}`;
