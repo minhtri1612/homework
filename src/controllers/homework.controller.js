@@ -1,6 +1,6 @@
 // Pages for logged-in teachers: the homework list and the homework editor.
-import { listHomeworks, getHomework, createHomework, updateHomework, HomeworkValidationError } from '../services/homework.service.js';
-import { editorSchema, homeworkIdParam } from '../validation/homework.schema.js';
+import { listHomeworks, getHomework, createHomework, updateHomework, HomeworkValidationError } from '../services/homework.service.ts';
+import { editorSchema, homeworkIdParam } from '../validation/homework.schema.ts';
 import { toVietnamInput } from '../vietnam-time.js';
 
 const SAVED_MESSAGES = {

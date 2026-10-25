@@ -2,7 +2,7 @@
 // touch the database: "email already registered" is checked by the controller,
 // so validation cannot reveal which emails exist.
 import { z } from 'zod';
-import { formLine, formText } from './form.js';
+import { formLine, formText } from './form.ts';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 const MIN_PASSWORD = 8;
@@ -34,7 +34,10 @@ export const registerSchema = registerForm
     message: 'Hai mật khẩu không giống nhau.',
     // Also when another field has an error, so every problem shows at once;
     // but not when the password itself is wrong.
-    when: (payload) => !payload.issues.some((issue) => issue.path[0] === 'password'),
+    when: (payload) => !payload.issues.some((issue) => issue.path?.[0] === 'password'),
   });
 
 export const loginSchema = z.object({ email, password: formText });
+
+export type RegisterForm = z.infer<typeof registerSchema>;
+export type LoginForm = z.infer<typeof loginSchema>;

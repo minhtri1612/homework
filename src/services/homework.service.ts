@@ -1,7 +1,47 @@
+import type { Prisma, PrismaClient } from '../generated/prisma/client.ts';
 import { validateQuestion } from '../shared/parser.js';
-import { generateShareCode } from './share-code.service.js';
+import { generateShareCode } from './share-code.service.ts';
 
 const REVEAL_MODES = ['never', 'after_submit', 'after_deadline'];
+
+/** The client itself or the tx inside prisma.$transaction(async (tx) => …). */
+type Db = PrismaClient | Prisma.TransactionClient;
+
+/** A question as the parser and the editor produce it. */
+export interface QuestionInput {
+  text: string;
+  answers: { text: string; correct: boolean }[];
+  shuffleAnswers?: boolean;
+}
+
+/** A saved question: like QuestionInput, plus the ids. */
+export interface SavedQuestion {
+  id: number;
+  text: string;
+  shuffleAnswers: boolean;
+  answers: { id: number; text: string; correct: boolean }[];
+}
+
+/** One reason a homework cannot be saved. message is Vietnamese. */
+export interface HomeworkError {
+  code: string;
+  message: string;
+  /** 1-based number of the question the error is about. */
+  question?: number;
+  line?: number;
+}
+
+/**
+ * The settings and questions of a homework. deadline is a UTC ISO string,
+ * null for none, or the INVALID_TIME marker from fromVietnamInput().
+ */
+export interface HomeworkInput {
+  title: string;
+  questions: QuestionInput[];
+  revealMode?: string;
+  deadline?: string | null;
+  shuffleQuestions?: boolean;
+}
 
 export const LIMITS = { title: 200, questions: 200, questionText: 2000, answerText: 500 };
 
@@ -13,8 +53,8 @@ const WRITE_TIMEOUT = { timeout: 30_000 };
  * Checks a homework before saving. Returns a list of { code, message,
  * question? } in Vietnamese; empty means it can be saved.
  */
-export function validateHomework({ title, questions, revealMode = 'after_submit', deadline = null }) {
-  const errors = [];
+export function validateHomework({ title, questions, revealMode = 'after_submit', deadline = null }: HomeworkInput): HomeworkError[] {
+  const errors: HomeworkError[] = [];
   if (!String(title ?? '').trim()) errors.push({ code: 'NO_TITLE', message: 'Bài tập chưa có tiêu đề.' });
   else if (title.length > LIMITS.title) {
     errors.push({ code: 'TITLE_TOO_LONG', message: `Tiêu đề dài quá (tối đa ${LIMITS.title} ký tự).` });
@@ -48,7 +88,9 @@ export function validateHomework({ title, questions, revealMode = 'after_submit'
 }
 
 export class HomeworkValidationError extends Error {
-  constructor(errors) {
+  errors: HomeworkError[];
+
+  constructor(errors: HomeworkError[]) {
     super(errors.map((e) => e.message).join(' '));
     this.errors = errors;
   }
@@ -59,7 +101,10 @@ export class HomeworkValidationError extends Error {
  * { text, answers: [{ text, correct }], shuffleAnswers? }.
  * Returns { id, shareCode, versionId }. Nothing is written if it is invalid.
  */
-export async function createHomework(prisma, { teacherId, title, questions, revealMode = 'after_submit', deadline = null, shuffleQuestions = false }) {
+export async function createHomework(
+  prisma: PrismaClient,
+  { teacherId, title, questions, revealMode = 'after_submit', deadline = null, shuffleQuestions = false }: HomeworkInput & { teacherId: number },
+): Promise<{ id: number; shareCode: string; versionId: number }> {
   const errors = validateHomework({ title, questions, revealMode, deadline });
   if (errors.length) throw new HomeworkValidationError(errors);
 
@@ -67,7 +112,7 @@ export async function createHomework(prisma, { teacherId, title, questions, reve
   return prisma.$transaction(async (tx) => {
     // Transactions run one at a time, so a code that is free here is still
     // free when the insert runs. The UNIQUE constraint backs this up.
-    let shareCode;
+    let shareCode: string;
     do {
       shareCode = generateShareCode();
     } while (await tx.homework.findUnique({ where: { shareCode }, select: { id: true } }));
@@ -88,7 +133,10 @@ export async function createHomework(prisma, { teacherId, title, questions, reve
  * Returns { version, newVersion } or null when the homework is not this
  * teacher's (or does not exist).
  */
-export async function updateHomework(prisma, { id, teacherId, title, questions, revealMode = 'after_submit', deadline = null, shuffleQuestions = false }) {
+export async function updateHomework(
+  prisma: PrismaClient,
+  { id, teacherId, title, questions, revealMode = 'after_submit', deadline = null, shuffleQuestions = false }: HomeworkInput & { id: number; teacherId: number },
+): Promise<{ version: number; newVersion: boolean } | null> {
   const errors = validateHomework({ title, questions, revealMode, deadline });
   if (errors.length) throw new HomeworkValidationError(errors);
 
@@ -119,7 +167,7 @@ export async function updateHomework(prisma, { id, teacherId, title, questions, 
   }, WRITE_TIMEOUT);
 }
 
-function settingsData({ title, revealMode, deadline, shuffleQuestions }) {
+function settingsData({ title, revealMode, deadline, shuffleQuestions }: Required<Omit<HomeworkInput, 'questions'>>) {
   return {
     title: title.normalize('NFC').trim(),
     revealMode,
@@ -129,15 +177,21 @@ function settingsData({ title, revealMode, deadline, shuffleQuestions }) {
 }
 
 /** Compares what students would see, ignoring ids and Unicode/space differences. */
-function sameQuestions(saved, questions) {
-  const key = (list) =>
+function sameQuestions(saved: SavedQuestion[], questions: QuestionInput[]): boolean {
+  const key = (list: (SavedQuestion | QuestionInput)[]) =>
     JSON.stringify(
       list.map((q) => [clean(q.text), Boolean(q.shuffleAnswers), q.answers.map((a) => [clean(a.text), Boolean(a.correct)])]),
     );
   return key(saved) === key(questions);
 }
 
-async function insertVersion(tx, homeworkId, number, questions, createdAt) {
+async function insertVersion(
+  tx: Prisma.TransactionClient,
+  homeworkId: number,
+  number: number,
+  questions: QuestionInput[],
+  createdAt: string,
+): Promise<number> {
   const version = await tx.homeworkVersion.create({
     data: { homeworkId, number, createdAt },
     select: { id: true },
@@ -147,7 +201,7 @@ async function insertVersion(tx, homeworkId, number, questions, createdAt) {
 }
 
 // One nested create per question: the question and its answers in one call.
-async function insertQuestions(tx, versionId, questions) {
+async function insertQuestions(tx: Prisma.TransactionClient, versionId: number, questions: QuestionInput[]): Promise<void> {
   for (const [i, question] of questions.entries()) {
     await tx.question.create({
       data: {
@@ -173,7 +227,7 @@ async function insertQuestions(tx, versionId, questions) {
  * null. Includes the correct answers: for the teacher and for grading only,
  * never send this object as-is to a student's browser.
  */
-export async function getHomework(prisma, id) {
+export async function getHomework(prisma: PrismaClient, id: number) {
   const homework = await prisma.homework.findUnique({
     where: { id },
     include: {
@@ -206,7 +260,7 @@ export async function getHomework(prisma, id) {
  * What anyone with the share code may see about a homework, or null. Safe to
  * show to students: no questions, no answers.
  */
-export async function findSharedHomework(prisma, shareCode) {
+export async function findSharedHomework(prisma: PrismaClient, shareCode: string) {
   const homework = await prisma.homework.findUnique({
     where: { shareCode },
     select: {
@@ -232,14 +286,14 @@ export async function findSharedHomework(prisma, shareCode) {
 // Selects the number of questions in the latest version; read it with questionCount().
 const LATEST_QUESTION_COUNT = {
   versions: { orderBy: { number: 'desc' }, take: 1, select: { _count: { select: { questions: true } } } },
-};
+} satisfies Prisma.HomeworkSelect;
 
-function questionCount(homework) {
+function questionCount(homework: { versions: { _count: { questions: number } }[] }): number {
   return homework.versions[0]?._count.questions ?? 0;
 }
 
 /** Questions of one version with their answers, in order. prisma can be a transaction. */
-async function loadQuestions(prisma, versionId) {
+async function loadQuestions(prisma: Db, versionId: number): Promise<SavedQuestion[]> {
   const questions = await prisma.question.findMany({
     where: { versionId },
     orderBy: { position: 'asc' },
@@ -258,12 +312,12 @@ async function loadQuestions(prisma, versionId) {
   }));
 }
 
-function clean(text) {
+function clean(text: unknown): string {
   return String(text ?? '').normalize('NFC').trim();
 }
 
 /** A teacher's homework sets, newest first, with question and submission counts. */
-export async function listHomeworks(prisma, teacherId) {
+export async function listHomeworks(prisma: PrismaClient, teacherId: number) {
   const homeworks = await prisma.homework.findMany({
     where: { teacherId },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

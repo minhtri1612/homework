@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { applyMigrations } from '../src/config/migrate.js';
-import { createPrisma, openDb } from '../src/config/client.js';
-import { createTeacher } from '../src/services/teacher.service.js';
-import { createHomework, getHomework, updateHomework, HomeworkValidationError, LIMITS } from '../src/services/homework.service.js';
-import { generateShareCode } from '../src/services/share-code.service.js';
-import { hashPassword, verifyPassword } from '../src/services/password.service.js';
+import { applyMigrations } from '../src/config/migrate.ts';
+import { createPrisma, openDb } from '../src/config/client.ts';
+import { createTeacher } from '../src/services/teacher.service.ts';
+import { createHomework, getHomework, updateHomework, HomeworkValidationError, LIMITS } from '../src/services/homework.service.ts';
+import { generateShareCode } from '../src/services/share-code.service.ts';
+import { hashPassword, verifyPassword } from '../src/services/password.service.ts';
 import { parse } from '../src/shared/parser.js';
 
 // Each run uses a fresh database file in a temporary folder, never data/local.db.

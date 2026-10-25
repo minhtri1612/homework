@@ -7,10 +7,10 @@
 
 ## Next session (stopped 2026-10-25)
 
-**Where we stopped:** Step 4.5 is committed and pushed (55687f1). Step 4.6 part 1 (TypeScript tooling) is done,
-**not committed yet, waiting for review**. All 140 tests pass; `npm run typecheck` passes.
+**Where we stopped:** Step 4.6 part 1 is committed and pushed (a9d31bf). Part 2 (config, services, validation in
+TypeScript) is done, **not committed yet, waiting for review**. All 141 tests pass; `npm run typecheck` passes.
 
-**Next: Step 4.6 part 2 (database layer and services in TypeScript)**, after the user approves part 1.
+**Next: Step 4.6 part 3 (middleware, controllers, routes, app, server)**, after the user approves part 2.
 
 **Decided 2026-10-25:**
 - Step 4.6 uses Node 24's built-in TypeScript type stripping (no `tsx`).
@@ -31,7 +31,7 @@
   - [x] part 3: services on Prisma
   - [x] part 4: validation + controllers + routes
   - [x] part 5: scripts, docs, cleanup
-- [ ] **Step 4.6 — Convert to TypeScript** (part 1 of 6 done, see below) ← **next**
+- [ ] **Step 4.6 — Convert to TypeScript** (parts 1–2 of 6 done, see below) ← **next**
 - [x] **Step 5 — Sharing**: link `/h/CODE` and a "nhập mã" box on the home page (commit 2258768)
   - [x] `/h/CODE` finds the homework (code typed in any letter case), 404 in Vietnamese otherwise
   - [x] code entry form on the home page
@@ -444,10 +444,19 @@ Planned `tsconfig.json` settings:
     `@types/express@5.0.6`, all exact dev dependencies. `pretest` = `prisma generate && npm run typecheck`.
     `express.d.ts` also types `req.prisma` (added in Step 4.5 part 4). Checked with a temporary `.ts` file that
     the checker reports a nullable `req.teacher` and a missing `await`; typecheck takes about 0.2 s.
-- [ ] 2. **Database layer and services.**
+- [x] 2. **Database layer and services.**
   - `src/config/*.ts`, `src/services/*.ts`, `src/validation/*.ts`, typed with the generated Prisma types and
     `z.infer`.
   - The import paths of the moved files change to `.ts`.
+  - Done: `src/config/{client,migrate}.ts`, `src/services/*.service.ts`, `src/validation/*.ts`, and
+    `src/grading.ts` (not listed in any part; it belongs with the services). Services take `PrismaClient`
+    (transactions `Prisma.TransactionClient`); new exported types `QuestionInput`, `SavedQuestion`,
+    `HomeworkError`, `HomeworkInput`, `NewTeacher`, `DatabaseOptions`, `Migration`; schemas export
+    `RegisterForm`, `LoginForm`, `EditorForm` (`z.infer`). Checked with a temporary file that the inferred
+    form types fit the service inputs (needed in part 3). `password.service.ts` wraps `scrypt` in a typed
+    promise because `util.promisify(scrypt)` loses the options overload; same behaviour.
+  - Found: three `./form.js` imports inside `src/validation/` passed `tsc` (it maps `.js` to `.ts`) but
+    failed in Node. Fixed, and `test/imports.test.js` now checks every relative import names a real file.
 - [ ] 3. **Middleware, controllers, routes, app, server.** `src/middleware`, `src/controllers`, `src/routes`,
   `src/app.ts`, `src/server.ts`, `src/vietnam-time.ts`, `src/load-env.ts`. The `dev`/`start` scripts point at
   `src/server.ts`.
@@ -471,5 +480,7 @@ Planned `tsconfig.json` settings:
 - **EJS templates stay untyped.** Typing stops at `res.render(…)`, so a wrong variable name in a view is still
   only caught by the tests.
 - **A stale browser build** would run an old parser in the editor preview; the test in part 5 guards this.
+- **`tsc` accepts `./x.js` when only `x.ts` exists** (nodenext maps the extension); Node does not.
+  `test/imports.test.js` catches it (found in part 2).
 - **Strict mode will flag** some `null` handling in today's code, for example `req.teacher`. Fixes must keep
   the same behaviour, and the tests decide.

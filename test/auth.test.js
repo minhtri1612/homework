@@ -1,7 +1,7 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTeacher } from '../src/services/teacher.service.js';
-import { createHomework } from '../src/services/homework.service.js';
+import { createTeacher } from '../src/services/teacher.service.ts';
+import { createHomework } from '../src/services/homework.service.ts';
 import { parse } from '../src/shared/parser.js';
 import { startApp, sessionCookie } from './helpers.js';
 

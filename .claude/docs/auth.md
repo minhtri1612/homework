@@ -1,21 +1,21 @@
 # Teacher auth and security rules
 
-Files: `src/controllers/auth.controller.js`, `src/validation/auth.schema.js`, `src/middleware/auth.js`,
-`src/middleware/same-origin.js`, `src/services/password.service.js`,
-`src/services/session.service.js`, `src/services/teacher.service.js`. Tests: `test/auth.test.js`. Students have no accounts (planned; see `PLAN.md`).
+Files: `src/controllers/auth.controller.js`, `src/validation/auth.schema.ts`, `src/middleware/auth.js`,
+`src/middleware/same-origin.js`, `src/services/password.service.ts`,
+`src/services/session.service.ts`, `src/services/teacher.service.ts`. Tests: `test/auth.test.js`. Students have no accounts (planned; see `PLAN.md`).
 
 ## Registration (`POST /register`)
 
 - Name: NFC, whitespace collapsed, trimmed, required, ≤ 100 chars.
 - Email: trimmed, lower-cased, simple regex `^[^\s@]+@[^\s@]+\.[^\s@]+$`, ≤ 254 chars; unique in any
   case (code lower-cases, column is `COLLATE NOCASE`). A race on the UNIQUE constraint (Prisma error
-  `P2002`, `isUniqueViolation()` in `src/config/client.js`) is caught and shown as "already registered".
+  `P2002`, `isUniqueViolation()` in `src/config/client.ts`) is caught and shown as "already registered".
 - Password: 8–200 chars, must equal `confirm` (checked only when the password itself is valid).
   Rules live in `registerSchema`; `fieldErrors()` keeps the first message per field. All field errors are shown at once; typed values are
   kept except passwords.
 - Success logs the teacher in and redirects to `/teacher`.
 
-## Passwords (`src/services/password.service.js`)
+## Passwords (`src/services/password.service.ts`)
 
 scrypt from `node:crypto`, N=16384, r=8, p=1, 64-byte key, 16-byte random salt. Stored as
 `scrypt$N$r$p$salt$hash` (base64). Input is NFC-normalised before hashing, so NFC/NFD Vietnamese passwords

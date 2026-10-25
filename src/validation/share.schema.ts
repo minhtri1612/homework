@@ -1,7 +1,7 @@
 // The share code, as typed in the home page's box or as part of /h/CODE.
 import { z } from 'zod';
-import { formText } from './form.js';
-import { normalizeShareCode } from '../services/share-code.service.js';
+import { formText } from './form.ts';
+import { normalizeShareCode } from '../services/share-code.service.ts';
 
 /** ?code= from the home page form: the normalised code, or a Vietnamese message. */
 export const joinSchema = z.object({

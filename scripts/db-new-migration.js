@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MIGRATIONS_DIR } from '../src/config/migrate.js';
+import { MIGRATIONS_DIR } from '../src/config/migrate.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const name = process.argv[2] ?? '';

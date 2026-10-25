@@ -2,11 +2,11 @@
 // whether a homework is valid: validateHomework() in the homework service
 // does that on every save, with the same messages as the editor preview.
 import { z } from 'zod';
-import { formLine, formText } from './form.js';
+import { formLine, formText } from './form.ts';
 import { fromVietnamInput } from '../vietnam-time.js';
 
 /** Anything that is not a plain object is read as {}, so its fields become defaults. */
-function objectOrEmpty(schema) {
+function objectOrEmpty<T extends z.ZodType>(schema: T) {
   return z.preprocess((value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {}), schema);
 }
 
@@ -58,3 +58,5 @@ export const editorSchema = z
 export const homeworkIdParam = z
   .string()
   .transform((value) => (/^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : null));
+
+export type EditorForm = z.infer<typeof editorSchema>;

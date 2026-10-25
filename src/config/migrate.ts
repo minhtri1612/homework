@@ -6,11 +6,18 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Client } from '@libsql/client';
 
 export const MIGRATIONS_DIR = fileURLToPath(new URL('../../prisma/migrations', import.meta.url));
 
-/** The migrations in a folder, oldest first: [{ name, sql, checksum }]. */
-export function readMigrations(dir = MIGRATIONS_DIR) {
+export interface Migration {
+  name: string;
+  sql: string;
+  checksum: string;
+}
+
+/** The migrations in a folder, oldest first. */
+export function readMigrations(dir: string = MIGRATIONS_DIR): Migration[] {
   return readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && existsSync(join(dir, entry.name, 'migration.sql')))
     .map((entry) => {
@@ -25,14 +32,14 @@ export function readMigrations(dir = MIGRATIONS_DIR) {
  * together with its _migrations row, so a failed migration leaves nothing
  * behind. db is a @libsql/client client. Returns the names it applied.
  */
-export async function applyMigrations(db, { dir = MIGRATIONS_DIR } = {}) {
+export async function applyMigrations(db: Client, { dir = MIGRATIONS_DIR }: { dir?: string } = {}): Promise<string[]> {
   await db.execute(`CREATE TABLE IF NOT EXISTS _migrations (
     name       TEXT PRIMARY KEY,
     checksum   TEXT NOT NULL,
     applied_at TEXT NOT NULL
   )`);
 
-  const applied = [];
+  const applied: string[] = [];
   for (const migration of readMigrations(dir)) {
     const tx = await db.transaction('write');
     try {
@@ -76,6 +83,6 @@ const TABLES = [
 ];
 
 /** Deletes all tables and their data, including the record of applied migrations. */
-export async function dropSchema(db) {
+export async function dropSchema(db: Client): Promise<void> {
   await db.executeMultiple(TABLES.map((table) => `DROP TABLE IF EXISTS ${table};`).join('\n'));
 }

@@ -2,10 +2,10 @@
 
 Schema: `prisma/schema.prisma` + `prisma/migrations/*/migration.sql` (the SQL files are what runs; the
 init migration has hand-written CHECKs, `COLLATE NOCASE` and the partial index). Applier:
-`src/config/migrate.js`. Connections: `src/config/client.js` (`createPrisma()`, used by the app and the
+`src/config/migrate.ts`. Connections: `src/config/client.ts` (`createPrisma()`, used by the app and the
 services) and `openDb()` in the same file (a plain libSQL client used only to apply migrations, by
 `db:reset`, and by tests that check rows with SQL).
-Data access: `src/services/teacher.service.js`, `session.service.js`, `homework.service.js` (Prisma Client;
+Data access: `src/services/teacher.service.ts`, `session.service.ts`, `homework.service.ts` (Prisma Client;
 the first argument is the PrismaClient or a transaction `tx`). Tests: `test/db.test.js`.
 
 ## Changing the schema (migrations)
@@ -43,7 +43,7 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
   applied_at), each in its own write transaction. It fails if an applied `migration.sql` was edited
   afterwards. Called by `src/server.js` on startup, `npm run db:init`, `db:seed` and the tests
   (`test/helpers.js`, `test/db.test.js`). Never edit an applied migration; add a new one.
-- `dropSchema(db)` drops tables children-first, then `_migrations` (`TABLES` list in `migrate.js`), so
+- `dropSchema(db)` drops tables children-first, then `_migrations` (`TABLES` list in `migrate.ts`), so
   `db:reset` re-applies every migration. If you add a table, add it to that list in the right order.
 - **No timestamp defaults in the database.** `created_at`, `updated_at` and `submitted_at` have no
   `DEFAULT`; the data-access code sets them (`new Date().toISOString()`). Raw-SQL inserts in tests must
@@ -71,7 +71,7 @@ already been applied anywhere; `applyMigrations` refuses a changed checksum.
 - Times: UTC ISO 8601 text (`2026-10-24T16:45:00.000Z`), set in code with `new Date().toISOString()`. Convert Vietnam time with `src/vietnam-time.js`.
 - Booleans: `BOOLEAN` columns stored as 0/1 with `CHECK (x IN (0, 1))`; data-access functions return JS booleans.
 - Rows are mapped to camelCase objects in the data-access modules; routes never see raw rows.
-- Text is NFC-normalised and trimmed before insert (`clean()` in `homework.service.js`).
+- Text is NFC-normalised and trimmed before insert (`clean()` in `homework.service.ts`).
 
 ## Tables
 
@@ -104,7 +104,7 @@ change, also not when a new version is created.
 part after `/h/` if it is a link, removes spaces and dashes, upper-cases, then must match the alphabet
 and length exactly (`0`, `O`, `1`, `I`, `L` → `null`).
 
-## Homework functions (`src/services/homework.service.js`)
+## Homework functions (`src/services/homework.service.ts`)
 
 - `validateHomework({ title, questions, revealMode, deadline })` returns a list of `{ code, message, question? }`
   (Vietnamese). Checks: title present and ≤ 200 chars; 1–200 questions; each question via

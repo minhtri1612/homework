@@ -9,19 +9,19 @@ src/
   load-env.js       process.loadEnvFile() if .env exists; import first in every entry point
   vietnam-time.js   Vietnam time (UTC+7) <-> UTC ISO; date formatting for views
   shared/parser.js  syntax parser, used by browser AND server (see parser.md)
-  config/client.js  createPrisma() (the app's Prisma client, libSQL adapter), openDb() (plain libSQL
+  config/client.ts  createPrisma() (the app's Prisma client, libSQL adapter), openDb() (plain libSQL
                     client for migrations, db:reset and SQL in tests), isUniqueViolation()
-  config/migrate.js applyMigrations(), dropSchema() (see database.md)
+  config/migrate.ts applyMigrations(), dropSchema() (see database.md)
   routes/web.js     every page: path → middleware → controller
   routes/status.js  notFound (404) and serverError (500)
   middleware/       auth.js (cookie, loadTeacher, requireTeacher), same-origin.js (sameOriginPosts)
   controllers/      read req, call validation + services, render/redirect; no database queries
                     home, auth, homework (dashboard + editor), share (/join, /h/:code)
   validation/       Zod schemas: shape and coercion of form input, Vietnamese messages
-                    form.js (formText, formLine, fieldErrors), auth, homework, share
+                    form.ts (formText, formLine, fieldErrors), auth, homework, share
   services/         data access + business rules on Prisma: teacher, session, homework, share-code, password
   generated/prisma/ output of prisma generate (gitignored)
-  grading.js        computeScore(correct, total) (see grading.md)
+  grading.ts        computeScore(correct, total) (see grading.md)
   views/            EJS templates; partials/head.ejs and partials/foot.ejs wrap every page
   public/           static files: style.css, js/editor.js, js/copy.js
 prisma/             schema.prisma + migrations/ (the database schema; see database.md)
@@ -80,7 +80,7 @@ belongs to another teacher. Unknown and someone else's homework look the same on
 it comes from the request's `Host` header (no configured public URL yet).
 
 Student routes need no login. Share codes go through `joinSchema` / `shareCodeParam`
-(`validation/share.schema.js`), which use `normalizeShareCode()` (any case, spaces, dashes, or a pasted
+(`validation/share.schema.ts`), which use `normalizeShareCode()` (any case, spaces, dashes, or a pasted
 `.../h/CODE` link). `/h/:code` uses `findSharedHomework()`, which returns no
 questions or answers; for now the page shows title, teacher, question count, deadline / "Đã hết hạn
 nộp bài", and a "(sắp có)" notice where answering will go.
@@ -121,7 +121,7 @@ server re-validates with the editor's messages. Security rules for new routes: `
 3. On submit: completely blank cards are dropped; if any card has errors or there are none, submit
    is blocked. Otherwise the cards go into the hidden `questions` field as JSON
    (`[{ text, answers: [{ text, correct }], shuffleAnswers }]`).
-4. Server `editorSchema` (`validation/homework.schema.js`) parses that JSON defensively (coerces types,
+4. Server `editorSchema` (`validation/homework.schema.ts`) parses that JSON defensively (coerces types,
    never fails; unreadable JSON sets `unreadable`, which the controller reports as a `BAD_FORM` error), converts the deadline with `fromVietnamInput()`, then `createHomework` /
    `updateHomework` validate again. On validation failure the editor re-renders with status 400,
    the errors listed, and the teacher's input kept.

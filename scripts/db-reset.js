@@ -1,8 +1,8 @@
 // npm run db:reset: DELETES every table and its data, then applies all
 // migrations again, leaving empty tables. Local file databases only.
 import '../src/load-env.js';
-import { applyMigrations, dropSchema } from '../src/config/migrate.js';
-import { openDb, isLocal, DEFAULT_URL } from '../src/config/client.js';
+import { applyMigrations, dropSchema } from '../src/config/migrate.ts';
+import { openDb, isLocal, DEFAULT_URL } from '../src/config/client.ts';
 
 const url = process.env.DATABASE_URL || DEFAULT_URL;
 if (!isLocal(url)) {

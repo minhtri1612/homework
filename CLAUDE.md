@@ -17,7 +17,7 @@ account) open it; answering and server-side grading on a 10-point scale are Step
 - Express `5.3.0`, server-rendered EJS `7.0.1` views, plain browser JavaScript (no bundler, no framework)
 - Prisma `7.10.1` (`prisma`, `@prisma/client`, `@prisma/adapter-libsql`) over `@libsql/client` `0.17.4`:
   SQLite file `data/local.db` locally, Turso when deployed. Services in `src/services/` query with Prisma
-  Client; migrations are applied by our own `src/config/migrate.js`
+  Client; migrations are applied by our own `src/config/migrate.ts`
 - `zod` `4.6.7`: form input schemas in `src/validation/` (shape and coercion only)
 - Layers: `routes/web.js` → `controllers/` → `services/` → Prisma; `req.prisma`, no global client
   (see `.claude/docs/architecture.md`)
@@ -48,7 +48,7 @@ npm run parse -- examples/mau.txt    # run the parser on a file (or pipe text on
 ```
 
 `npm run dev` / `npm start` also apply pending migrations on startup (`src/server.js`). The schema lives in
-`prisma/migrations/*/migration.sql` (applied by `src/config/migrate.js`), not in a `schema.sql`.
+`prisma/migrations/*/migration.sql` (applied by `src/config/migrate.ts`), not in a `schema.sql`.
 Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `file:data/local.db`.
 
 ## Core Logic Summary
@@ -62,7 +62,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - `parse()` never drops a line: problems become errors/warnings with line numbers. `serialize()` writes
   cards back as text that `parse()` reads back to the same questions.
 
-**Grading** (`computeScore()` in `src/grading.js`; the student flow that uses it is Step 6; see `.claude/docs/grading.md`):
+**Grading** (`computeScore()` in `src/grading.ts`; the student flow that uses it is Step 6; see `.claude/docs/grading.md`):
 `score = Math.round(correct * 40 / total) / 4`, i.e. `correct / total × 10` rounded to the **nearest**
 0.25 (7.1 → 7, 7.13 → 7.25; an exact tie such as 7.125 goes up). Stored in `submissions.score` with
 `correct_count` and `total_count`; a blank answer is `answer_id NULL` and counts as wrong.
@@ -75,7 +75,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 - **One parser for browser and server.** `src/shared/parser.js` is served to the browser at
   `/shared/parser.js` and imported by the server. It stays a dependency-free ES module with no Node or
   DOM APIs. Change it once, and the editor preview and the save-time validation change together.
-- **The server re-validates everything.** `validateHomework()` in `src/services/homework.service.js` runs on every
+- **The server re-validates everything.** `validateHomework()` in `src/services/homework.service.ts` runs on every
   save; the browser check is only a convenience. Schema `CHECK`/`UNIQUE` constraints are a second line of defence.
 - **Schema changes go through migrations.** Edit `prisma/schema.prisma`, run `npm run db:migration -- <name>`,
   then review the SQL: a `-- RedefineTables` migration silently drops the hand-written `CHECK`s,

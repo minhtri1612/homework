@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeScore } from '../src/grading.js';
+import { computeScore } from '../src/grading.ts';
 
 test('rounds to the nearest 0.25', () => {
   assert.equal(computeScore(71, 100), 7); // 7.1

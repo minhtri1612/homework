@@ -13,11 +13,11 @@ export const formLine = formText.transform((value) => value.normalize('NFC').rep
  * The first message for each field, as { field: message }, so a page shows
  * one problem per field in the order the schema checks them.
  */
-export function fieldErrors(error) {
-  const errors = {};
+export function fieldErrors(error: z.ZodError): Record<string, string> {
+  const errors: Record<string, string> = {};
   for (const issue of error.issues) {
     const field = issue.path[0];
-    if (field !== undefined && !(field in errors)) errors[field] = issue.message;
+    if (typeof field === 'string' && !(field in errors)) errors[field] = issue.message;
   }
   return errors;
 }

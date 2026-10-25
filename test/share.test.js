@@ -1,8 +1,8 @@
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTeacher } from '../src/services/teacher.service.js';
-import { createHomework, getHomework, updateHomework } from '../src/services/homework.service.js';
-import { normalizeShareCode } from '../src/services/share-code.service.js';
+import { createTeacher } from '../src/services/teacher.service.ts';
+import { createHomework, getHomework, updateHomework } from '../src/services/homework.service.ts';
+import { normalizeShareCode } from '../src/services/share-code.service.ts';
 import { parse } from '../src/shared/parser.js';
 import { startApp, sessionCookie } from './helpers.js';
 

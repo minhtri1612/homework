@@ -14,6 +14,7 @@ Run the whole file instead.
 
 | File | Covers | How |
 |---|---|---|
+| `test/imports.test.js` | every relative import in `src`, `scripts`, `test` names a file that exists (the type checker accepts `./x.js` for `x.ts`; Node does not) | reads the files |
 | `test/validation.test.js` | Zod schemas: register messages and cleaning, editor form coercion, homework id, share code | pure functions |
 | `test/grading.test.js` | `computeScore`: nearest 0.25, ties up, 0 and 10 | pure function |
 | `test/parser.test.js` | all syntax styles, splitting, title, errors, normalisation, `validateQuestion`, `serialize` round-trip | pure functions |
@@ -43,7 +44,7 @@ Tests never use `data/local.db`. `startApp()` in `test/helpers.js`:
 ```js
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTeacher } from '../src/services/teacher.service.js';
+import { createTeacher } from '../src/services/teacher.service.ts';
 import { startApp, sessionCookie } from './helpers.js';
 
 let app;

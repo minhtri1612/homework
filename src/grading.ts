@@ -6,6 +6,6 @@
  * (57 of 80 = 7.125 → 7.25). correct * 40 is an integer, so there is only one
  * floating-point division and no float error near the halfway points.
  */
-export function computeScore(correct, total) {
+export function computeScore(correct: number, total: number): number {
   return Math.round((correct * 40) / total) / 4;
 }

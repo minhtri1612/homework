@@ -240,8 +240,8 @@ src/
   shared/
     parser.js     bộ đọc cú pháp — dùng chung cho trình duyệt và máy chủ
   config/
-    client.js     kết nối tới cơ sở dữ liệu (file trên máy hoặc Turso), qua Prisma hoặc trực tiếp
-    migrate.js    tạo/cập nhật các bảng bằng các file trong prisma/migrations/
+    client.ts     kết nối tới cơ sở dữ liệu (file trên máy hoặc Turso), qua Prisma hoặc trực tiếp
+    migrate.ts    tạo/cập nhật các bảng bằng các file trong prisma/migrations/
   routes/
     web.js        danh sách mọi trang: địa chỉ → kiểm tra đăng nhập → controller
     status.js     trang "không tìm thấy" (404) và trang lỗi (500)
@@ -255,11 +255,11 @@ src/
     share.controller.js    trang của học sinh: mở bài tập bằng mã (/h/MÃ, ô nhập mã)
   validation/     kiểm tra và làm sạch dữ liệu từ form (Zod), thông báo lỗi tiếng Việt
   services/
-    teacher.service.js    lưu giáo viên
-    homework.service.js   lưu và đọc bộ bài tập (kiểm tra lại câu hỏi trước khi lưu)
-    session.service.js    phiên đăng nhập
-    share-code.service.js tạo và đọc mã chia sẻ
-    password.service.js   mã hoá và kiểm tra mật khẩu
+    teacher.service.ts    lưu giáo viên
+    homework.service.ts   lưu và đọc bộ bài tập (kiểm tra lại câu hỏi trước khi lưu)
+    session.service.ts    phiên đăng nhập
+    share-code.service.ts tạo và đọc mã chia sẻ
+    password.service.ts   mã hoá và kiểm tra mật khẩu
   generated/      mã Prisma tự sinh (npm run db:generate, không đưa lên git)
   views/          giao diện (EJS); partials/ là phần đầu và cuối dùng chung
   public/         CSS, ảnh, JavaScript cho trình duyệt
@@ -268,7 +268,7 @@ src/
   app.js          ghép các phần thành website
   server.js       khởi động website (npm run dev)
   load-env.js     đọc file .env nếu có
-  grading.js      tính điểm thang 10 (làm tròn đến 0,25)
+  grading.ts      tính điểm thang 10 (làm tròn đến 0,25)
   vietnam-time.js đổi giờ Việt Nam ↔ giờ UTC lưu trong cơ sở dữ liệu
 prisma/           các bảng của cơ sở dữ liệu (schema.prisma) và các migration
 prisma.config.js  cài đặt cho lệnh prisma (website không dùng file này)

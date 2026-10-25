@@ -1,6 +1,6 @@
 // Pages for students, who have no account: open a homework by its share code.
-import { findSharedHomework } from '../services/homework.service.js';
-import { joinSchema, shareCodeParam } from '../validation/share.schema.js';
+import { findSharedHomework } from '../services/homework.service.ts';
+import { joinSchema, shareCodeParam } from '../validation/share.schema.ts';
 
 // The code box on the home page (a GET form, so nothing to protect).
 export function getJoin(req, res) {

@@ -1,9 +1,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { registerSchema, registerForm } from '../src/validation/auth.schema.js';
-import { editorSchema, homeworkIdParam } from '../src/validation/homework.schema.js';
-import { joinSchema, shareCodeParam } from '../src/validation/share.schema.js';
-import { fieldErrors } from '../src/validation/form.js';
+import { registerSchema, registerForm } from '../src/validation/auth.schema.ts';
+import { editorSchema, homeworkIdParam } from '../src/validation/homework.schema.ts';
+import { joinSchema, shareCodeParam } from '../src/validation/share.schema.ts';
+import { fieldErrors } from '../src/validation/form.ts';
 
 function registerErrors(body) {
   const result = registerSchema.safeParse(body);

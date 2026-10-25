@@ -1,5 +1,5 @@
 // Teacher login state: the session cookie and the pages that need a login.
-import { findSessionTeacher, SESSION_DAYS } from '../services/session.service.js';
+import { findSessionTeacher, SESSION_DAYS } from '../services/session.service.ts';
 
 export const COOKIE_NAME = 'sid';
 

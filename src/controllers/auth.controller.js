@@ -1,11 +1,11 @@
 // Teacher register / login / logout pages.
-import { createTeacher, findTeacherByEmail } from '../services/teacher.service.js';
-import { createSession, deleteSession } from '../services/session.service.js';
-import { hashPassword, verifyPassword } from '../services/password.service.js';
+import { createTeacher, findTeacherByEmail } from '../services/teacher.service.ts';
+import { createSession, deleteSession } from '../services/session.service.ts';
+import { hashPassword, verifyPassword } from '../services/password.service.ts';
 import { COOKIE_NAME, sessionCookieOptions } from '../middleware/auth.js';
-import { isUniqueViolation } from '../config/client.js';
-import { registerForm, registerSchema, loginSchema } from '../validation/auth.schema.js';
-import { fieldErrors } from '../validation/form.js';
+import { isUniqueViolation } from '../config/client.ts';
+import { registerForm, registerSchema, loginSchema } from '../validation/auth.schema.ts';
+import { fieldErrors } from '../validation/form.ts';
 
 const EMAIL_TAKEN = 'Email này đã được đăng ký. Hãy đăng nhập.';
 
