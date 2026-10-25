@@ -1,3 +1,4 @@
+// Teacher login state: the session cookie and the pages that need a login.
 import { findSessionTeacher, SESSION_DAYS } from '../services/session.service.js';
 
 export const COOKIE_NAME = 'sid';
@@ -27,36 +28,16 @@ function readCookie(req, name) {
 }
 
 /** Sets req.teacher and res.locals.teacher (null when not logged in). */
-export function loadTeacher(prisma) {
-  return async (req, res, next) => {
-    req.sessionToken = readCookie(req, COOKIE_NAME);
-    req.teacher = req.sessionToken ? await findSessionTeacher(prisma, req.sessionToken) : null;
-    if (req.sessionToken && !req.teacher) res.clearCookie(COOKIE_NAME, { path: '/' });
-    res.locals.teacher = req.teacher;
-    next();
-  };
+export async function loadTeacher(req, res, next) {
+  req.sessionToken = readCookie(req, COOKIE_NAME);
+  req.teacher = req.sessionToken ? await findSessionTeacher(req.prisma, req.sessionToken) : null;
+  if (req.sessionToken && !req.teacher) res.clearCookie(COOKIE_NAME, { path: '/' });
+  res.locals.teacher = req.teacher;
+  next();
 }
 
 /** Sends visitors who are not logged in to the login page. */
 export function requireTeacher(req, res, next) {
   if (req.teacher) return next();
   res.redirect('/login');
-}
-
-/**
- * Rejects form posts coming from another website. Browsers send an Origin
- * header with every POST; it must match the site the form was posted to.
- */
-export function sameOriginPosts(req, res, next) {
-  if (req.method !== 'POST') return next();
-  const origin = req.get('origin');
-  if (!origin) return next();
-  let host;
-  try {
-    host = new URL(origin).host;
-  } catch {
-    host = null;
-  }
-  if (host === req.get('host')) return next();
-  res.status(403).render('error', { title: 'Không được phép', message: 'Yêu cầu này đến từ một trang web khác nên đã bị chặn.' });
 }

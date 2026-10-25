@@ -9,14 +9,19 @@ src/
   load-env.js       process.loadEnvFile() if .env exists; import first in every entry point
   vietnam-time.js   Vietnam time (UTC+7) <-> UTC ISO; date formatting for views
   shared/parser.js  syntax parser, used by browser AND server (see parser.md)
-  config/client.js  createPrisma(): the Prisma client (libSQL adapter); isUniqueViolation()
-  config/migrate.js applyMigrations(): runs prisma/migrations/*/migration.sql (see database.md)
-  db/client.js      openDb(): plain libSQL client for migrations, db:reset and SQL in tests
+  config/client.js  createPrisma() (the app's Prisma client, libSQL adapter), openDb() (plain libSQL
+                    client for migrations, db:reset and SQL in tests), isUniqueViolation()
+  config/migrate.js applyMigrations(), dropSchema() (see database.md)
+  routes/web.js     every page: path → middleware → controller
+  routes/status.js  notFound (404) and serverError (500)
+  middleware/       auth.js (cookie, loadTeacher, requireTeacher), same-origin.js (sameOriginPosts)
+  controllers/      read req, call validation + services, render/redirect; no database queries
+                    home, auth, homework (dashboard + editor), share (/join, /h/:code)
+  validation/       Zod schemas: shape and coercion of form input, Vietnamese messages
+                    form.js (formText, formLine, fieldErrors), auth, homework, share
   services/         data access + business rules on Prisma: teacher, session, homework, share-code, password
   generated/prisma/ output of prisma generate (gitignored)
   grading.js        computeScore(correct, total) (see grading.md)
-  auth/             session cookie middleware, Origin check (see auth.md)
-  routes/           Express routers: auth.js, teacher.js, student.js
   views/            EJS templates; partials/head.ejs and partials/foot.ejs wrap every page
   public/           static files: style.css, js/editor.js, js/copy.js
 prisma/             schema.prisma + migrations/ (the database schema)
@@ -34,11 +39,13 @@ There is no build step. Files under `src/public/` and `src/shared/` are served a
 2. `express.static(src/shared)` mounted at `/shared`: `/shared/parser.js` for the browser
 3. `express.urlencoded({ extended: false, limit: '1mb' })`: forms only, no JSON body parser.
    1 MB because 200 long questions exceed the 100 KB default.
-4. `loadTeacher(prisma)`: reads cookie `sid`, sets `req.teacher` / `res.locals.teacher` (or null)
-5. `sameOriginPosts`: rejects POSTs whose `Origin` host differs from `Host` (403)
-6. `GET /`, then `authRoutes(prisma)`, `teacherRoutes(prisma)`, `studentRoutes(prisma)`
-7. 404 handler renders `error.ejs`; error handler logs and renders a generic Vietnamese 500.
-   Express 5 forwards rejected promises from async handlers here, so routes do not need try/catch
+4. Sets `req.prisma` (the client passed to `createApp`). There is no global Prisma client: middleware and
+   controllers use `req.prisma` and pass it to the services, so each test has its own database.
+5. `loadTeacher`: reads cookie `sid`, sets `req.teacher` / `res.locals.teacher` (or null)
+6. `sameOriginPosts`: rejects POSTs whose `Origin` host differs from `Host` (403)
+7. `webRoutes()` (`routes/web.js`)
+8. `notFound` renders `error.ejs`; `serverError` logs and renders a generic Vietnamese 500.
+   Express 5 forwards rejected promises from async handlers here, so controllers do not need try/catch
    for unexpected errors.
 
 `app.set('trust proxy', 1)` is set for Render's proxy (Step 8). `app.locals.formatDate` /
@@ -46,29 +53,33 @@ There is no build step. Files under `src/public/` and `src/shared/` are served a
 
 ## Routes
 
-| Method | Path | File | Notes |
-|---|---|---|---|
-| GET | `/` | `app.js` | home; links differ when logged in |
-| GET/POST | `/register` | `routes/auth.js` | logged-in users are redirected to `/teacher` |
-| GET/POST | `/login` | `routes/auth.js` | |
-| POST | `/logout` | `routes/auth.js` | deletes the session row, clears the cookie |
-| GET | `/teacher` | `routes/teacher.js` | dashboard (`listHomeworks`) |
-| GET | `/teacher/homeworks/new` | `routes/teacher.js` | empty editor |
-| POST | `/teacher/homeworks` | `routes/teacher.js` | create → 302 `/teacher/homeworks/:id/edit?saved=new` |
-| GET | `/teacher/homeworks/:id/edit` | `routes/teacher.js` | `?saved=1` / `?saved=new` / `?saved=vN` show a notice |
-| POST | `/teacher/homeworks/:id` | `routes/teacher.js` | update → 302 back to edit page |
-| GET | `/join?code=…` | `routes/student.js` | home-page code box (GET form) → 302 `/h/CODE`; bad/empty code → 400 home with error |
-| GET | `/h/:code` | `routes/student.js` | student page; non-canonical code (lower case…) → 302 to `/h/CODE`; unknown → 404 |
+All listed in `routes/web.js`; controllers in `src/controllers/`.
 
-Everything under `/teacher` goes through `requireTeacher` (302 to `/login`). Routes with `:id` use
-`ownHomework()`, which returns a 404 page when the id is not a safe integer, does not exist, or
+| Method | Path | Controller | Notes |
+|---|---|---|---|
+| GET | `/` | `home.getHomePage` | home; links differ when logged in |
+| GET/POST | `/register` | `auth.getRegisterPage` / `postRegister` | logged-in users are redirected to `/teacher` |
+| GET/POST | `/login` | `auth.getLoginPage` / `postLogin` | |
+| POST | `/logout` | `auth.postLogout` | deletes the session row, clears the cookie |
+| GET | `/teacher` | `homework.getDashboardPage` | dashboard (`listHomeworks`) |
+| GET | `/teacher/homeworks/new` | `homework.getNewHomeworkPage` | empty editor |
+| POST | `/teacher/homeworks` | `homework.postCreateHomework` | create → 302 `/teacher/homeworks/:id/edit?saved=new` |
+| GET | `/teacher/homeworks/:id/edit` | `homework.getEditHomeworkPage` | `?saved=1` / `?saved=new` / `?saved=vN` show a notice |
+| POST | `/teacher/homeworks/:id` | `homework.postUpdateHomework` | update → 302 back to edit page |
+| GET | `/join?code=…` | `share.getJoin` | home-page code box (GET form) → 302 `/h/CODE`; bad/empty code → 400 home with error |
+| GET | `/h/:code` | `share.getSharedHomework` | student page; non-canonical code (lower case…) → 302 to `/h/CODE`; unknown → 404 |
+
+Everything under `/teacher` goes through `requireTeacher` (302 to `/login`) and `setSiteUrl`. Routes with
+`:id` use `ownHomework()` (`homework.controller.js`), which returns a 404 page when the id is not a
+positive integer written plainly (`homeworkIdParam`: `abc`, `01`, `1e2` → 404), does not exist, or
 belongs to another teacher. Unknown and someone else's homework look the same on purpose.
 
-The teacher router also sets `res.locals.siteUrl` (`req.protocol://host`) for the full student links;
+`setSiteUrl` sets `res.locals.siteUrl` (`req.protocol://host`) for the full student links;
 it comes from the request's `Host` header (no configured public URL yet).
 
-Student routes need no login. Share codes go through `normalizeShareCode()` (any case, spaces,
-dashes, or a pasted `.../h/CODE` link). `/h/:code` uses `findSharedHomework()`, which returns no
+Student routes need no login. Share codes go through `joinSchema` / `shareCodeParam`
+(`validation/share.schema.js`), which use `normalizeShareCode()` (any case, spaces, dashes, or a pasted
+`.../h/CODE` link). `/h/:code` uses `findSharedHomework()`, which returns no
 questions or answers; for now the page shows title, teacher, question count, deadline / "Đã hết hạn
 nộp bài", and a "(sắp có)" notice where answering will go.
 
@@ -81,6 +92,14 @@ Not built yet: answering and submitting (Step 6), results/CSV (Step 7), deleting
 link box + copy button + "Xem trang học sinh"; pages using it also load `/js/copy.js`). Every page passes `title`. Use `<%= %>` (escaped) for all data; `<%- %>`
 is only used for `include` and for `initialJson`, which is pre-escaped by `scriptJson()`.
 
+## Layers (rules for new code)
+
+Add a route to `routes/web.js`, its handler to a controller, input parsing to a Zod schema in
+`validation/`, and database work to a service. Controllers never query Prisma directly; schemas never
+query the database (an "email already exists" check inside validation would reveal which emails
+exist). Business rules (`validateHomework`, the parser's `validateQuestion`) stay in services, so the
+server re-validates with the editor's messages. Security rules for new routes: `auth.md`.
+
 ## Server vs browser code
 
 - Server only: everything in `src/` except `src/public/` and `src/shared/`.
@@ -89,7 +108,7 @@ is only used for `include` and for `initialJson`, which is pre-escaped by `scrip
   is unavailable (plain http other than localhost).
 - Both: `src/shared/parser.js`. It must not import Node modules or use DOM APIs.
 
-## Editor data flow (`views/editor.ejs` + `public/js/editor.js` + `routes/teacher.js`)
+## Editor data flow (`views/editor.ejs` + `public/js/editor.js` + `controllers/homework.controller.js`)
 
 1. Server renders the form and embeds the questions (without ids) as JSON in
    `<script type="application/json" id="initial-questions">`, escaped with `scriptJson()`.
@@ -100,8 +119,8 @@ is only used for `include` and for `initialJson`, which is pre-escaped by `scrip
 3. On submit: completely blank cards are dropped; if any card has errors or there are none, submit
    is blocked. Otherwise the cards go into the hidden `questions` field as JSON
    (`[{ text, answers: [{ text, correct }], shuffleAnswers }]`).
-4. Server `readEditorForm()` parses that JSON defensively (coerces types; unreadable JSON produces a
-   `BAD_FORM` error), converts the deadline with `fromVietnamInput()`, then `createHomework` /
+4. Server `editorSchema` (`validation/homework.schema.js`) parses that JSON defensively (coerces types,
+   never fails; unreadable JSON sets `unreadable`, which the controller reports as a `BAD_FORM` error), converts the deadline with `fromVietnamInput()`, then `createHomework` /
    `updateHomework` validate again. On validation failure the editor re-renders with status 400,
    the errors listed, and the teacher's input kept.
 5. Settings fields: `title`, `revealMode` (radio), `deadline` (`datetime-local`, Vietnam time),

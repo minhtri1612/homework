@@ -221,10 +221,20 @@ src/
   shared/
     parser.js     bộ đọc cú pháp — dùng chung cho trình duyệt và máy chủ
   config/
-    client.js     kết nối Prisma tới cơ sở dữ liệu (file trên máy hoặc Turso)
+    client.js     kết nối tới cơ sở dữ liệu (file trên máy hoặc Turso), qua Prisma hoặc trực tiếp
     migrate.js    tạo/cập nhật các bảng bằng các file trong prisma/migrations/
-  db/
-    client.js     kết nối thẳng (không qua Prisma) để chạy migration
+  routes/
+    web.js        danh sách mọi trang: địa chỉ → kiểm tra đăng nhập → controller
+    status.js     trang "không tìm thấy" (404) và trang lỗi (500)
+  middleware/
+    auth.js       đọc cookie đăng nhập, chặn trang cần đăng nhập
+    same-origin.js chặn form gửi từ trang web khác
+  controllers/    đọc yêu cầu, gọi kiểm tra dữ liệu và services, trả về trang
+    home.controller.js     trang chủ
+    auth.controller.js     đăng ký, đăng nhập, đăng xuất
+    homework.controller.js trang của giáo viên: danh sách và soạn bài tập
+    share.controller.js    trang của học sinh: mở bài tập bằng mã (/h/MÃ, ô nhập mã)
+  validation/     kiểm tra và làm sạch dữ liệu từ form (Zod), thông báo lỗi tiếng Việt
   services/
     teacher.service.js    lưu giáo viên
     homework.service.js   lưu và đọc bộ bài tập (kiểm tra lại câu hỏi trước khi lưu)
@@ -232,12 +242,6 @@ src/
     share-code.service.js tạo và đọc mã chia sẻ
     password.service.js   mã hoá và kiểm tra mật khẩu
   generated/      mã Prisma tự sinh (npm run db:generate, không đưa lên git)
-  auth/
-    middleware.js đọc cookie đăng nhập, chặn trang cần đăng nhập, chặn form từ trang web khác
-  routes/
-    auth.js       đăng ký, đăng nhập, đăng xuất
-    teacher.js    trang của giáo viên: danh sách và soạn bài tập
-    student.js    trang của học sinh: mở bài tập bằng mã (/h/MÃ, ô nhập mã)
   views/          giao diện (EJS); partials/ là phần đầu và cuối dùng chung
   public/         CSS, ảnh, JavaScript cho trình duyệt
     js/editor.js  trang soạn bài tập (hai thẻ Cú pháp / Dạng thẻ)

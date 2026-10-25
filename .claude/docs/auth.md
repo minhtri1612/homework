@@ -1,6 +1,7 @@
 # Teacher auth and security rules
 
-Files: `src/routes/auth.js`, `src/auth/middleware.js`, `src/services/password.service.js`,
+Files: `src/controllers/auth.controller.js`, `src/validation/auth.schema.js`, `src/middleware/auth.js`,
+`src/middleware/same-origin.js`, `src/services/password.service.js`,
 `src/services/session.service.js`, `src/services/teacher.service.js`. Tests: `test/auth.test.js`. Students have no accounts (planned; see `PLAN.md`).
 
 ## Registration (`POST /register`)
@@ -9,7 +10,8 @@ Files: `src/routes/auth.js`, `src/auth/middleware.js`, `src/services/password.se
 - Email: trimmed, lower-cased, simple regex `^[^\s@]+@[^\s@]+\.[^\s@]+$`, ≤ 254 chars; unique in any
   case (code lower-cases, column is `COLLATE NOCASE`). A race on the UNIQUE constraint (Prisma error
   `P2002`, `isUniqueViolation()` in `src/config/client.js`) is caught and shown as "already registered".
-- Password: 8–200 chars, must equal `confirm`. All field errors are shown at once; typed values are
+- Password: 8–200 chars, must equal `confirm` (checked only when the password itself is valid).
+  Rules live in `registerSchema`; `fieldErrors()` keeps the first message per field. All field errors are shown at once; typed values are
   kept except passwords.
 - Success logs the teacher in and redirects to `/teacher`.
 
@@ -32,7 +34,7 @@ match. Comparison uses `timingSafeEqual`.
 - Lifetime 30 days (`SESSION_DAYS`). Expired rows are deleted whenever a new session is created.
 - Cookie options (`sessionCookieOptions()`): `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age` 30
   days, `Secure` only when `NODE_ENV === 'production'`.
-- `loadTeacher(prisma)` middleware: reads `sid` (own parser, no cookie-parser dependency), looks up the
+- `loadTeacher` middleware (uses `req.prisma`): reads `sid` (own parser, no cookie-parser dependency), looks up the
   teacher via `findSessionTeacher` (also checks `expires_at`), sets `req.teacher` /
   `res.locals.teacher` = `{ id, email, name }` or null, and clears a cookie that no longer matches a
   session. `req.sessionToken` holds the raw token.
@@ -42,14 +44,14 @@ match. Comparison uses `timingSafeEqual`.
 
 - **Teacher pages**: mount under `/teacher` so `requireTeacher` applies (302 to `/login`).
 - **Ownership**: any route taking a homework id must check `homework.teacherId === req.teacher.id` and
-  answer 404 otherwise (see `ownHomework()` in `routes/teacher.js`). Data functions that write
+  answer 404 otherwise (see `ownHomework()` in `controllers/homework.controller.js`). Data functions that write
   (`updateHomework`) also filter by `teacher_id`.
 - **CSRF**: `sameOriginPosts` rejects a POST whose `Origin` host differs from the `Host` header (403).
   A POST **without** an `Origin` header is allowed (non-browser clients); together with
   `SameSite=Lax` this is the whole CSRF defence. There are no CSRF tokens. Keep state-changing actions
   on POST, never GET.
 - **Output escaping**: EJS `<%= %>` for all user data. JSON inside `<script>` must go through
-  `scriptJson()` (`routes/teacher.js`), which escapes `<`, U+2028, U+2029. Tests check both
+  `scriptJson()` (`controllers/homework.controller.js`), which escapes `<`, U+2028, U+2029. Tests check both
   (`test/auth.test.js` XSS name, `test/editor.test.js` `</script>` in question text).
 - **Correct answers**: never render `answers[].correct` into a student page before the reveal rules
   allow it (see `grading.md`).

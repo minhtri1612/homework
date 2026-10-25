@@ -61,3 +61,21 @@ export async function applyMigrations(db, { dir = MIGRATIONS_DIR } = {}) {
   }
   return applied;
 }
+
+// Children before parents, so dropping never breaks a foreign key.
+const TABLES = [
+  'submission_answers',
+  'submissions',
+  'answers',
+  'questions',
+  'homework_versions',
+  'homeworks',
+  'sessions',
+  'teachers',
+  '_migrations',
+];
+
+/** Deletes all tables and their data, including the record of applied migrations. */
+export async function dropSchema(db) {
+  await db.executeMultiple(TABLES.map((table) => `DROP TABLE IF EXISTS ${table};`).join('\n'));
+}

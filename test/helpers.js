@@ -4,9 +4,8 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openDb } from '../src/db/client.js';
 import { applyMigrations } from '../src/config/migrate.js';
-import { createPrisma } from '../src/config/client.js';
+import { createPrisma, openDb } from '../src/config/client.js';
 import { createApp } from '../src/app.js';
 
 export async function startApp() {

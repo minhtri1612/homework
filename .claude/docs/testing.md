@@ -14,6 +14,7 @@ Run the whole file instead.
 
 | File | Covers | How |
 |---|---|---|
+| `test/validation.test.js` | Zod schemas: register messages and cleaning, editor form coercion, homework id, share code | pure functions |
 | `test/grading.test.js` | `computeScore`: nearest 0.25, ties up, 0 and 10 | pure function |
 | `test/parser.test.js` | all syntax styles, splitting, title, errors, normalisation, `validateQuestion`, `serialize` round-trip | pure functions |
 | `test/db.test.js` | schema idempotence, FKs, teachers, passwords, `createHomework`/`getHomework`, share codes, cascades, DB constraints | own temp DB file, calls the services (Prisma) and raw SQL; also 200-question save, concurrent saves, deleting a homework with submissions |

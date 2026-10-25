@@ -2,10 +2,10 @@
 // their own database (a Prisma client).
 import express from 'express';
 import { fileURLToPath } from 'node:url';
-import { loadTeacher, sameOriginPosts } from './auth/middleware.js';
-import { authRoutes } from './routes/auth.js';
-import { teacherRoutes } from './routes/teacher.js';
-import { studentRoutes } from './routes/student.js';
+import { loadTeacher } from './middleware/auth.js';
+import { sameOriginPosts } from './middleware/same-origin.js';
+import { webRoutes } from './routes/web.js';
+import { notFound, serverError } from './routes/status.js';
 import { formatVietnamDate, formatVietnamDateTime } from './vietnam-time.js';
 
 export function createApp({ prisma }) {
@@ -22,23 +22,18 @@ export function createApp({ prisma }) {
   app.use('/shared', express.static(fileURLToPath(new URL('./shared', import.meta.url))));
   // 1 MB fits 200 long questions; the default 100 KB does not.
   app.use(express.urlencoded({ extended: false, limit: '1mb' }));
-  app.use(loadTeacher(prisma));
+  // Middleware and controllers reach the database through req.prisma.
+  app.use((req, res, next) => {
+    req.prisma = prisma;
+    next();
+  });
+  app.use(loadTeacher);
   app.use(sameOriginPosts);
 
-  app.get('/', (req, res) => res.render('home', { title: 'Bài tập trắc nghiệm', codeInput: '', codeError: null }));
-  app.use(authRoutes(prisma));
-  app.use(teacherRoutes(prisma));
-  app.use(studentRoutes(prisma));
+  app.use(webRoutes());
 
-  app.use((req, res) => {
-    res.status(404).render('error', { title: 'Không tìm thấy', message: 'Trang này không tồn tại.' });
-  });
-  // Express 5 sends errors thrown in async routes here.
-  app.use((error, req, res, next) => {
-    console.error(error);
-    if (res.headersSent) return next(error);
-    res.status(500).render('error', { title: 'Có lỗi', message: 'Máy chủ gặp lỗi. Hãy thử lại sau ít phút.' });
-  });
+  app.use(notFound);
+  app.use(serverError);
 
   return app;
 }

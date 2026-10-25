@@ -2,8 +2,8 @@
 //   npm run db:init     apply migrations not applied yet (safe to run any time)
 //   npm run db:reset    DELETE everything and start empty (local file only)
 import '../src/load-env.js';
-import { openDb, dropSchema, isLocal, DEFAULT_URL } from '../src/db/client.js';
-import { applyMigrations } from '../src/config/migrate.js';
+import { applyMigrations, dropSchema } from '../src/config/migrate.js';
+import { openDb, isLocal, DEFAULT_URL } from '../src/config/client.js';
 
 const url = process.env.DATABASE_URL || DEFAULT_URL;
 const reset = process.argv.includes('--reset');

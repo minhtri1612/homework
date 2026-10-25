@@ -1,0 +1,60 @@
+// Shape and coercion of the homework editor form. Nothing here decides
+// whether a homework is valid: validateHomework() in the homework service
+// does that on every save, with the same messages as the editor preview.
+import { z } from 'zod';
+import { formLine, formText } from './form.js';
+import { fromVietnamInput } from '../vietnam-time.js';
+
+/** Anything that is not a plain object is read as {}, so its fields become defaults. */
+function objectOrEmpty(schema) {
+  return z.preprocess((value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {}), schema);
+}
+
+const isTrue = z.unknown().optional().transform((value) => value === true);
+
+const answer = objectOrEmpty(z.object({ text: formText, correct: isTrue }));
+
+const question = objectOrEmpty(
+  z.object({
+    text: formText,
+    shuffleAnswers: isTrue,
+    answers: z.unknown().optional().transform((value) => (Array.isArray(value) ? value : [])).pipe(z.array(answer)),
+  }),
+);
+
+/**
+ * The editor form. The cards arrive as JSON in the hidden "questions" field;
+ * anything unexpected in it is coerced to the right shape so that validation,
+ * not a crash, reports what is wrong. This schema never fails: unreadable JSON
+ * gives unreadable: true and no questions.
+ */
+export const editorSchema = z
+  .object({
+    title: formLine,
+    revealMode: z.unknown().optional().transform((value) => String(value ?? 'after_submit')),
+    deadline: formText,
+    shuffleQuestions: z.unknown().optional().transform((value) => value === '1'),
+    questions: z
+      .unknown()
+      .optional()
+      .transform((value) => {
+        try {
+          return JSON.parse(String(value ?? '[]'));
+        } catch {
+          return null;
+        }
+      })
+      .pipe(z.union([z.null(), z.array(question), z.unknown().transform(() => [])])),
+  })
+  .transform(({ deadline, questions, ...form }) => ({
+    ...form,
+    deadline: fromVietnamInput(deadline),
+    deadlineInput: deadline,
+    questions: questions ?? [],
+    unreadable: questions === null,
+  }));
+
+/** The :id in /teacher/homeworks/:id; null when it cannot be a homework id. */
+export const homeworkIdParam = z
+  .string()
+  .transform((value) => (/^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : null));

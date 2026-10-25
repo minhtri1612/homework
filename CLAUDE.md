@@ -18,7 +18,9 @@ account) open it; answering and server-side grading on a 10-point scale are Step
 - Prisma `7.10.1` (`prisma`, `@prisma/client`, `@prisma/adapter-libsql`) over `@libsql/client` `0.17.4`:
   SQLite file `data/local.db` locally, Turso when deployed. Services in `src/services/` query with Prisma
   Client; migrations are applied by our own `src/config/migrate.js`
-- `zod` `4.6.7` (installed for Step 4.5 part 4, not used yet)
+- `zod` `4.6.7`: form input schemas in `src/validation/` (shape and coercion only)
+- Layers: `routes/web.js` → `controllers/` → `services/` → Prisma; `req.prisma`, no global client
+  (see `.claude/docs/architecture.md`)
 - Tests: built-in `node:test` + `node:assert/strict` (no test dependencies)
 - Password hashing: `node:crypto` scrypt (no native modules)
 - No linter or formatter configured; `.editorconfig` sets UTF-8, LF, 2-space indent
@@ -73,7 +75,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
   keep pointing at the old version's question/answer rows. Never update or delete rows of a version
   that has submissions. Settings (title, deadline, reveal mode, shuffle) are updated in place.
 - **All UI text, error messages and the README are Vietnamese.** Code, comments and identifiers are English.
-  Validation messages are written in Vietnamese at the source (parser, `validateHomework`, routes).
+  Validation messages are written in Vietnamese at the source (parser, `validateHomework`, Zod schemas, controllers).
 - **Times are stored as UTC ISO strings**; teachers type and read Vietnam time (UTC+7) via
   `src/vietnam-time.js`. Do not store local times.
 - **Text is NFC-normalised** before comparing or storing (Vietnamese from macOS arrives as NFD).
@@ -89,7 +91,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
 
 ## Additional Documentation
 
-- [.claude/docs/architecture.md](.claude/docs/architecture.md): folders, middleware order, routes, views, browser vs server code, editor data flow
+- [.claude/docs/architecture.md](.claude/docs/architecture.md): folders, middleware order, routes, views, layers, browser vs server code, editor data flow
 - [.claude/docs/parser.md](.claude/docs/parser.md): syntax rules, splitting heuristics, title rule, error codes, normalisation, serialize round-trip
 - [.claude/docs/database.md](.claude/docs/database.md): tables, constraints, homework versioning, validation limits, libSQL local vs Turso, scripts
 - [.claude/docs/auth.md](.claude/docs/auth.md): teacher registration/login, sessions and cookies, CSRF/Origin check, ownership, escaping

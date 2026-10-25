@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { cpSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openDb } from '../src/db/client.js';
 import { applyMigrations, readMigrations, MIGRATIONS_DIR } from '../src/config/migrate.js';
+import { openDb } from '../src/config/client.js';
 
 // Each run uses fresh database files in a temporary folder, never data/local.db.
 let dir;

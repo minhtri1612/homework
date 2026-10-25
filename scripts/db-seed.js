@@ -2,9 +2,8 @@
 //   npm run db:seed
 // The questions go through the same parser teachers will use.
 import '../src/load-env.js';
-import { openDb, DEFAULT_URL } from '../src/db/client.js';
 import { applyMigrations } from '../src/config/migrate.js';
-import { createPrisma } from '../src/config/client.js';
+import { createPrisma, openDb, DEFAULT_URL } from '../src/config/client.js';
 import { createTeacher, findTeacherByEmail } from '../src/services/teacher.service.js';
 import { createHomework } from '../src/services/homework.service.js';
 import { parse } from '../src/shared/parser.js';

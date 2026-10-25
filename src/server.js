@@ -1,8 +1,7 @@
 // Starts the website: npm run dev (restarts when files change) or npm start.
 import './load-env.js';
-import { openDb } from './db/client.js';
 import { applyMigrations } from './config/migrate.js';
-import { createPrisma } from './config/client.js';
+import { createPrisma, openDb } from './config/client.js';
 import { createApp } from './app.js';
 
 // Migrations run on a plain libSQL connection; the app itself uses Prisma.

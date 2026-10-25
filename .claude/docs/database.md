@@ -3,7 +3,7 @@
 Schema: `prisma/schema.prisma` + `prisma/migrations/*/migration.sql` (the SQL files are what runs; the
 init migration has hand-written CHECKs, `COLLATE NOCASE` and the partial index). Applier:
 `src/config/migrate.js`. Connections: `src/config/client.js` (`createPrisma()`, used by the app and the
-services) and `src/db/client.js` (`openDb()`, a plain libSQL client used only to apply migrations, by
+services) and `openDb()` in the same file (a plain libSQL client used only to apply migrations, by
 `db:reset`, and by tests that check rows with SQL).
 Data access: `src/services/teacher.service.js`, `session.service.js`, `homework.service.js` (Prisma Client;
 the first argument is the PrismaClient or a transaction `tx`). Tests: `test/db.test.js`.
@@ -28,13 +28,18 @@ the first argument is the PrismaClient or a transaction `tx`). Tests: `test/db.t
   connects through `PrismaLibSql` (`@prisma/adapter-libsql`), for `file:` and Turso alike. The client is
   generated TypeScript in `src/generated/prisma/` (`npm run db:generate`, also run by `postinstall`;
   regenerate after every `schema.prisma` change). Node 24 imports it from JS by stripping the types.
-- Step 4.5 parts 4–5 (Zod, controllers, scripts) are not done yet.
+- Step 4.5 part 5 (scripts, final docs) is not done yet.
 - Foreign keys are enforced, including inside transactions (tested in `test/db.test.js`).
 - Multi-statement writes use `prisma.$transaction(async (tx) => { … }, { timeout: 30_000 })`: a thrown
   error rolls everything back. The default 5 s timeout is too short for 200 questions over Turso.
   The adapter runs transactions of one process one at a time, which is what keeps the share-code check
   and the "submissions exist → new version" check correct (tested: "saves at the same moment do not
   clash"). That would not hold with several server processes; Render runs one.
+- **Single-process assumption (revisit before running more than one instance).** `createHomework` checks
+  that a new share code is unused inside its transaction and then inserts it. That check, like the
+  versioning check in `updateHomework`, assumes one server process. With several instances, two could
+  pick the same code at once: the UNIQUE constraint on `share_code` would then fail the save with P2002
+  instead of retrying. Before scaling out, add a retry on P2002 (and recheck the versioning race).
 - Independent writes that must succeed together without reads in between use the array form
   `prisma.$transaction([...])` (`createSession`).
 
