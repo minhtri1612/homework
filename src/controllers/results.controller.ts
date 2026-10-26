@@ -10,6 +10,7 @@ import {
   deleteHomework,
   deleteSubmission,
   findSubmission,
+  getSubmissionDetail,
   listSubmissions,
   listUnfinished,
   listVersions,
@@ -111,6 +112,38 @@ export async function getResultsCsv(req: Request, res: Response) {
   res.type('text/csv; charset=utf-8');
   res.attachment(`ket-qua-${homework.shareCode}${suffix}.csv`);
   res.send(submissionsCsv(rows));
+}
+
+/** One student's submission: every question with the chosen and the correct answer (any reveal mode). */
+export async function getSubmissionPage(req: Request, res: Response) {
+  const homework = await ownHomework(req, res);
+  if (!homework) return;
+  const submissionId = submissionIdParam.parse(req.params.submissionId);
+  const detail = submissionId === null ? null : await getSubmissionDetail(req.prisma, homework.id, submissionId);
+  if (!detail) {
+    notFound(res, 'Không có bài nộp này.');
+    return;
+  }
+  const questions = detail.questions.map((q, i) => ({
+    ...q,
+    number: i + 1,
+    verdict: q.chosenId === null ? 'blank' : q.answers.some((a) => a.correct && a.id === q.chosenId) ? 'right' : 'wrong',
+  }));
+  const base = `/teacher/homeworks/${homework.id}/submissions`;
+  res.render('submission', {
+    title: `${detail.studentName}: ${homework.title}`,
+    homework,
+    detail,
+    questions,
+    wrong: questions.filter((q) => q.verdict === 'wrong').map((q) => q.number),
+    blank: questions.filter((q) => q.verdict === 'blank').map((q) => q.number),
+    scoreText: formatScore(detail.score),
+    durationText: detail.startedAt ? duration(Math.max(0, Math.round((Date.parse(detail.submittedAt) - Date.parse(detail.startedAt)) / 1000))) : null,
+    awayText: awayText(detail.away),
+    showVersion: (await listVersions(req.prisma, homework.id)).length > 1,
+    previousUrl: detail.previousId === null ? null : `${base}/${detail.previousId}`,
+    nextUrl: detail.nextId === null ? null : `${base}/${detail.nextId}`,
+  });
 }
 
 /** The submission in :submissionId of this teacher's homework, or a 404. */

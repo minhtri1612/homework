@@ -16,6 +16,7 @@ import {
 import {
   getResultsPage,
   getResultsCsv,
+  getSubmissionPage,
   getDeleteSubmissionPage,
   postDeleteSubmission,
   getDeleteHomeworkPage,
@@ -51,6 +52,7 @@ export function webRoutes() {
   router.post('/teacher/homeworks/:id/grade', postMoveHomework);
   router.get('/teacher/homeworks/:id/results', getResultsPage);
   router.get('/teacher/homeworks/:id/results.csv', getResultsCsv);
+  router.get('/teacher/homeworks/:id/submissions/:submissionId', getSubmissionPage);
   router.get('/teacher/homeworks/:id/submissions/:submissionId/delete', getDeleteSubmissionPage);
   router.post('/teacher/homeworks/:id/submissions/:submissionId/delete', postDeleteSubmission);
   router.get('/teacher/homeworks/:id/attempts/:studentKey/reset', getResetAttemptPage);

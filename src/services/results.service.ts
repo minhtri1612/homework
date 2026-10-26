@@ -132,6 +132,80 @@ export async function questionStats(prisma: PrismaClient, versionId: number): Pr
   });
 }
 
+export interface SubmissionDetail {
+  id: number;
+  studentName: string;
+  score: number;
+  correctCount: number;
+  totalCount: number;
+  versionNumber: number;
+  startedAt: string | null;
+  submittedAt: string;
+  away: Away | null;
+  /** The version's questions in the teacher's order, with the student's choice (null = blank). */
+  questions: { id: number; text: string; chosenId: number | null; answers: { id: number; text: string; correct: boolean }[] }[];
+  /** The previous and next submission of the homework (oldest first, as in the list); null at either end. */
+  previousId: number | null;
+  nextId: number | null;
+}
+
+/** One submission of a homework with every question and the chosen answer; null if it is not in that homework. */
+export async function getSubmissionDetail(prisma: PrismaClient, homeworkId: number, submissionId: number): Promise<SubmissionDetail | null> {
+  const [submission, order] = await Promise.all([
+    prisma.submission.findFirst({
+      where: { id: submissionId, homeworkId },
+      select: {
+        id: true,
+        studentName: true,
+        studentKey: true,
+        score: true,
+        correctCount: true,
+        totalCount: true,
+        startedAt: true,
+        submittedAt: true,
+        answers: { select: { questionId: true, answerId: true } },
+        version: {
+          select: {
+            number: true,
+            questions: {
+              orderBy: { position: 'asc' },
+              select: { id: true, text: true, answers: { orderBy: { position: 'asc' }, select: { id: true, text: true, isCorrect: true } } },
+            },
+          },
+        },
+      },
+    }),
+    prisma.submission.findMany({ where: { homeworkId }, orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }], select: { id: true } }),
+  ]);
+  if (!submission) return null;
+
+  const attempt = await prisma.attempt.findUnique({
+    where: { homeworkId_studentKey: { homeworkId, studentKey: submission.studentKey } },
+    select: { leaveCount: true, awaySeconds: true },
+  });
+  const chosen = new Map(submission.answers.map((a) => [a.questionId, a.answerId]));
+  const at = order.findIndex((s) => s.id === submission.id);
+  return {
+    id: submission.id,
+    studentName: submission.studentName,
+    score: submission.score,
+    correctCount: submission.correctCount,
+    totalCount: submission.totalCount,
+    versionNumber: submission.version.number,
+    startedAt: submission.startedAt,
+    submittedAt: submission.submittedAt,
+    away: attempt,
+    questions: submission.version.questions.map((q) => ({
+      id: q.id,
+      text: q.text,
+      chosenId: chosen.get(q.id) ?? null,
+      answers: q.answers.map((a) => ({ id: a.id, text: a.text, correct: a.isCorrect })),
+    })),
+    previousId: order[at - 1]?.id ?? null,
+    nextId: order[at + 1]?.id ?? null,
+  };
+}
+
 // A cell starting with one of these is run as a formula by Excel and Google
 // Sheets. Student names come from anyone with the link, so such cells get a
 // leading apostrophe, which spreadsheets show as plain text.

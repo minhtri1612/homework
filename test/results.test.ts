@@ -159,6 +159,84 @@ describe('CSV export', () => {
   });
 });
 
+describe('one submission in detail', () => {
+  async function submissionIds(homeworkId: number): Promise<number[]> {
+    const { rows } = await app.db.execute({ sql: 'SELECT id FROM submissions WHERE homework_id = ? ORDER BY submitted_at, id', args: [homeworkId] });
+    return rows.map((row) => Number(row.id));
+  }
+
+  test('linked from the results; every question with the chosen and the correct answer; previous and next', async () => {
+    const { id, shareCode } = await newHomework();
+    await submit(id, shareCode, 'Lê Văn An', [0, 1, 0]);
+    await submit(id, shareCode, 'Trần Bình', [1, null, 0]); // wrong, blank, right → 1/3
+    await submit(id, shareCode, 'Cường', [0, 0, 1]);
+    const [first, second, third] = await submissionIds(id);
+    const url = `/teacher/homeworks/${id}/submissions/${second}`;
+
+    const results = await (await app.get(`/teacher/homeworks/${id}/results`, cookie)).text();
+    assert.ok(results.includes(`href="${url}"`));
+
+    const page = await app.get(url, cookie);
+    assert.equal(page.status, 200);
+    const html = await page.text();
+    assert.match(html, /<h1>Trần Bình<\/h1>/);
+    assert.match(html, /<strong>3,25<\/strong> \/ 10 điểm · đúng 1\/3 câu/);
+    assert.match(html, /Sai \(1\): <a href="#cau-1">câu 1<\/a>/);
+    assert.match(html, /Bỏ trống \(1\): <a href="#cau-2">câu 2<\/a>/);
+    assert.deepEqual([...html.matchAll(/✔ Đúng|✖ Bỏ trống|✖ Sai/g)].map((m) => m[0]), ['✖ Sai', '✖ Bỏ trống', '✔ Đúng']);
+    assert.match(html, /<li class=" is-chosen">\s*B\. Huế\s*<span class="tag">học sinh chọn<\/span>/);
+    assert.match(html, /<li class="is-correct ">\s*A\. Hà Nội\s*<span class="tag">đáp án đúng<\/span>/);
+    assert.match(html, /<li class="is-correct is-chosen">\s*A\. Xanh\s*<span class="tag">học sinh chọn<\/span>\s*<span class="tag">đáp án đúng<\/span>/);
+    assert.ok(html.includes(`href="/teacher/homeworks/${id}/submissions/${first}">← Học sinh trước`));
+    assert.ok(html.includes(`href="/teacher/homeworks/${id}/submissions/${third}">Học sinh sau →`));
+
+    const last = await (await app.get(`/teacher/homeworks/${id}/submissions/${third}`, cookie)).text();
+    assert.ok(!last.includes('Học sinh sau'));
+    const all = await (await app.get(`/teacher/homeworks/${id}/submissions/${first}`, cookie)).text();
+    assert.match(all, /Đúng tất cả các câu/);
+    assert.ok(!all.includes('Học sinh trước'));
+  });
+
+  test('the teacher sees the answers whatever the reveal mode; an older version shows its own questions', async () => {
+    const { id, shareCode } = await createHomework(app.prisma, { teacherId, title: 'Không cho xem', questions: QUESTIONS, revealMode: 'never' });
+    await submit(id, shareCode, 'Cũ', [1, 1, 0]);
+    await updateHomework(app.prisma, { id, teacherId, title: 'Không cho xem', revealMode: 'never', questions: QUESTIONS.slice(1) });
+    const [old] = await submissionIds(id);
+    const html = await (await app.get(`/teacher/homeworks/${id}/submissions/${old}`, cookie)).text();
+    assert.ok(html.includes('Thủ đô của Việt Nam?'), 'question 1 of version 1 is still shown');
+    assert.match(html, /phiên bản 1/);
+    assert.match(html, /đáp án đúng/);
+  });
+
+  test('with a time limit: time taken and leaving the page', async () => {
+    const { id, shareCode } = await createHomework(app.prisma, { teacherId, title: 'Có giờ', questions: QUESTIONS, timeLimitMinutes: 40 });
+    await startAttempt(app.prisma, id, 'Dũng');
+    await app.post(`/h/${shareCode}/away`, { name: 'Dũng', event: 'leave' });
+    await app.post(`/h/${shareCode}/away`, { name: 'Dũng', event: 'back', seconds: '30' });
+    await submit(id, shareCode, 'Dũng', [0, 1, 0]);
+    const [submissionId] = await submissionIds(id);
+    const html = await (await app.get(`/teacher/homeworks/${id}/submissions/${submissionId}`, cookie)).text();
+    assert.match(html, /làm trong \d+ giây/);
+    assert.match(html, /⚠ Rời trang 1 lần, tổng 30 giây/);
+  });
+
+  test("another teacher, another homework's submission, a bad id, no login: never shown", async () => {
+    const a = await newHomework();
+    const b = await newHomework();
+    await submit(a.id, a.shareCode, '<b>Quân</b>', [0, 1, 0]);
+    const [submissionId] = await submissionIds(a.id);
+    const url = `/teacher/homeworks/${a.id}/submissions/${submissionId}`;
+    assert.equal((await app.get(url)).headers.get('location'), '/login');
+    assert.equal((await app.get(url, otherCookie)).status, 404);
+    assert.equal((await app.get(`/teacher/homeworks/${b.id}/submissions/${submissionId}`, cookie)).status, 404);
+    for (const bad of ['abc', '0', '01', '999999']) {
+      assert.equal((await app.get(`/teacher/homeworks/${a.id}/submissions/${bad}`, cookie)).status, 404, bad);
+    }
+    const html = await (await app.get(url, cookie)).text();
+    assert.ok(html.includes('&lt;b&gt;Quân&lt;/b&gt;') && !html.includes('<b>Quân'));
+  });
+});
+
 describe('deleting a submission', () => {
   test('confirmation page, then deleted; the name can submit again', async () => {
     const { id, shareCode } = await newHomework();

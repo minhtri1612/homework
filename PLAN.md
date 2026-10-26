@@ -8,7 +8,8 @@
 ## Next session (stopped 2026-10-25)
 
 **Where we stopped:** Steps 0–11 are done and live on Render + Turso (Step 11 = commit 5eb7ee2, deployed
-2026-10-25). 236 tests pass. Left: the user moves the existing homeworks out of "Chưa xếp lớp". Every push to `main`
+2026-10-25). 236 tests pass. Left: the user moves the existing homeworks out of "Chưa xếp lớp". Step 12 (one student's answers) is
+pushed 2026-10-26; the user checks it on the live site. Every push to `main`
 redeploys the live site, so push only when the user says so.
 
 **Decided 2026-10-25:**
@@ -91,6 +92,15 @@ redeploys the live site, so push only when the user says so.
     - [x] commit 5eb7ee2 pushed; live site checked: `/`, `/healthz`, `/lop/12`, `/lop/12/tu-vung`,
       `/lop/12/bai-tap` 200, `/lop/13` 404, the 3 old `/h/CODE` links 200
     - [ ] user: move the existing homeworks out of "Chưa xếp lớp"
+- [x] **Step 12 — One student's answers** (asked for by the user 2026-10-26; details in `.claude/docs/grading.md`)
+  - [x] the name in the results table links to `/teacher/homeworks/:id/submissions/:submissionId`
+    (`getSubmissionPage`, `getSubmissionDetail()`, view `submission.ejs`)
+  - [x] score, time taken and leaving the page; "Sai: câu …" / "Bỏ trống: câu …" with jump links; every question
+    (teacher's order, the submission's version) with the chosen and the correct answer; previous / next student
+  - Tests: 4 in `test/results.test.ts` "one submission in detail"; 240 in total. Checked that dropping the
+    homework check or the chosen answer makes the matching tests fail.
+  - [x] committed and pushed 2026-10-26 (redeploys the live site)
+  - [ ] user: check the page on the live site
 
 ---
 

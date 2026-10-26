@@ -156,6 +156,11 @@ Giới hạn: tối đa 200 câu, mỗi câu hỏi 2000 ký tự, mỗi đáp á
 Bấm **kết quả** cạnh bài tập ở trang **Bài tập của tôi** (hoặc **Xem kết quả** ở trang sửa bài).
 
 - Bảng bài nộp: họ tên, điểm, số câu đúng, giờ nộp (cũ nhất trước), cùng số bài nộp và điểm trung bình.
+- **Bài làm của từng học sinh**: bấm vào tên học sinh trong bảng. Trang đó hiện điểm, giờ nộp (và thời gian
+  làm bài, số lần rời trang nếu bài có thời gian làm bài), danh sách các câu sai và bỏ trống (bấm để nhảy
+  tới câu đó), rồi từng câu với đáp án học sinh chọn, đáp án đúng và ✔ Đúng / ✖ Sai / ✖ Bỏ trống. Giáo
+  viên luôn xem được, dù bài đặt chế độ không cho học sinh xem đáp án. Nút *Học sinh trước* / *Học sinh sau*
+  để xem lần lượt cả lớp. Câu hỏi và chữ cái A, B, C… theo thứ tự giáo viên soạn.
 - **Từng câu hỏi**: bao nhiêu học sinh làm đúng (câu dưới 50% hiện màu đỏ), mỗi đáp án được bao nhiêu
   em chọn, bao nhiêu em bỏ trống.
 - Bài tập có nhiều **phiên bản**: chọn **Tất cả** hoặc một phiên bản. Thống kê từng câu chỉ hiện khi

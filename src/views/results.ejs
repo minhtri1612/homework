@@ -18,7 +18,8 @@
 
 <section class="card summary">
   <p><strong><%= submissions.length %></strong> bài nộp<% if (average !== null) { %> · điểm trung bình <strong><%= average %></strong><% } %></p>
-  <% if (submissions.length) { %><p><a class="button secondary" href="<%= csvUrl %>" download>Tải bảng điểm (CSV)</a></p><% } %>
+  <% if (submissions.length) { %><p class="muted">Bấm vào tên học sinh để xem bài làm chi tiết: câu nào đúng, câu nào sai.</p>
+  <p><a class="button secondary" href="<%= csvUrl %>" download>Tải bảng điểm (CSV)</a></p><% } %>
 </section>
 
 <% if (submissions.length === 0) { %>
@@ -33,7 +34,7 @@
         <% submissions.forEach((s, i) => { %>
           <tr>
             <td><%= i + 1 %></td>
-            <td><%= s.studentName %></td>
+            <td><a href="/teacher/homeworks/<%= homework.id %>/submissions/<%= s.id %>" title="Xem bài làm chi tiết"><%= s.studentName %></a></td>
             <td class="num"><strong><%= s.scoreText %></strong></td>
             <td class="num"><%= s.correctCount %>/<%= s.totalCount %></td>
             <% if (versions.length > 1) { %><td class="num"><%= s.versionNumber %></td><% } %>

@@ -151,5 +151,13 @@ A second submission with the same `student_key` fails on the UNIQUE constraint (
   Việt Nam)`. Comma-separated, score with a dot (`7.25`), time `YYYY-MM-DD HH:MM` Vietnam time, UTF-8 with
   BOM, CRLF, RFC 4180 quoting. Text cells starting with `= + - @`, tab or CR get a leading `'` (CSV
   formula injection: student names are untrusted). Same version filter as the page.
+- **One submission** (Step 12, `getSubmissionDetail()`, view `submission.ejs`): the student's name in the
+  table links to `/teacher/homeworks/:id/submissions/:submissionId`. Score, submit time, time taken
+  (`submitted_at − started_at`, only with a time limit), leaving the page, "Sai (N): câu 3, 7…" and
+  "Bỏ trống (N)" with `#cau-N` jump links, then every question of the submission's **version** in the
+  **teacher's order** (letters match "Từng câu hỏi"; the page says students may have seen another order),
+  with "học sinh chọn", "đáp án đúng" and ✔/✖. Always shown to the teacher, whatever the reveal mode.
+  "← Học sinh trước / Học sinh sau →" follow the list order (oldest first, all versions). Three statements,
+  independent of the number of questions.
 - **Deleting a submission** frees the name (one attempt per name), so the student can submit again.
 

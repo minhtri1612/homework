@@ -92,6 +92,7 @@ All listed in `routes/web.ts`; controllers in `src/controllers/`.
 | GET | `/teacher/homeworks/:id/results?version=N` | `results.getResultsPage` | submissions (oldest first), average; version tabs when > 1 version; per-question stats for the selected version (the only one is selected automatically); unknown version 404 |
 | GET | `/teacher/homeworks/:id/results.csv?version=N` | `results.getResultsCsv` | CSV attachment `ket-qua-CODE[-vN].csv` (see `grading.md`) |
 | GET/POST | `/teacher/homeworks/:id/attempts/:studentKey/reset` | `results.getResetAttemptPage` / `postResetAttempt` | started but not submitted: confirmation page, then delete the attempt → 303 results `?notice=attempt-reset`; unknown or submitted → 404 |
+| GET | `/teacher/homeworks/:id/submissions/:submissionId` | `results.getSubmissionPage` | one student's answers (`getSubmissionDetail()`), linked from the name in the results table; another homework's submission or a bad id 404 |
 | GET/POST | `/teacher/homeworks/:id/submissions/:submissionId/delete` | `results.getDeleteSubmissionPage` / `postDeleteSubmission` | confirmation page, then delete → 303 results `?notice=submission-deleted`; the name can submit again |
 | GET/POST | `/teacher/homeworks/:id/delete` | `results.getDeleteHomeworkPage` / `postDeleteHomework` | confirmation page (checkbox required when there are submissions, checked in the delete transaction), then delete → 303 `/teacher?notice=homework-deleted` |
 | GET | `/join?code=…` | `share.getJoin` | home-page code box (GET form) → 302 `/h/CODE`; bad/empty code → 400 home with error |
@@ -126,7 +127,7 @@ a service and a view; the routes stay).
 `home` (code box + grade tiles + teacher links), `grade` (section tiles), `section` (by `section.kind`),
 `register`, `login`, `dashboard` (grades → sections, cards from `partials/homework-card` with the move form), `editor`, `share` (student start page),
 `answer` (questions, loads `/js/answer.js`), `result` (score and review, loads `/js/copy.js`),
-`results` (teacher: table + per-question stats), `confirm-delete` (shared by both deletes: `lines`, `action`,
+`results` (teacher: table + per-question stats), `submission` (teacher: one student's answers), `confirm-delete` (shared by both deletes: `lines`, `action`,
 `cancel`, `button`, optional `check` label, `error`),
 `error`, plus `partials/head` (topbar, logout form), `partials/foot`, `partials/breadcrumb` (`links`) and `partials/share-link` (readonly
 link box + copy button + "Xem trang học sinh"; pages using it also load `/js/copy.js`). Every page passes `title`. Use `<%= %>` (escaped) for all data; `<%- %>`

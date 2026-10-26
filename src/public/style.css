@@ -248,6 +248,7 @@ table.results th, table.results td { padding: 10px 8px; border-bottom: 1px solid
 table.results .num { text-align: right; white-space: nowrap; }
 .hard { color: var(--error); font-weight: 600; }
 .danger-link { color: var(--error); }
+.pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .delete-link { margin: 16px 0 0; text-align: right; }
 .danger-zone { border: 2px solid var(--error); }
 .danger-zone .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }

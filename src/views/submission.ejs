@@ -1,0 +1,42 @@
+<%- include('partials/head') %>
+<h1><%= detail.studentName %></h1>
+<p><a href="/teacher/homeworks/<%= homework.id %>/results">← Kết quả: <%= homework.title %></a></p>
+
+<section class="card summary">
+  <p class="score"><strong><%= scoreText %></strong> / 10 điểm · đúng <%= detail.correctCount %>/<%= detail.totalCount %> câu<% if (showVersion) { %> · phiên bản <%= detail.versionNumber %><% } %></p>
+  <p class="muted">Nộp lúc <%= formatDateTime(detail.submittedAt) %> (giờ Việt Nam)<% if (durationText) { %> · làm trong <%= durationText %><% } %>.</p>
+  <% if (awayText) { %><p class="away-warning">⚠ <%= awayText %></p><% } %>
+  <% if (wrong.length) { %>
+    <p>Sai (<%= wrong.length %>): <% wrong.forEach((n, i) => { %><%= i ? ', ' : '' %><a href="#cau-<%= n %>">câu <%= n %></a><% }) %></p>
+  <% } %>
+  <% if (blank.length) { %>
+    <p>Bỏ trống (<%= blank.length %>): <% blank.forEach((n, i) => { %><%= i ? ', ' : '' %><a href="#cau-<%= n %>">câu <%= n %></a><% }) %></p>
+  <% } %>
+  <% if (!wrong.length && !blank.length) { %><p>Đúng tất cả các câu.</p><% } %>
+</section>
+
+<% const letters = 'ABCDEFGH'; %>
+<ol class="review">
+  <% for (const q of questions) { %>
+    <li class="card question <%= q.verdict === 'right' ? 'right' : 'wrong' %>" id="cau-<%= q.number %>">
+      <p><strong>Câu <%= q.number %>.</strong> <span class="question-text-view"><%= q.text %></span>
+        <span class="verdict"><%= q.verdict === 'right' ? '✔ Đúng' : q.verdict === 'blank' ? '✖ Bỏ trống' : '✖ Sai' %></span></p>
+      <ul class="review-answers">
+        <% q.answers.forEach((a, j) => { %>
+          <li class="<%= a.correct ? 'is-correct' : '' %> <%= a.id === q.chosenId ? 'is-chosen' : '' %>">
+            <%= letters[j] %>. <%= a.text %>
+            <% if (a.id === q.chosenId) { %><span class="tag">học sinh chọn</span><% } %>
+            <% if (a.correct) { %><span class="tag">đáp án đúng</span><% } %>
+          </li>
+        <% }) %>
+      </ul>
+    </li>
+  <% } %>
+</ol>
+<p class="muted">Câu hỏi và chữ cái A, B, C… theo thứ tự giáo viên soạn; học sinh có thể đã thấy thứ tự khác nếu bật xáo trộn.</p>
+
+<nav class="pager" aria-label="Bài nộp khác">
+  <% if (previousUrl) { %><a href="<%= previousUrl %>">← Học sinh trước</a><% } else { %><span></span><% } %>
+  <% if (nextUrl) { %><a href="<%= nextUrl %>">Học sinh sau →</a><% } %>
+</nav>
+<%- include('partials/foot') %>
