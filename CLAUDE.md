@@ -134,6 +134,7 @@ Database selection: copy `.env.example` to `.env`; empty `DATABASE_URL` means `f
   statement per question or answer. Run `npm run smoke` against a throwaway Turso database after such changes.
 - **Commit and push only when the user says so.** Always report whether a push actually succeeded.
 - Do not add dependencies without asking; the stack is deliberately small.
+- **Branch Managemnet**: Before adding any features or fix bugs, always work on a new git branch. Never commit directly on main. Bug branches must follow naming convention bug/[des], feature branches follow naming conveion feature/[desc]
 
 ## Additional Documentation
 
