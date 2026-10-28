@@ -101,7 +101,7 @@ redeploys the live site, so push only when the user says so.
     homework check or the chosen answer makes the matching tests fail.
   - [x] committed and pushed 2026-10-26 (redeploys the live site)
   - [ ] user: check the page on the live site
-- [ ] **Step 13 — Docker + GitHub Actions** (asked for by the user 2026-10-28; Render stays as it is)
+- [x] **Step 13 — Docker + GitHub Actions** (asked for by the user 2026-10-28; Render stays as it is)
   - [x] `Dockerfile` (two stages on `node:24-slim`, runs as `node`, `HEALTHCHECK` on `/healthz`), `.dockerignore`
     (no `.env`, `data`, `.git`)
   - [x] `docker-compose.yml`: local SQLite in volume `homework-data`, `NODE_ENV=development`
@@ -109,8 +109,10 @@ redeploys the live site, so push only when the user says so.
     `:latest` + `:<sha>` to Docker Hub
   - [x] checked locally: image builds, compose serves `/`, `/healthz`, `/shared/parser.js`, seed + login work, data
     survives a restart, no `.env` in the image, production mode without Turso refuses to start; 240 tests pass
-  - [ ] user: Docker Hub access token → GitHub secret `DOCKERHUB_TOKEN`
-  - [ ] commit + push (redeploys Render too), then check the Actions run and the image on Docker Hub
+  - [x] user: Docker Hub access token → GitHub secret `DOCKERHUB_TOKEN`
+  - [x] commit 42a99dc pushed 2026-10-28: Actions run 40683577042 green (test 24 s, docker 1 min 21 s), both tags on
+    Docker Hub, Render redeployed with its unchanged npm build (`/healthz` 200)
+  - [ ] later: actions use Node 20 (deprecation warning); bump to newer major versions when available
 
 ---
 
