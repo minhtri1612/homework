@@ -327,6 +327,34 @@ Câu chỉ có đáp án mà không có nội dung (như ví dụ `1. A. cat ...
 Văn bản dán từ Word, Mac hay Windows đều được chuẩn hoá (Unicode NFC, xuống dòng, dấu cách đặc biệt),
 nên chữ tiếng Việt gõ trên máy nào cũng so sánh đúng.
 
+## Docker và Docker Hub
+
+Chạy website trên máy bằng Docker (không cần cài Node.js), dữ liệu là file SQLite riêng của Docker,
+**không** đụng tới cơ sở dữ liệu thật trên Turso:
+
+```bash
+docker compose up --build              # mở http://localhost:3000 (Ctrl+C để dừng)
+docker compose exec web npm run db:seed   # thêm giáo viên mẫu và 2 bài tập (chạy khi website đang chạy)
+docker compose down                    # dừng; thêm -v để xoá luôn dữ liệu (volume homework-data)
+```
+
+File `.env` **không** được đưa vào image (`.dockerignore`), nên token Turso không bao giờ nằm trong image.
+
+**GitHub Actions** (`.github/workflows/docker.yml`): mỗi lần đẩy code hoặc mở pull request, GitHub chạy
+`npm test`. Khi đẩy lên nhánh `main` và kiểm thử đều qua, GitHub dựng image và đẩy lên Docker Hub:
+`minhtri16122004/homework:latest` và `minhtri16122004/homework:<mã commit>`. Có thể chạy tay ở tab
+**Actions → Tests and Docker image → Run workflow**.
+
+Cài đặt một lần:
+1. Trên Docker Hub: **Account settings → Personal access tokens → Generate new token**, quyền
+   **Read & Write**. Chép token (chỉ hiện một lần), **không** dán vào chat hay commit.
+2. Trên GitHub: kho `homework` → **Settings → Secrets and variables → Actions → New repository secret**,
+   tên `DOCKERHUB_TOKEN`, giá trị là token vừa chép.
+
+Website thật vẫn triển khai trên Render như cũ (mục dưới); image trên Docker Hub chỉ là bản thêm.
+Muốn chạy image ở chế độ thật (`NODE_ENV=production`, mặc định của image) thì phải truyền `DATABASE_URL`,
+`DATABASE_AUTH_TOKEN` và `INVITE_CODE`, nếu không website sẽ không khởi động.
+
 ## Triển khai (Render + Turso)
 
 Website chạy trên **Render** (gói miễn phí), dữ liệu nằm ở **Turso** (gói miễn phí). Không cần thẻ tín dụng.

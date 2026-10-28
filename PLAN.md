@@ -101,6 +101,16 @@ redeploys the live site, so push only when the user says so.
     homework check or the chosen answer makes the matching tests fail.
   - [x] committed and pushed 2026-10-26 (redeploys the live site)
   - [ ] user: check the page on the live site
+- [ ] **Step 13 — Docker + GitHub Actions** (asked for by the user 2026-10-28; Render stays as it is)
+  - [x] `Dockerfile` (two stages on `node:24-slim`, runs as `node`, `HEALTHCHECK` on `/healthz`), `.dockerignore`
+    (no `.env`, `data`, `.git`)
+  - [x] `docker-compose.yml`: local SQLite in volume `homework-data`, `NODE_ENV=development`
+  - [x] `.github/workflows/docker.yml`: `npm test` on every push/PR; on `main` push `minhtri16122004/homework`
+    `:latest` + `:<sha>` to Docker Hub
+  - [x] checked locally: image builds, compose serves `/`, `/healthz`, `/shared/parser.js`, seed + login work, data
+    survives a restart, no `.env` in the image, production mode without Turso refuses to start; 240 tests pass
+  - [ ] user: Docker Hub access token → GitHub secret `DOCKERHUB_TOKEN`
+  - [ ] commit + push (redeploys Render too), then check the Actions run and the image on Docker Hub
 
 ---
 

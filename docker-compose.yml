@@ -1,0 +1,23 @@
+# Runs the website on this computer with a local SQLite database:
+#   docker compose up --build        → http://localhost:3000
+#   docker compose exec web npm run db:seed
+# The database file lives in the volume homework-data (kept between restarts;
+# docker compose down -v deletes it). It never touches the Turso database:
+# .env is not copied into the image and nothing here reads it.
+services:
+  web:
+    build: .
+    image: minhtri16122004/homework:latest
+    ports:
+      - "3000:3000"
+    environment:
+      # Not production: allows the local database file, open teacher
+      # registration and cookies over plain http://localhost.
+      NODE_ENV: development
+      DATABASE_URL: file:data/local.db
+    volumes:
+      - homework-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  homework-data:

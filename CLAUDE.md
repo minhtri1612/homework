@@ -58,7 +58,13 @@ npm run db:migration -- <name>       # after editing prisma/schema.prisma: write
 npm run db:generate                  # regenerate the Prisma client (npm install and npm test do it too)
 npm run smoke                        # one real cycle against the (Turso) database in .env, then cleans up
 npm run parse -- examples/mau.txt    # run the parser on a file (or pipe text on stdin)
+docker compose up --build            # the image on http://localhost:3000, local SQLite in volume homework-data
 ```
+
+Docker (`Dockerfile`, `docker-compose.yml`, `.dockerignore`) is extra: the live site still deploys on Render
+from GitHub. `.github/workflows/docker.yml` runs `npm test` on every push/PR and, on `main`, pushes
+`minhtri16122004/homework:latest` + `:<sha>` to Docker Hub (repository secret `DOCKERHUB_TOKEN`). The image
+defaults to `NODE_ENV=production`; compose overrides it to `development`. `.env` must stay out of the image.
 
 `npm run dev` / `npm start` also apply pending migrations on startup (`src/server.ts`). The schema lives in
 `prisma/migrations/*/migration.sql` (applied by `src/config/migrate.ts`), not in a `schema.sql`.

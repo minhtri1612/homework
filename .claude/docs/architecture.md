@@ -36,6 +36,9 @@ data/               local SQLite file (data/*.db is gitignored)
 dist/browser/       output of npm run build:browser (gitignored)
 tsconfig.json       type checking of src (except src/public), scripts, test; noEmit
 tsconfig.browser.json compiles the browser code (DOM types, no Node types)
+Dockerfile          image: build stage (npm ci, prisma generate, build:browser), runtime stage (prod deps, node src/server.ts)
+docker-compose.yml  local run of the image with SQLite in volume homework-data (NODE_ENV=development)
+.github/workflows/docker.yml  npm test on push/PR; on main, build + push to Docker Hub
 ```
 
 The server has no build step: Node 24 runs the `.ts` files by stripping the types. Only the browser code

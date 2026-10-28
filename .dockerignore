@@ -1,0 +1,12 @@
+# Never copy secrets or local data into the image.
+.env
+data
+node_modules
+dist
+src/generated
+.git
+.github
+.claude
+test
+npm-debug.log*
+.DS_Store
